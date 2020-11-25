@@ -1,0 +1,85 @@
+<!doctype html>
+<title>{{ config.site_name }}</title>
+<h1> Hello </h1>
+<div id="login" style="display:none;">
+  <form onsubmit="return false;">
+    <input type="text" name="email" placeholder="Email" id="email" required>
+    <input type="password" name="password" id="password" placeholder="Password" required>
+    <button onclick="send_login_email();" type="button">Login</button>
+  </form>
+</div>
+
+<div id="logout" style="display:none;">
+  <button onclick="logout();" type="button">Logout</button>
+</div>
+
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" 
+        integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" 
+        crossorigin="anonymous"></script>
+
+<script type="text/javascript" charset="utf-8">
+    function qs(selector) {
+      return document.querySelector(selector);
+    }
+    function qsv(selector) {
+      return document.querySelector(selector).value;
+    }
+
+    var cookie = {
+      write : function (cname, cvalue, exdays) {
+        var d = new Date();
+        d.setTime(d.getTime() + (exdays*24*60*60*1000));
+        var expires = "expires="+d.toUTCString();
+        document.cookie = cname + "=" + cvalue + "; " + expires;
+      },
+      read : function (name) {
+        if (document.cookie.indexOf(name) > -1) {
+          return document.cookie.split(name)[1].split("; ")[0].substr(1)
+        } else {
+          return "";
+        }
+      },
+      delete : function (cname) {
+        var d = new Date();
+        d.setTime(d.getTime() - 1000);
+        var expires = "expires="+d.toUTCString();
+        document.cookie = cname + "=; " + expires;
+      }
+    };
+
+
+    var socket = io();
+    socket.on('connect', function() {
+      sessionid = cookie.read('sessionid');
+      if (sessionid != '') {
+        socket.emit('login-session', {sessionid: sessionid});
+      } else {
+        qs('#login').style.display = 'block';
+      }
+    });
+
+    function send_login_email() {
+      email = qsv('#email');
+      password = qsv('#password');
+      socket.emit('login-email', {email: email, password: password});
+    }
+
+    function logout() {
+        qs('#logout').style.display = 'none';
+        qs('#login').style.display = 'block';
+        cookie.delete('sessionid')
+    }
+
+    socket.on('login-result', data => {
+      console.log(data);
+      if(data.authenticated) {
+        qs('#logout').style.display = 'block';
+        qs('#login').style.display = 'none';
+        if ('sessionid' in data) {
+          cookie.write('sessionid', data.sessionid, 365);
+        }
+      }
+        
+    });
+</script>
