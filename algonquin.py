@@ -1,14 +1,15 @@
 from db import User, Session, Message, File, Room, build_tables
 
-from flask import Flask, render_template
+from flask import Flask, render_template, send_from_directory
 from flask_socketio import SocketIO, emit, send
 
 import os
 
 config = {'site_name': 'Bath Salts Nation'}
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='')
 app.config['SECRET_KEY'] = 'a very very sekrit sekrit key'
+
 socketio = SocketIO(app)
 
 if __name__ == '__main__':
@@ -18,6 +19,10 @@ pp = Flask(__name__)
 @app.route('/')
 def index():
     return render_template('index.html', config=config)
+
+@app.route('/static/<path:path>')
+def send_static(path):
+    return send_from_directory('static', path)
 
 @socketio.on('my event')
 def handle_event(json):
