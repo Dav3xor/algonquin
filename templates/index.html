@@ -17,12 +17,12 @@
         <input type="password" name="password" id="password" placeholder="Password" required>
         <button onclick="send_login_email();" type="button">Login</button>
       </form>
-      <canvas id="lissajous" width="150" height="150"></canvas>
     </div>
 
     <div id="logout" style="display:none;">
       <button onclick="logout();" type="button">Logout</button>
     </div>
+    <canvas id="lissajous" width="150" height="150"></canvas>
 
     <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" 
             integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" 
@@ -65,36 +65,57 @@
           }
         };
 
+        class Lissajous {
+          constructor(canvas, height, width) {
+            this.canvas  = canvas;
+            this.height  = height;
+            this.width   = width;
+            this.counter = 0;
+            this.a       = 2;
+            this.b       = 3;
+            this.agoal   = 2;
+            this.bgoal   = 3;
+            this.ctx     = canvas.getContext('2d');
+            this.draw();
+          }
+          seta(newval) {
+            this.agoal=newval;
+          }
+          setb(newval) {
+            this.bgoal=newval;
+          }
+          draw() {
+            var time = new Date();
+            var delta = this.counter;
+            this.counter += .012;
+            this.ctx.clearRect(0,0,150,150);
+            this.ctx.beginPath()
+            this.ctx.moveTo(75+50*Math.sin(delta), 75);
+            if (this.a != this.agoal) {
+              this.a += (this.agoal-this.a)*0.05;
+            }
+            if (this.b != this.bgoal) {
+              this.b += (this.bgoal-this.b)*0.05;
+            }
+            for(var i=0;i<131;i++) {
+              var angle = ((3.14159*2)/131.0)*i;
+              var x = 75 + 50*Math.sin(this.a*angle+delta);
+              var y = 75 + 50*Math.sin(this.b*angle);
+              this.ctx.lineTo(x,y);
+            }
+            this.ctx.closePath();
+            this.ctx.stroke();
+            window.requestAnimationFrame(this.draw.bind(this));
+          }
+        }
 
         var socket = io();
-        window.requestAnimationFrame(lissajous);
   
         var canvas = document.getElementById('lissajous');
         var ctx = canvas.getContext('2d');
         ctx.strokeStyle = 'rgb(50,200,100)';
         ctx.lineWidth = 2;
-        var lissajous_counter = 0;
-        function lissajous() {
-          a=2;//1;
-          b=3;//3;
-          var time = new Date();
-          //delta = 3.14159/2.0+.1;
-          delta = lissajous_counter;
-          lissajous_counter += .012;
-          ctx.clearRect(0,0,150,150);
-          ctx.beginPath()
-          ctx.moveTo(75+50*Math.sin(delta), 75);
-          for(i=0;i<131;i++) {
-            angle = ((3.14159*2)/131.0)*i;
-            x = 75 + 50*Math.sin(a*angle+delta);
-            y = 75 + 50*Math.sin(b*angle);
-            ctx.lineTo(x,y);
-          }
-          ctx.closePath();
-          ctx.stroke();
-          window.requestAnimationFrame(lissajous);
-        }
-
+        var lissajous = new Lissajous(canvas, 150,150);
 
         socket.on('connect', function() {
           sessionid = cookie.read('sessionid');
@@ -114,7 +135,8 @@
         function logout() {
             qs('#logout').style.display = 'none';
             qs('#login').style.display = 'block';
-            cookie.delete('sessionid')
+            cookie.delete('sessionid');
+            lissajous.setb(5);
         }
 
         socket.on('login-result', data => {
@@ -125,7 +147,12 @@
             if ('sessionid' in data) {
               cookie.write('sessionid', data.sessionid, 365);
             }
+            lissajous.setb(4);
+          } else {
+            lissajous.setb(1);
+            lissajous.seta(1);
           }
+
             
         });
     </script>
