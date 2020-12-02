@@ -1,7 +1,7 @@
 from db import User, Session, Message, File, Room, build_tables
 
-from flask import Flask, render_template, send_from_directory
-from flask_socketio import SocketIO, emit, send
+from flask import Flask, render_template, send_from_directory, request
+from flask_socketio import SocketIO, emit, send, disconnect
 
 import os
 
@@ -16,6 +16,9 @@ if __name__ == '__main__':
     socketio.run(app)
 pp = Flask(__name__)
 
+scoreboard = { 'users': {},
+               'sid-user': {} }
+
 @app.route('/')
 def index():
     return render_template('index.html', config=config)
@@ -24,9 +27,29 @@ def index():
 def send_static(path):
     return send_from_directory('static', path)
 
-@socketio.on('my event')
-def handle_event(json):
-    print("received json: " + str(json))
+
+@socketio.on('disconnect')
+def handle_disconnect(json):
+    print("client disconnecting: " + request.sid)
+    del scoreboard['sid-user'][request.sid]
+
+def do_login(user, session, send_session_id=False):
+    response = {}
+    if (not user) or (not session):
+        return {'authenticated': False}
+    if user.id not in scoreboard['users']:
+        scoreboard['users'][user.id] = user
+        scoreboard['sid-user'][request.sid] = user.id
+
+    print("------")
+    for room in user.memberships:
+        print(room)
+    print("------")
+    response['authenticated'] = True
+    if send_session_id:
+        response['sessionid'] = session.sessionid
+
+    return response
 
 
 @socketio.on('login-session')
@@ -34,12 +57,11 @@ def handle_login_session(json):
     print("session login: " + str(json))
     sessionid = json['sessionid']
     session   = Session.get_where(sessionid=sessionid)
-    response  = {}
-
-    if session:
-        response['authenticated'] = True
-    else:
-        response['authenticated'] = False
+    if not session:
+        # TODO: more bad sessionid handling?
+        disconnect()
+    user = User.get(int(sessionid.split('-')[0]))
+    response = do_login(user, session)
 
     emit('login-result', response)
 
@@ -49,41 +71,40 @@ def handle_login_email(json):
     email    = json['email']
     password = json['password']
     user     = User.get_where(email=email)
-    response = {}
+    if not user:
+        # TODO: handle weird login attempts here
+        #       3 strikes you're out, etc?
+        #       
+        #       just disconnect for now
+        disconnect()
+        return None
+    session = None
     if user and user.verify_password(password):
-        response['authenticated'] = True
-        response['sessionid']     = str(user.id) + '-' + str(int.from_bytes(os.urandom(32),'big'))
-        session = Session(sessionid=response['sessionid'],
+        session = Session(sessionid=str(user.id) + '-' + str(int.from_bytes(os.urandom(32),'big')),
                           user = user.id)
         session.save()
         session.commit()
-    else:
-        response['authenticated']    = False
-
+    response = do_login(user, session, True)
     emit('login-result', response);
-    
 
-#u = User('dave@dave.org', 'x', 'password')
-#print(u.data)
-#u.save()
+@socketio.on('logout')
+def handle_logout(json):
+    print("logging out: " + str(json['sessionid']))
+    Session.delete_where(sessionid=json['sessionid'])
+    Session.commit()
 
-#u.rooms.add(1,'Greetings Friend')
+@socketio.on('message')
+def handle_message(json):
+    print("message: sid="+str(request.sid))
+    user = scoreboard['sid-user'][request.sid]
+    room = json['room']
+    message = Message(user    = user.id, 
+                      room    = room, 
+                      message = json['message'])
+    message.save()
+    response = { 'message': json['message'], 
+                 'room': room, 
+                 'user': user.id }
+    emit('message', response, room = 'room-'+room)
 
-#print("----")
-#for i in u.rooms:
-#    print(i)
-#print("----")
-
-#u2 = User('bob@bob.org', 'y', 'password')
-#u2.save()
-
-#print(u.id)
-#print(u2.id)
-
-#u.commit()
-
-#a = User.get(1)
-#print(a.email)
-#for room in a.rooms:
-    #print(room)
 

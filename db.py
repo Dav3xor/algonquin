@@ -52,6 +52,7 @@ class DBChild:
         self.child_rows = self.table.select(self.table.table_name, 
                                             self.columns, 
                                             'id='+str(self.key))
+        print(self.child_rows)
         return self
 
     def __next__(self):
@@ -66,6 +67,7 @@ class DBTable:
     select_stmt = "SELECT %s FROM %s WHERE %s"
     update_stmt = "UPDATE %s SET %s WHERE %s"
     create_stmt = "CREATE TABLE IF NOT EXISTS %s (%s)"
+    delete_stmt = "DELETE FROM %s WHERE %s LIMIT %s"
     foreign_key = "FOREIGN KEY(%s) REFERENCES %s(%s)"
     tables      = {}
 
@@ -75,11 +77,13 @@ class DBTable:
     def add_table(table_class):
         DBTable.tables[table_class.__name__] = table_class
 
-    def commit(self):
+    @classmethod
+    def commit(cls):
         db.commit()
 
     def select(table, columns, where_clause):
         stmt = DBTable.select_stmt % (",".join(columns), table, where_clause)
+        print(stmt)
         cursor.execute(stmt)
         return cursor.fetchall()
 
@@ -109,6 +113,16 @@ class DBTable:
             return cls(**dict(zip(columns, values)))
         else:
             return None
+    @classmethod
+    def delete_where(cls, limit=1, **kwargs):
+        where_columns = ""
+        where_values = []
+        for key in kwargs:
+            where_columns += key + "=? "
+            where_values.append(kwargs[key])
+        stmt = DBTable.delete_stmt % (cls.table_name, where_columns, str(limit))
+        print(stmt+"-->"+str(where_values))
+        cursor.execute(stmt, where_values)
 
     def insert(self):
         if self.id:
@@ -141,14 +155,6 @@ class DBTable:
             self.update()
         else:
             self.insert()
-
-    def load(self):
-        if self.hash:
-            data = redis.hget(self.hash, prefix+id)
-        else:
-            data = redis.get(prefix+id)
-        self.data = json.dumps(data)
-        return self.data
 
 class User(DBTable):
     attrs = {'id':       {'type': 'INTEGER PRIMARY KEY'},
@@ -201,16 +207,16 @@ class Message(DBTable):
         DBTable.__init__(self, **kwargs)
 set_properties(Message, Message.attrs)
 
-class MemberShip(DBTable):
+class Membership(DBTable):
     attrs = {'id':   {'type': 'INTEGER PRIMARY KEY'},
              'user': {'type': 'INTEGER NOT NULL',
                       'fkey': ['user', 'id', 'User', 'memberships']},
              'room': {'type': 'INTEGER NOT NULL',
                       'fkey': ['room', 'id', 'Room', 'members']}}
-    table_name = 'membership'
+    table_name = 'memberships'
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
-set_properties(MemberShip, MemberShip.attrs)
+set_properties(Membership, Membership.attrs)
 
 
 class File(DBTable):
@@ -226,7 +232,7 @@ class File(DBTable):
 set_properties(File, File.attrs)
 
 def build_tables():
-    for table in [User, Session, Message, Room, File]:
+    for table in [User, Session, Message, Room, File, Membership]:
         attrs = table.attrs
         table_name = table.table_name
         clauses = ','.join([i + ' ' + attrs[i]['type'] for i in attrs])
