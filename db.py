@@ -49,9 +49,10 @@ class DBChild:
         new_row.save()
 
     def __iter__(self):
+        print("key="+self.related_column)
         self.child_rows = self.table.select(self.table.table_name, 
                                             self.columns, 
-                                            'id='+str(self.key))
+                                            self.related_column+'='+str(self.key))
         print(self.child_rows)
         return self
 
