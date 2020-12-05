@@ -18,7 +18,7 @@
       </a>
       <button class="navbar-toggler" type="button"
               data-toggle="collapse" data-target="#navb" aria-expanded="false">
-        <span class="navbar-toggler-icon"></span>
+        <span class="navbar-toggler-https://hobbyking.com/en_us/h-king-bixler-2-epo-1500mm-pnp.htmlicon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navb">
         <ul class="navbar-nav mr-auto" style="padding-top:1.2rem">
@@ -80,7 +80,6 @@
         <button onclick="send_login_email();" type="button" style="btn btn-success btn-sm">Login</button>
       </form>
     </div>
-
     <div class="container-fluid" id="messages">
     </div>
 
@@ -168,7 +167,6 @@
           }
         }
 
-        //var socket = io({transports: ['websocket'], upgrade: false});
         var socket = io();
  
         var canvas = document.getElementById('lissajous');
@@ -178,12 +176,13 @@
         var lissajous = new Lissajous(canvas, 30, 30);
 
         var scoreboard = {users:{}};
-
         socket.on('connect', function() {
           var sessionid = cookie.read('sessionid');
           if (sessionid != '') {
+            alert('have session');
             socket.emit('login-session', {sessionid: sessionid});
           } else {
+            alert('no session');
             $('#login').show();
           }
         });
@@ -191,7 +190,9 @@
         function send_login_email() {
           var email = qsv('#email');
           var password = qsv('#password');
-          socket.emit('login-email', {email: email, password: password});
+          alert(email);
+          alert(password);
+          socket.emit('login-email', {email: email, password: '235quanto'});
         }
         function send_message() {
           var message = $('#new-message').val();
@@ -218,6 +219,8 @@
             }
             lissajous.setb(4);
           } else {
+            $('#login').show();
+            cookie.delete('sessionid');
             lissajous.setb(1);
             lissajous.seta(1);
           }
@@ -225,7 +228,7 @@
        
         function add_message(message) {
           $('#messages').append('<div class="row"> <div class="col"><b>' + 
-                                scoreboard[message.from_user].handle + 
+                                scoreboard[message.user].handle + 
                                 '</b></div> <div class="col-11">' + 
                                 message.message + 
                                 '</div> </div>');

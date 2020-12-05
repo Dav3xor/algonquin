@@ -31,7 +31,8 @@ def send_static(path):
 @socketio.on('disconnect')
 def handle_disconnect():
     print("client disconnecting: " + request.sid)
-    del scoreboard['sid-user'][request.sid]
+    if request.sid in scoreboard['sid-user']:
+        del scoreboard['sid-user'][request.sid]
 
 def send_users():
     emit('user_list', { user.id:user.public_fields() for user in scoreboard['users'].values() })
@@ -75,11 +76,12 @@ def handle_login_session(json):
     session   = Session.get_where(sessionid=sessionid)
     if not session:
         # TODO: more bad sessionid handling?
-        disconnect()
-    user = User.get(int(sessionid.split('-')[0]))
-    response = do_login(user, session)
+        emit('login-result', {'authenticated': False})
+    else:
+        user = User.get(int(sessionid.split('-')[0]))
+        response = do_login(user, session)
 
-    emit('login-result', response)
+        emit('login-result', response)
 
 @socketio.on('login-email')
 def handle_login_email(json):
@@ -95,7 +97,9 @@ def handle_login_email(json):
         disconnect()
         return None
     session = None
+    print("1")
     if user and user.verify_password(password):
+        print("2")
         session = Session(sessionid=str(user.id) + '-' + str(int.from_bytes(os.urandom(32),'big')),
                           user = user.id)
         session.save()
@@ -114,7 +118,7 @@ def handle_message(json):
     print("message: sid="+str(request.sid))
     user = scoreboard['sid-user'][request.sid]
     room = json['room']
-    message = Message(from_user    = user, 
+    message = Message(user    = user, 
                       room    = room, 
                       message = json['message'])
     message.save()
