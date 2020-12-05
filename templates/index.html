@@ -94,7 +94,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" 
             integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" 
             crossorigin="anonymous"></script>
-
+    <script src="/static/showdown.min.js"></script>
 
     <script type="text/javascript" charset="utf-8">
         function qsv(selector) {
@@ -176,13 +176,14 @@
         var lissajous = new Lissajous(canvas, 30, 30);
 
         var scoreboard = {users:{}};
+
+        var markdown = new showdown.Converter();
+
         socket.on('connect', function() {
           var sessionid = cookie.read('sessionid');
           if (sessionid != '') {
-            alert('have session');
             socket.emit('login-session', {sessionid: sessionid});
           } else {
-            alert('no session');
             $('#login').show();
           }
         });
@@ -190,9 +191,7 @@
         function send_login_email() {
           var email = qsv('#email');
           var password = qsv('#password');
-          alert(email);
-          alert(password);
-          socket.emit('login-email', {email: email, password: '235quanto'});
+          socket.emit('login-email', {email: email, password: password});
         }
         function send_message() {
           var message = $('#new-message').val();
@@ -203,6 +202,7 @@
         function send_logout() {
             $('#navbar').hide();
             $('#login').show();
+            $('#messages').empty();
             var sessionid = cookie.read('sessionid');
             cookie.delete('sessionid');
             socket.emit('logout', {sessionid: sessionid});
@@ -230,13 +230,12 @@
           $('#messages').append('<div class="row"> <div class="col"><b>' + 
                                 scoreboard[message.user].handle + 
                                 '</b></div> <div class="col-11">' + 
-                                message.message + 
+                                markdown.makeHtml(message.message) + 
                                 '</div> </div>');
         }
 
         socket.on('messages', data => {
           for (let message of data['messages'].reverse()) {
-            alert(JSON.stringify(message));
             add_message(message);
           }
         });
