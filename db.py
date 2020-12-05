@@ -49,17 +49,16 @@ class DBChild:
         new_row.save()
 
     def __iter__(self):
-        print("key="+self.related_column)
         self.child_rows = self.table.select(self.table.table_name, 
                                             self.columns, 
                                             self.related_column+'='+str(self.key))
-        print(self.child_rows)
         return self
 
     def __next__(self):
         if self.current < len(self.child_rows):
             self.current += 1
-            return self.child_rows[self.current-1]
+            values = self.child_rows[self.current-1]
+            return self.table(**dict(zip(self.columns, values)))
         else:
             raise StopIteration
 
@@ -81,6 +80,20 @@ class DBTable:
     @classmethod
     def commit(cls):
         db.commit()
+    
+    @classmethod
+    def raw_select(cls, tables, where, order_by):
+        columns  = cls.attrs.keys()
+        columns2 = [cls.table_name + '.' + key for key in columns]
+        stmt = DBTable.select_stmt % (",".join(columns2), 
+                                      tables, 
+                                      where)
+        if order_by:
+            stmt += " order by " + order_by
+        print(stmt)
+        cursor.execute(stmt)
+        rows = cursor.fetchall()
+        return [ cls(**dict(zip(columns, values))) for values in rows ]
 
     def select(table, columns, where_clause):
         stmt = DBTable.select_stmt % (",".join(columns), table, where_clause)
@@ -99,6 +112,15 @@ class DBTable:
         print(stmt)
         cursor.execute(stmt, where_values)
         return cursor.fetchone()
+
+    def is_public(self, field):
+        if 'private' not in self.attrs[field]:
+            return True
+        else:
+            return not self.attrs[field]['private']
+
+    def public_fields(self):
+        return { key:value for (key, value) in self.data.items() if self.is_public(key) }
 
     @classmethod
     def get(cls, id):
@@ -161,7 +183,8 @@ class User(DBTable):
     attrs = {'id':       {'type': 'INTEGER PRIMARY KEY'},
              'email':    {'type': 'TEXT NOT NULL UNIQUE'}, 
              'handle':   {'type': 'TEXT NOT NULL'},
-             'pwhash':   {'type': 'TEXT'}}
+             'portrait': {'type': 'TEXT'},
+             'pwhash':   {'type': 'TEXT', 'private': True}}
     table_name = 'users'
 
     def __init__(self, **kwargs):
@@ -198,7 +221,7 @@ set_properties(Session, Session.attrs)
 
 class Message(DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
-             'from_user': {'type': 'INTEGER NOT NULL',
+             'user': {'type': 'INTEGER NOT NULL',
                            'fkey': ['user', 'id', 'User', 'messages']},
              'room':      {'type': 'INTEGER NOT NULL',
                            'fkey': ['room', 'id', 'Room', 'messages']},

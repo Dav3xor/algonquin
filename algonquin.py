@@ -1,7 +1,7 @@
 from db import User, Session, Message, File, Room, build_tables
 
 from flask import Flask, render_template, send_from_directory, request
-from flask_socketio import SocketIO, emit, send, disconnect
+from flask_socketio import SocketIO, emit, send, disconnect, join_room
 
 import os
 
@@ -13,7 +13,7 @@ app.config['SECRET_KEY'] = 'a very very sekrit sekrit key'
 socketio = SocketIO(app)
 
 if __name__ == '__main__':
-    socketio.run(app)
+    socketio.run(app, host='0.0.0.0')
 pp = Flask(__name__)
 
 scoreboard = { 'users': {},
@@ -29,9 +29,22 @@ def send_static(path):
 
 
 @socketio.on('disconnect')
-def handle_disconnect(json):
+def handle_disconnect():
     print("client disconnecting: " + request.sid)
     del scoreboard['sid-user'][request.sid]
+
+def send_users():
+    emit('user_list', { user.id:user.public_fields() for user in scoreboard['users'].values() })
+
+def send_user(user_id, broadcast=False):
+    emit('user_info', scoreboard['users'][user_id].public_fields(), broadcast=broadcast)
+
+def send_messages(user_id):
+    messages = Message.raw_select("messages, memberships", 
+                                  "messages.room = memberships.room and memberships.user = %s" % user_id,
+                                  "messages.id desc limit 5")
+    messages = [ i.public_fields() for i in messages ]
+    emit('messages', {'messages': messages})
 
 def do_login(user, session, send_session_id=False):
     response = {}
@@ -39,18 +52,21 @@ def do_login(user, session, send_session_id=False):
         return {'authenticated': False}
     if user.id not in scoreboard['users']:
         scoreboard['users'][user.id] = user
-        scoreboard['sid-user'][request.sid] = user.id
+    scoreboard['sid-user'][request.sid] = user.id
 
-    print("------")
-    for room in user.memberships:
-        print(room)
-    print("------")
+    for membership in user.memberships:
+        join_room('room-'+str(membership.room))
+        print(membership.room)
+
+    send_user(user.id, True)
+    send_users()
+    send_messages(user.id)
+
     response['authenticated'] = True
     if send_session_id:
         response['sessionid'] = session.sessionid
-
+    
     return response
-
 
 @socketio.on('login-session')
 def handle_login_session(json):
@@ -98,13 +114,13 @@ def handle_message(json):
     print("message: sid="+str(request.sid))
     user = scoreboard['sid-user'][request.sid]
     room = json['room']
-    message = Message(user    = user.id, 
+    message = Message(from_user    = user, 
                       room    = room, 
                       message = json['message'])
     message.save()
-    response = { 'message': json['message'], 
-                 'room': room, 
-                 'user': user.id }
-    emit('message', response, room = 'room-'+room)
+    message.commit()
+    emit('messages', 
+         {'messages':[message.public_fields()]}, 
+         room = 'room-'+str(room))
 
 
