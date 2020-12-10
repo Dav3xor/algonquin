@@ -210,7 +210,7 @@
 
         var scoreboard = {users:{}};
 
-var markdown = new showdown.Converter({'simplifiedAutoLink':true});
+var markdown = new showdown.Converter({'simplifiedAutoLink':true, 'openLinksInNewWindow':true});
 
         socket.on('connect', function() {
           var sessionid = cookie.read('sessionid');
@@ -262,7 +262,8 @@ var markdown = new showdown.Converter({'simplifiedAutoLink':true});
         });
        
         function add_message(message) {
-          $('#messages').append('<div class="row"> <div class="col"><b>' + 
+          $('#messages').append('<div class="row"> <div class="col"><img src="/static/user-'+
+                                message.user+'.png" width=30 /><b>' + 
                                 scoreboard[message.user].handle + 
                                 '</b></div> <div class="col-11">' + 
                                 markdown.makeHtml(message.message) + 
