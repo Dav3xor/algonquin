@@ -22,8 +22,10 @@
       </button>
       <div class="collapse navbar-collapse" id="navb">
         <ul class="navbar-nav mr-auto" style="padding-top:1.2rem">
-          <li class="nav-item active" id="messages-nav">
-            <a class="nav-link">messages</a>
+          <li class="nav-item dropdown" id="messages_nav">
+            <a class="nav-link dropdown-toggle" data-toggle="dropdown" id="messages_label">messages</a>
+            <div class="dropdown-menu" aria-labelledby="room_list" id="room_list">
+            </div>
           </li>
           <li class="nav-item active" id="people-nav">
             <a class="nav-link">people</a>
@@ -134,6 +136,63 @@
           return document.querySelector(selector).value;
         }
 
+        var messages = {
+          cur_room: "1", 
+          rooms: {},
+
+          change_room: function(room) {
+            this.cur_room = room;
+            this.render();
+            this.render_room_list();
+          },
+          
+          build_rooms: function(rooms) {
+            for (let room of rooms) {
+              this.rooms[room.id] = room;
+              this.rooms[room.id].messages = [];
+            }
+          },
+
+          render_room_list: function() {
+            $('#room_list').empty();
+            for (room in this.rooms) {
+              room = this.rooms[room];
+              if ( room.id != this.cur_room ) {
+                $('#room_list').append('<a class="dropdown-item" href="#" onclick="messages.change_room(\''+room.id+'\');">'+room.name+'</a>');
+              } else {
+                $('#messages_label').html(this.rooms[this.cur_room].name);
+              }
+
+            }
+          },
+
+          render : function () {
+            $('#messages').empty();
+            for (let message of this['rooms'][this.cur_room]['messages']) {
+              this.render_message(message);
+            }
+          },
+
+          render_message: function(message) {
+            $('#messages').append('<div class="row"> <div class="col"><img src="/static/user-'+
+                                  message.user+'.png" width=30 /><b>' + 
+                                  scoreboard[message.user].handle + 
+                                  '</b></div> <div class="col-10">' + 
+                                  markdown.makeHtml(message.message) + 
+                                  '</div> </div>');
+          },
+            
+          add: function (message) {
+            if (!this.rooms.hasOwnProperty(message.room)) {
+              this.rooms[message.room] = { messages:[] };
+            }
+            this.rooms[message.room].messages.push(message);
+            if (message.room == this.cur_room){
+              this.render_message(message);
+            }
+          }
+        }
+            
         var cookie = {
           write : function (cname, cvalue, exdays) {
             var d = new Date();
@@ -200,7 +259,9 @@
           }
         }
 
-        var socket = io();
+        $('.dropdown-toggle').dropdown();
+
+        var socket = io({rememberTransport: false});
  
         var canvas = document.getElementById('lissajous');
         var ctx = canvas.getContext('2d');
@@ -228,7 +289,7 @@ var markdown = new showdown.Converter({'simplifiedAutoLink':true, 'openLinksInNe
         }
         function send_message() {
           var message = $('#new-message').val();
-          socket.emit('message', {message:message, room:1});
+          socket.emit('message', {message:message, room:parseInt(messages.cur_room)});
           $('#new-message').val("");
         }
 
@@ -261,26 +322,22 @@ var markdown = new showdown.Converter({'simplifiedAutoLink':true, 'openLinksInNe
           }
         });
        
-        function add_message(message) {
-          $('#messages').append('<div class="row"> <div class="col"><img src="/static/user-'+
-                                message.user+'.png" width=30 /><b>' + 
-                                scoreboard[message.user].handle + 
-                                '</b></div> <div class="col-11">' + 
-                                markdown.makeHtml(message.message) + 
-                                '</div> </div>');
-        }
-
         socket.on('messages', data => {
           for (let message of data['messages'].reverse()) {
-            add_message(message);
+            messages.add(message);
           }
         });
 
+        socket.on('memberships', data => {
+          messages.build_rooms(data);
+          messages.render_room_list();
+        });
+          
         socket.on('user_list', data => {
           for (user in data) {
             scoreboard[user] = data[user];
           }
-          });
+        });
 
         socket.on('user_info', data => {
           scoreboard[data.id] = data;

@@ -4,6 +4,7 @@ from flask import Flask, render_template, send_from_directory, request
 from flask_socketio import SocketIO, emit, send, disconnect, join_room
 
 import os
+import eventlet
 
 config = {'site_name': 'Bath Salts Nation'}
 
@@ -37,12 +38,18 @@ def handle_disconnect():
 def send_users():
     emit('user_list', { user.id:user.public_fields() for user in scoreboard['users'].values() })
 
-def send_user(user_id, broadcast=False):
-    emit('user_info', scoreboard['users'][user_id].public_fields(), broadcast=broadcast)
+def send_user(user, broadcast=False):
+    emit('user_info', user.public_fields(), broadcast=broadcast)
 
-def send_messages(user_id):
+def send_memberships(user):
+    rooms = Room.raw_select("rooms, memberships", 
+                                  "rooms.id = memberships.room and memberships.user = %s" % user.id,
+                                  "rooms.id")
+    emit('memberships', [ room.public_fields() for room in rooms ])
+
+def send_messages(user):
     messages = Message.raw_select("messages, memberships", 
-                                  "messages.room = memberships.room and memberships.user = %s" % user_id,
+                                  "messages.room = memberships.room and memberships.user = %s" % user.id,
                                   "messages.id desc limit 5")
     messages = [ i.public_fields() for i in messages ]
     emit('messages', {'messages': messages})
@@ -59,9 +66,11 @@ def do_login(user, session, send_session_id=False):
         join_room('room-'+str(membership.room))
         print(membership.room)
 
-    send_user(user.id, True)
+
+    send_user(user, True)
     send_users()
-    send_messages(user.id)
+    send_memberships(user)
+    send_messages(user)
 
     response['authenticated'] = True
     if send_session_id:

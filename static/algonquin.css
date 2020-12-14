@@ -1,0 +1,32 @@
+@font-face {
+  font-family: RadioRanch;
+  src: url(/static/RadioRanchNF.ttf);
+}
+
+.login-banner {
+  font-size: 3.0rem !important;
+}
+.login-logo-banner {
+  font-family: RadioRanch !important;
+  font-weight: normal;
+  font-size: 3.0rem !important;
+}
+
+.navbar-dark .navbar-brand {
+  font-family: RadioRanch !important;
+  font-size: 3.0rem !important;
+  margin-top: -.5rem;
+  margin-bottom: -.5rem;
+  padding-top: 0.1rem;
+  padding-bottom: 0.1rem;
+}
+
+.navbar { 
+  padding-top:0.1rem;
+  padding-bottom:0.1rem; 
+}
+
+.fixed-bottom {
+  height:3rem;
+}
+
