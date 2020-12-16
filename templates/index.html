@@ -22,12 +22,12 @@
       </button>
       <div class="collapse navbar-collapse" id="navb">
         <ul class="navbar-nav mr-auto" style="padding-top:1.2rem">
-          <li class="nav-item dropdown" id="messages_nav">
+          <li class="nav-item dropdown active" id="messages_nav">
             <a class="nav-link dropdown-toggle" data-toggle="dropdown" id="messages_label">messages</a>
             <div class="dropdown-menu" aria-labelledby="room_list" id="room_list">
             </div>
           </li>
-          <li class="nav-item active" id="people-nav">
+          <li class="nav-item" id="people-nav">
             <a class="nav-link">people</a>
           </li>
           <li class="nav-item" id="images-nav">
@@ -136,26 +136,34 @@
           return document.querySelector(selector).value;
         }
 
-        var messages = {
-          cur_room: "1", 
-          rooms: {},
+        class Messages {
+          constructor() {
+            var cur_room = cookie.read('cur_room');
+            if(cur_room != "") {
+              this.cur_room = cur_room;
+            } else {
+              this.cur_room = "1";
+            }
+            this.rooms = {};
+          }
 
-          change_room: function(room) {
+          change_room(room) {
             this.cur_room = room;
+            cookie.write('cur_room', room, '365');
             this.render();
             this.render_room_list();
-          },
+          }
           
-          build_rooms: function(rooms) {
+          build_rooms(rooms) {
             for (let room of rooms) {
               this.rooms[room.id] = room;
               this.rooms[room.id].messages = [];
             }
-          },
+          }
 
-          render_room_list: function() {
+          render_room_list() {
             $('#room_list').empty();
-            for (room in this.rooms) {
+            for (var room in this.rooms) {
               room = this.rooms[room];
               if ( room.id != this.cur_room ) {
                 $('#room_list').append('<a class="dropdown-item" href="#" onclick="messages.change_room(\''+room.id+'\');">'+room.name+'</a>');
@@ -164,25 +172,25 @@
               }
 
             }
-          },
+          }
 
-          render : function () {
+          render() {
             $('#messages').empty();
             for (let message of this['rooms'][this.cur_room]['messages']) {
               this.render_message(message);
             }
-          },
+          }
 
-          render_message: function(message) {
+          render_message(message) {
             $('#messages').append('<div class="row"> <div class="col"><img src="/static/user-'+
                                   message.user+'.png" width=30 /><b>' + 
                                   scoreboard[message.user].handle + 
                                   '</b></div> <div class="col-10">' + 
                                   markdown.makeHtml(message.message) + 
                                   '</div> </div>');
-          },
+          }
             
-          add: function (message) {
+          add(message) {
             if (!this.rooms.hasOwnProperty(message.room)) {
               this.rooms[message.room] = { messages:[] };
             }
@@ -260,6 +268,10 @@
         }
 
         $('.dropdown-toggle').dropdown();
+        $(".navbar-nav .nav-item .nav-link").on("click", function(){
+           $(".nav-item").removeClass("active");
+           $(this).parent().addClass("active");
+        });
 
         var socket = io({rememberTransport: false});
  
@@ -268,6 +280,7 @@
         ctx.strokeStyle = 'rgb(50,200,100)';
         ctx.lineWidth = 2;
         var lissajous = new Lissajous(canvas, 30, 30);
+        var messages  = new Messages();
 
         var scoreboard = {users:{}};
 
