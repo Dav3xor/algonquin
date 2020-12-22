@@ -2,11 +2,14 @@ from db import User, Session, Message, File, Room, build_tables
 
 from flask import Flask, render_template, send_from_directory, request
 from flask_socketio import SocketIO, emit, send, disconnect, join_room
+from urllib.parse import urlencode
 
 import os
 import eventlet
 
-config = {'site_name': 'Bath Salts Nation'}
+
+config = {'site_name': 'Bath Salts Nation',
+          'site_url':  'bathsalts.sex'}
 
 app = Flask(__name__, static_url_path='')
 app.config['SECRET_KEY'] = 'a very very sekrit sekrit key'
@@ -91,6 +94,40 @@ def handle_login_session(json):
         response = do_login(user, session)
 
         emit('login-result', response)
+
+@socketio.on('invite-new-user')
+def handle_new_user(json):
+    print(json)
+    
+    key        = str(int.from_bytes(os.urandom(32),'big'))
+    token      = json['email']+';'+key
+    url        = 'https://' + config['site_url'] + '?' + urlencode({'token': token})
+    status     = 1
+    status_msg = 'User Successfully Created'
+
+    user  = User(email=json['email'], 
+                 handle=json['handle'])
+
+    if json['password'] != '':
+        user.set_password(json['password'])
+    else:
+        user.password = str(int.from_bytes(os.urandom(32),'big'))
+    
+    try:
+        user.save()
+        user.commit()
+    except Exception as e:
+        status = 0
+        status_msg = str(e)
+        print(type(e))
+    response = {'message': json['message'] + '\n\n' + url,
+                'url': url,
+                'status': status,
+                'status_msg': status_msg}
+    print(response)
+    emit('invite-result', response);
+
+
 
 @socketio.on('login-email')
 def handle_login_email(json):

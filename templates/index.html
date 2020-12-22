@@ -75,49 +75,118 @@
       </form>
     </div>
 
-<div id="login" class="modal" tabindex="-1">
-  <div class="modal-dialog modal-light">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Login</h5>
-      </div>
-      <div class="modal-body">
-        <div class="login-banner">
-          {{ config.site_name }}
+    <div id="login" class="modal" tabindex="-1">
+      <div class="modal-dialog modal-light">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Login</h5>
+          </div>
+          <div class="modal-body">
+            <div class="login-banner">
+              {{ config.site_name }}
+            </div>
+            <form "form-inline" onsubmit="return false;">
+              <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="text" class="form-control" name="email" placeholder="Email" id="email" required>
+              </div>
+              <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" class="form-control" name="password" id="password" placeholder="Password" required>
+              </div>
+              <div class="pb-2"><button onclick="send_login_email();" type="button" class="btn btn-success btn-sm">Login</button></div>
+            </form>
+            <div class="modal-footer">
+              <div class="float-right"> 
+                <span class="badge badge-secondary badge-dark">
+                  <div class="float-right">Brought to you by:</div>
+                  <div class="login-logo-banner"><a href="https://www.github.com/Dav3xor/algonquin">Algonquin</a></div>
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-        <form "form-inline" onsubmit="return false;">
-          <div class="form-group">
-            <label for="email">Email:</label>
-            <input type="text" class="form-control" name="email" placeholder="Email" id="email" required>
-          </div>
-          <div class="form-group">
-            <label for="password">Password:</label>
-            <input type="password" class="form-control" name="password" id="password" placeholder="Password" required>
-          </div>
-          <div class="pb-2"><button onclick="send_login_email();" type="button" class="btn btn-success btn-sm">Login</button></div>
-        </form>
-        <div class="modal-footer">
-          <div class="float-right"> 
-            <span class="badge badge-secondary badge-dark">
-              <div class="float-right">Brought to you by:</div>
-              <div class="login-logo-banner"><a href="https://www.github.com/Dav3xor/algonquin">Algonquin</a></div>
-            </span>
-          </div>
-        </div>
       </div>
     </div>
-  </div>
-</div>
 
-
-
-
-
-    <div id="login" style="display:none;" class="container-fluid">
-    </div>
-    <div class="container-fluid" id="messages">
+    <div class="container-fluid d-none" id="messages">
     </div>
 
+    <div class="container-fluid" id="invite">
+      <form "form-inline" autocomplete="off" onsubmit="return false;">
+        <div class="row">
+          <div class="col">
+            <div class="form-group">
+              <label for="invite-message">Message:</label>
+              <textarea class="form-control" name="invite-message" id="invite-message" rows="20"></textarea>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="form-group">
+              <label for="invite-email">New User Email:</label>
+              <input autocomplete="nope" type="text" class="form-control" name="invite-email" id="invite-email" required>
+            </div>
+            <div class="form-group">
+              <label for="invite-handle">New User Handle:</label>
+              <input type="text" class="form-control" name="invite-handle" id="invite-handle" required>
+            </div>
+            <div class="form-group">
+              <label for="password">New User Password:</label>
+              <input autocomplete="new-password" type="password" class="form-control" name="invite-password" id="invite-password">
+              <div><b>Note:</b> You can leave the password blank, and the user can enter it in later.</div>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="invite-send-email">
+              <label class="form-check-label" for="send-email">Send Email Invite</label>
+            </div>
+            <div class="pb-2">
+              <button onclick="invite.create_user();" 
+                      type="button" 
+                      class="btn btn-success btn-lg">
+                Add User
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="container-fluid" id="invite-result">
+      <div class="row">
+        <div class="col-4"><h1>Invite Result:</h1></div>
+        <div class="col=8"><div class="alert alert-danger">User Created Successfully</div></div>
+      </div>
+      <div class="row">
+        <div class="col-2">
+          Message:
+        </div>
+        <div class="col-7">
+          <div class="alert alert-dark" 
+               role="alert" 
+               id="invite-result">
+            message text
+          </div>
+        </div>
+        <div class="col-3">
+          <button class="btn btn-light btn-lg">Copy to Clipboard</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-2">
+          Bare Url:
+        </div>
+        <div class="col-7">
+          <div class="alert alert-dark" 
+               role="alert" 
+               id="invite-result">
+            message text
+          </div>
+        </div>
+        <div class="col-3">
+          <button class="btn btn-light btn-lg">Copy to Clipboard</button>
+        </div>
+      </div>
+    </div>    
+    
     <canvas id="lissajous2" width="150" height="150"></canvas>
 
     <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" 
@@ -134,6 +203,26 @@
     <script type="text/javascript" charset="utf-8">
         function qsv(selector) {
           return document.querySelector(selector).value;
+        }
+
+
+        class Invite {
+          constructor() { 
+          }
+          create_user() {
+            var email      = $('#invite-email').val();
+            var password   = $('#invite-password').val();
+            var message    = $('#invite-message').val();
+            var handle     = $('#invite-handle').val();
+            var send_email = $('#invite-send-email').val();
+            var message = {email: email,
+                           password: password,
+                           message: message,
+                           handle: handle,
+                           send_email: send_email};
+
+            socket.emit('invite-new-user', message);
+          }
         }
 
         class Messages {
@@ -281,10 +370,11 @@
         ctx.lineWidth = 2;
         var lissajous = new Lissajous(canvas, 30, 30);
         var messages  = new Messages();
+        var invite    = new Invite();
 
         var scoreboard = {users:{}};
 
-var markdown = new showdown.Converter({'simplifiedAutoLink':true, 'openLinksInNewWindow':true});
+        var markdown = new showdown.Converter({'simplifiedAutoLink':true, 'openLinksInNewWindow':true});
 
         socket.on('connect', function() {
           var sessionid = cookie.read('sessionid');
@@ -334,7 +424,12 @@ var markdown = new showdown.Converter({'simplifiedAutoLink':true, 'openLinksInNe
             lissajous.seta(1);
           }
         });
-       
+      
+        socket.on('invite-result', data => {
+
+
+        });
+
         socket.on('messages', data => {
           for (let message of data['messages'].reverse()) {
             messages.add(message);
