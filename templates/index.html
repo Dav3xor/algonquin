@@ -11,21 +11,24 @@
   </head>
 
   <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark" id="navbar" style="display:none;">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark d-none" id="navbar">
       <a class="navbar-brand" href="#">
         <span><canvas id="lissajous" width=30 height=30></canvas></span>
         Algonquin
       </a>
       <button class="navbar-toggler" type="button"
               data-toggle="collapse" data-target="#navb" aria-expanded="false">
-        <span class="navbar-toggler-https://hobbyking.com/en_us/h-king-bixler-2-epo-1500mm-pnp.htmlicon"></span>
+        <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navb">
         <ul class="navbar-nav mr-auto" style="padding-top:1.2rem">
-          <li class="nav-item dropdown active" id="messages_nav">
+          <li class="nav-item dropdown active" id="messages-nav">
             <a class="nav-link dropdown-toggle" data-toggle="dropdown" id="messages_label">messages</a>
             <div class="dropdown-menu" aria-labelledby="room_list" id="room_list">
             </div>
+          </li>
+          <li class="nav-item" id="messages-deselected-nav">
+            <a class="nav-link" onclick="tabs.show('messages');">messages</a>
           </li>
           <li class="nav-item" id="people-nav">
             <a class="nav-link">people</a>
@@ -45,6 +48,9 @@
           <li class="nav-item" id="settings-nav">
             <a class="nav-link">settings</a>
           </li>
+          <li class="nav-item" id="invite-nav">
+            <a class="nav-link" onclick="tabs.show('invite');">invite</a>
+          </li>
         </ul>
         <form class="form-inline" id="logout">
             <button class="btn btn-warning btn-sm" onclick="send_logout();" type="button">Logout</button>
@@ -52,7 +58,7 @@
       </div>
 
     </nav>
-    <div id="footer" style="display:none;" class="navbar navbar-dark bg-dark fixed-bottom">
+    <div id="footer" class="navbar navbar-dark bg-dark fixed-bottom d-none">
       <form class="form-inline" id="write_message">
         <input id="new-message" class="form-control" type="text" placeholder="Say Something" aria-label="Enter Message">
         <button class="btn btn-success btn-sm" onclick="send_message();" type="button">
@@ -112,7 +118,7 @@
     <div class="container-fluid d-none" id="messages">
     </div>
 
-    <div class="container-fluid" id="invite">
+    <div class="container-fluid d-none" id="invite">
       <form "form-inline" autocomplete="off" onsubmit="return false;">
         <div class="row">
           <div class="col">
@@ -124,15 +130,21 @@
           <div class="col-6">
             <div class="form-group">
               <label for="invite-email">New User Email:</label>
-              <input autocomplete="nope" type="text" class="form-control" name="invite-email" id="invite-email" required>
+              <input autocomplete="nope" type="text" class="form-control" 
+                     oninput="invite.allow_submission();"
+                     name="invite-email" id="invite-email" required>
             </div>
             <div class="form-group">
               <label for="invite-handle">New User Handle:</label>
-              <input type="text" class="form-control" name="invite-handle" id="invite-handle" required>
+              <input type="text" class="form-control" 
+                     oninput="invite.allow_submission();"
+                     name="invite-handle" id="invite-handle" required>
             </div>
             <div class="form-group">
               <label for="password">New User Password:</label>
-              <input autocomplete="new-password" type="password" class="form-control" name="invite-password" id="invite-password">
+              <input autocomplete="new-password" type="password" 
+                     oninput="invite.allow_submission();"
+                     class="form-control" name="invite-password" id="invite-password">
               <div><b>Note:</b> You can leave the password blank, and the user can enter it in later.</div>
             </div>
             <div class="form-check">
@@ -141,8 +153,8 @@
             </div>
             <div class="pb-2">
               <button onclick="invite.create_user();" 
-                      type="button" 
-                      class="btn btn-success btn-lg">
+                      type="button" id="add-user" 
+                      class="btn btn-success btn-lg" disabled>
                 Add User
               </button>
             </div>
@@ -150,39 +162,33 @@
         </div>
       </form>
     </div>
-    <div class="container-fluid" id="invite-result">
+    <div class="container-fluid d-none" id="invite-result">
       <div class="row">
         <div class="col-4"><h1>Invite Result:</h1></div>
-        <div class="col=8"><div class="alert alert-danger">User Created Successfully</div></div>
+        <div class="col-6"><div class="alert alert-danger" id="invite-result-status">User Created Successfully</div></div>
       </div>
-      <div class="row">
+      <div class="row " id="invite-result-message">
         <div class="col-2">
           Message:
         </div>
         <div class="col-7">
           <div class="alert alert-dark" 
                role="alert" 
-               id="invite-result">
+               id="invite-result-message-text">
             message text
           </div>
         </div>
-        <div class="col-3">
-          <button class="btn btn-light btn-lg">Copy to Clipboard</button>
-        </div>
       </div>
-      <div class="row">
+      <div class="row " id="invite-result-url">
         <div class="col-2">
           Bare Url:
         </div>
         <div class="col-7">
           <div class="alert alert-dark" 
                role="alert" 
-               id="invite-result">
-            message text
+               id="invite-result-url-text">
+            url text
           </div>
-        </div>
-        <div class="col-3">
-          <button class="btn btn-light btn-lg">Copy to Clipboard</button>
         </div>
       </div>
     </div>    
@@ -205,6 +211,32 @@
           return document.querySelector(selector).value;
         }
 
+        class Tabs {
+          constructor(tab) {
+            $('#'+tab).removeClass('d-none'); 
+            this.cur_tab = tab;
+          }
+          show(tab) {
+            if(tab == 'messages') {
+              $('#messages-deselected-nav').addClass('d-none');
+              $('#messages-nav').removeClass('d-none');
+              $('#messages-nav').addClass('active');
+            }
+            if(this.cur_tab == 'messages') {
+              $('#messages-deselected-nav').removeClass('d-none');
+              $('#messages-nav').addClass('d-none');
+            }            
+            
+            $('#'+this.cur_tab).addClass('d-none'); 
+            $('#'+tab).removeClass('d-none'); 
+
+            $('#'+this.cur_tab+"-nav").removeClass("active");
+            $('#'+tab+"-nav").addClass("active");
+
+            this.cur_tab = tab;
+          }
+        }
+
 
         class Invite {
           constructor() { 
@@ -222,6 +254,11 @@
                            send_email: send_email};
 
             socket.emit('invite-new-user', message);
+            $('#add-user').prop('disabled', true);
+          }
+          allow_submission() {
+            $('#invite-result').addClass('d-none'); 
+            $('#add-user').prop('disabled', false);
           }
         }
 
@@ -357,10 +394,6 @@
         }
 
         $('.dropdown-toggle').dropdown();
-        $(".navbar-nav .nav-item .nav-link").on("click", function(){
-           $(".nav-item").removeClass("active");
-           $(this).parent().addClass("active");
-        });
 
         var socket = io({rememberTransport: false});
  
@@ -369,6 +402,7 @@
         ctx.strokeStyle = 'rgb(50,200,100)';
         ctx.lineWidth = 2;
         var lissajous = new Lissajous(canvas, 30, 30);
+        var tabs      = new Tabs('messages');
         var messages  = new Messages();
         var invite    = new Invite();
 
@@ -381,7 +415,7 @@
           if (sessionid != '') {
             socket.emit('login-session', {sessionid: sessionid});
           } else {
-            $('#login').show();
+            $('#login').modal('show');
           }
         });
 
@@ -390,6 +424,7 @@
           var password = qsv('#password');
           socket.emit('login-email', {email: email, password: password});
         }
+
         function send_message() {
           var message = $('#new-message').val();
           socket.emit('message', {message:message, room:parseInt(messages.cur_room)});
@@ -397,9 +432,9 @@
         }
 
         function send_logout() {
-            $('#navbar').hide();
-            $('#footer').hide();
-            $('#login').show();
+            $('#navbar').addClass('d-none');
+            $('#footer').addClass('d-none');
+            $('#login').modal('show');
             $('#messages').empty();
             var sessionid = cookie.read('sessionid');
             cookie.delete('sessionid');
@@ -410,15 +445,15 @@
         socket.on('login-result', data => {
           console.log(data);
           if(data.authenticated) {
-            $('#navbar').show();
-            $('#footer').show();
-            $('#login').hide();
+            $('#navbar').removeClass('d-none');
+            $('#footer').removeClass('d-none');
+            $('#login').modal('hide');
             if ('sessionid' in data) {
               cookie.write('sessionid', data.sessionid, 365);
             }
             lissajous.setb(4);
           } else {
-            $('#login').show();
+            $('#login').modal('show');
             cookie.delete('sessionid');
             lissajous.setb(1);
             lissajous.seta(1);
@@ -426,7 +461,17 @@
         });
       
         socket.on('invite-result', data => {
-
+          $('#invite-result').removeClass('d-none');
+          $('#invite-result-status').html(data.status_msg);
+          if(data.status == 1) {
+            $('#invite-result-message').removeClass('d-none');
+            $('#invite-result-url').removeClass('d-none');
+            $('#invite-result-message-text').html(markdown.makeHtml(data.message));
+            $('#invite-result-url-text').html(data.url);
+          } else {
+            $('#invite-result-message').addClass('d-none');
+            $('#invite-result-url').addClass('d-none');
+          }
 
         });
 

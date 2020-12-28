@@ -99,7 +99,7 @@ def handle_login_session(json):
 def handle_new_user(json):
     print(json)
     
-    key        = str(int.from_bytes(os.urandom(32),'big'))
+    key        = str(int.from_bytes(os.urandom(8),'big'))
     token      = json['email']+';'+key
     url        = 'https://' + config['site_url'] + '?' + urlencode({'token': token})
     status     = 1
