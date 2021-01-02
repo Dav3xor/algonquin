@@ -1,0 +1,28 @@
+#!/usr/bin/python3
+
+import db
+from algonquin import make_token, make_token_url, config
+
+u = db.User(email  = config['sysop_email'],
+            handle = config['sysop_handle'])
+u.save()
+
+token = make_token(u)
+url   = make_token_url(token)
+
+s = db.Session(user      = u.id,
+               sessionid = token)
+s.save()
+
+r = db.Room(owner  = u.id,
+            public = True,
+            name   = config['default_room'])
+r.save()
+
+m = db.Membership(user = u.id,
+                  room = r.id)
+m.save()
+m.commit()
+
+print("Database Created.")
+print("login url: "+url)

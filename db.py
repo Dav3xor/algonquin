@@ -166,11 +166,18 @@ class DBTable:
     def update(self):
         if not self.id:
             raise Exception("Attempted update into database with object that doesn't have id")
-        columns = ",".join(self.attrs)
-        values = [self.data[i] for i in self.attrs]
-        stmt = update_stmt % (self.table_name,
-                              columns,
-                              ("?,"*len(columns))[:-1])
+        columns = []
+        values  = []
+        for col,val in self.data.items():
+            if col != 'id':
+                columns.append(col+' = ?')
+                values.append(val)
+        columns = ','.join(columns)
+        values.append(self.id)
+        stmt = DBTable.update_stmt % (self.table_name,
+                                      columns,
+                                      'id = ?')
+        print(stmt)
         cursor.execute(stmt, values)
 
     def save(self):
@@ -199,10 +206,11 @@ class User(DBTable):
 set_properties(User, User.attrs)
 
 class Room(DBTable):
-    attrs = {'id':    {'type': 'INTEGER PRIMARY KEY'},
-             'owner': {'type': 'INTEGER NOT NULL',
+    attrs = {'id':     {'type': 'INTEGER PRIMARY KEY'},
+             'owner':  {'type': 'INTEGER NOT NULL',
                        'fkey': ['user', 'id', 'User','rooms']},
-             'name':  {'type': 'TEXT NOT NULL'}}
+             'public': {'type': 'BOOLEAN'},
+             'name':   {'type': 'TEXT NOT NULL'}}
     table_name = 'rooms'
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)

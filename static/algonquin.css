@@ -29,3 +29,7 @@
 .alg-hidden {
   display:none;
 }
+
+body {
+  padding-top: 4.2rem;
+}

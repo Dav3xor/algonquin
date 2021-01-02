@@ -8,8 +8,11 @@ import os
 import eventlet
 
 
-config = {'site_name': 'Bath Salts Nation',
-          'site_url':  'bathsalts.sex'}
+config = {'site_name':      'Slow Pizza',
+          'site_url':       'localhost',
+          'sysop_handle':   'sysop',
+          'sysop_email':    'sysop@sysop.com',
+          'default_room':   '0 Day Warez'}
 
 app = Flask(__name__, static_url_path='')
 app.config['SECRET_KEY'] = 'a very very sekrit sekrit key'
@@ -22,6 +25,17 @@ pp = Flask(__name__)
 
 scoreboard = { 'users': {},
                'sid-user': {} }
+
+def make_sessionid(user):
+    return str(user.id) + '-' + str(int.from_bytes(os.urandom(32),'big'))
+
+def make_token(user):
+    return '%s-token-%s' % (str(user.id), str(int.from_bytes(os.urandom(8),'big')))
+    #return str(user.id) + "-token-" + str(int.from_bytes(os.urandom(8),'big'))
+
+def make_token_url(token):
+    return 'https://%s/?%s' % (config['site_url'], urlencode({'token': token}))
+    #return 'https://' + config['site_url'] + '/?' + urlencode({'token': token})
 
 @app.route('/')
 def index():
@@ -81,54 +95,6 @@ def do_login(user, session, send_session_id=False):
     
     return response
 
-@socketio.on('login-session')
-def handle_login_session(json):
-    print("session login: " + str(json))
-    sessionid = json['sessionid']
-    session   = Session.get_where(sessionid=sessionid)
-    if not session:
-        # TODO: more bad sessionid handling?
-        emit('login-result', {'authenticated': False})
-    else:
-        user = User.get(int(sessionid.split('-')[0]))
-        response = do_login(user, session)
-
-        emit('login-result', response)
-
-@socketio.on('invite-new-user')
-def handle_new_user(json):
-    print(json)
-    
-    key        = str(int.from_bytes(os.urandom(8),'big'))
-    token      = json['email']+';'+key
-    url        = 'https://' + config['site_url'] + '?' + urlencode({'token': token})
-    status     = 1
-    status_msg = 'User Successfully Created'
-
-    user  = User(email=json['email'], 
-                 handle=json['handle'])
-
-    if json['password'] != '':
-        user.set_password(json['password'])
-    else:
-        user.password = str(int.from_bytes(os.urandom(32),'big'))
-    
-    try:
-        user.save()
-        user.commit()
-    except Exception as e:
-        status = 0
-        status_msg = str(e)
-        print(type(e))
-    response = {'message': json['message'] + '\n\n' + url,
-                'url': url,
-                'status': status,
-                'status_msg': status_msg}
-    print(response)
-    emit('invite-result', response);
-
-
-
 @socketio.on('login-email')
 def handle_login_email(json):
     print("email login: " + str(json))
@@ -143,15 +109,69 @@ def handle_login_email(json):
         disconnect()
         return None
     session = None
-    print("1")
     if user and user.verify_password(password):
-        print("2")
-        session = Session(sessionid=str(user.id) + '-' + str(int.from_bytes(os.urandom(32),'big')),
+        session = Session(sessionid=make_sessionid(user),
                           user = user.id)
         session.save()
         session.commit()
     response = do_login(user, session, True)
     emit('login-result', response);
+
+@socketio.on('login-session')
+def handle_login_session(json):
+    print("session login: " + str(json))
+    sessionid = json['sessionid']
+    send_sessionid = False
+    session   = Session.get_where(sessionid=sessionid)
+    if not session:
+        # TODO: more bad sessionid handling?
+        emit('login-result', {'authenticated': False})
+    else:
+        user = User.get(int(sessionid.split('-')[0]))
+        if '-token-' in sessionid:
+            send_sessionid = True
+            session.sessionid = make_sessionid(user)
+            session.save()
+            session.commit()
+        
+        response = do_login(user, session, send_sessionid)
+        emit('login-result', response)
+
+@socketio.on('invite-new-user')
+def handle_new_user(json):
+    print(json)
+    
+    status     = 1
+    status_msg = 'User Successfully Created'
+
+    user  = User(email=json['email'], 
+                 handle=json['handle'])
+
+    if json['password'] != '':
+        user.set_password(json['password'])
+    else:
+        user.password = str(int.from_bytes(os.urandom(32),'big'))
+    
+    try:
+        user.save()
+        token      = make_token(user)
+        url        = make_token_url(token)
+        session = Session(sessionid=token,
+                          user = user.id)
+        session.save()
+        session.commit()
+    except Exception as e:
+        status = 0
+        status_msg = str(e)
+        print(type(e))
+
+    response = {'message': json['message'] + '\n\n' + url,
+                'url': url,
+                'status': status,
+                'status_msg': status_msg}
+    print(response)
+    emit('invite-result', response);
+
 
 @socketio.on('logout')
 def handle_logout(json):
