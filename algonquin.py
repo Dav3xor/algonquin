@@ -135,6 +135,10 @@ def handle_login_session(json):
             session.commit()
         
         response = do_login(user, session, send_sessionid)
+
+        if '-token-' in sessionid:
+            response['new-user'] = True
+
         emit('login-result', response)
 
 @socketio.on('invite-new-user')

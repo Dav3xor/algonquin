@@ -73,6 +73,47 @@
       </form>
     </div>
 
+    <div id="new-user" class="modal" tabindex="-1">
+      <div class="modal-dialog modal-light">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Welcome!</h5>
+          </div>
+          <div class="modal-body">
+            <div class="login-banner">
+              {{ config.site_name }}
+            </div>
+            <p>
+            Slow Pizza is a <i>small scale</i> and <i>personal</i> chat service for me and my friends.
+            Not hosted by a large corporation that considers you it's product.
+            </p>
+            <p>
+              You are more than welcome to use this site without a password on this computer for up to a year, 
+              but you'll probably want to enter a password below.
+            </p>
+            <p>
+              You can enter a password at any other time under the settings tab.
+            </p>
+            <form "form-inline" onsubmit="return false;">
+              <div class="form-group">
+                <label for="new-password">Password:</label>
+                <input type="password" class="form-control" name="new-password" id="new-password" placeholder="Password" required>
+              </div>
+              <div class="pb-2"><button onclick="$('#new-user').modal('hide');" type="button" class="btn btn-success btn-sm">Ok</button></div>
+            </form>
+            <div class="modal-footer">
+              <div class="float-right"> 
+                <span class="badge badge-secondary badge-dark">
+                  <div class="float-right">Brought to you by:</div>
+                  <div class="login-logo-banner"><a href="https://www.github.com/Dav3xor/algonquin">Algonquin</a></div>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="login" class="modal" tabindex="-1">
       <div class="modal-dialog modal-light">
         <div class="modal-content">
@@ -586,6 +627,9 @@
             $('#login').modal('hide');
             if ('sessionid' in data) {
               cookie.write('sessionid', data.sessionid, 365);
+            }
+            if ('new-user' in data) {
+              $('#new-user').modal('show');
             }
             lissajous.setb(4);
           } else {
