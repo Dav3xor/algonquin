@@ -197,4 +197,34 @@ def handle_message(json):
          {'messages':[message.public_fields()]}, 
          room = 'room-'+str(room))
 
+@socketio.on('settings')
+def handle_settings(json):
+    user_id = scoreboard['sid-user'][request.sid]
+    user = scoreboard['users'][user_id]
+    status_msg = "Settings Updated."
+    status_code = 1
+    print('settings: ')
+    print(json)
+    for key,val in json.items():
+        if key == 'settings-email':
+            user.email = val
+        if key == 'settings-handle':
+            user.handle = val
+        if key == 'settings-new-password':
+            if user.pwhash != '':
+                if not 'settings-old-password' in json:
+                    status_msg = 'Must use have correct old password to change to a new one.'
+                    status_code = 0
+                elif not user.verify_password(json['settings-old-password']):
+                    status_msg = 'Old password was incorrect, new password not set.'
+            else:
+                user.set_password(val)
+    if status_code:
+        user.save()
+        user.commit()
+
+    emit('settings-result', { 'status_msg': status_msg, 
+                              'status_code': status_code })
+
+        
 

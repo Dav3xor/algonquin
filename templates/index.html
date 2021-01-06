@@ -46,7 +46,7 @@
             <a class="nav-link">about</a>
           </li>
           <li class="nav-item" id="settings-nav">
-            <a class="nav-link">settings</a>
+            <a class="nav-link" onclick="tabs.show('settings');">settings</a>
           </li>
           <li class="nav-item" id="invite-nav">
             <a class="nav-link" onclick="tabs.show('invite');">invite</a>
@@ -84,8 +84,7 @@
               {{ config.site_name }}
             </div>
             <p>
-            Slow Pizza is a <i>small scale</i> and <i>personal</i> chat service for me and my friends.
-            Not hosted by a large corporation that considers you it's product.
+              Slow Pizza is a <i>small scale</i> and <i>personal</i> chat service for me and my friends.
             </p>
             <p>
               You are more than welcome to use this site without a password on this computer for up to a year, 
@@ -153,6 +152,56 @@
 
     <div class="container-flued d-none" id="people">
     </div>
+
+
+    <div class="container-fluid d-none" id="settings">
+      <form "form-inline" autocomplete="off" onsubmit="return false;">
+        <div class="row">
+          <div class="form-group">
+            <label autocomplete="nope" for="settings-handle">Handle:</label>
+            <input type="text" class="form-control" 
+                   oninput="settings.allow_submission();"
+                   name="settings-handle" id="settings-handle" required>
+          </div>
+        </div>
+        <div class="row">
+          <div class="form-group">
+            <label for="settings-email">Email:</label>
+            <input autocomplete="nope" type="text" class="form-control" 
+                   oninput="settings.allow_submission();"
+                   name="settings-email" id="settings-email" required>
+          </div>
+        </div>
+        <div class="row">
+          <div class="form-group">
+            <label for="settings-password">Old Password (if set):</label>
+            <input autocomplete="new-password" type="password" class="form-control" 
+                   oninput="settings.allow_submission();"
+                   name="settings-old-password" id="settings-old-password" required>
+          </div>
+        </div>
+        <div class="row">
+          <div class="form-group">
+            <label for="settings-password">New Password:</label>
+            <input autocomplete="new-password" type="password" class="form-control" 
+                   oninput="settings.allow_submission();"
+                   name="settings-new-password" id="settings-new-password" required>
+          </div>
+        </div>
+        <div class="row">
+          <button onclick="settings.send_settings();" 
+                  type="button" id="change-settings" 
+                  class="btn btn-success btn-lg" disabled>
+            Change Settings
+          </button>
+        </div>
+      </form>
+      <div class="row d-none" id="settings-result">
+        <div class="col-4"><h1>Settings Result:</h1></div>
+        <div class="col-6"><div class="alert alert-danger" id="settings-result-status">User Created Successfully</div></div>
+      </div>
+    </div>
+
 
     <div class="container-fluid d-none" id="invite">
       <form "form-inline" autocomplete="off" onsubmit="return false;">
@@ -337,6 +386,30 @@
             }
           }
         }
+
+        class Settings {
+          constructor() {
+            this.settings = ['#settings-handle',
+                             '#settings-email',
+                             '#settings-old-password',
+                             '#settings-new-password']
+          }
+          send_settings() {
+            var settings = {};
+            for (var setting in this.settings) {
+              setting = this.settings[setting];
+              var value = $(setting).val();
+              if (value) {
+                settings[setting] = value;
+              }
+            }
+            socket.emit('settings', settings);
+          }
+          allow_submission() {
+            $('#change-settings').prop('disabled', false);
+          }
+        }
+
 
 
 
@@ -574,6 +647,7 @@
         var messages  = new Messages();
         var people    = new People();
         var invite    = new Invite();
+        var settings  = new Settings();
 
         var scoreboard = {};
 
@@ -652,7 +726,11 @@
             $('#invite-result-message').addClass('d-none');
             $('#invite-result-url').addClass('d-none');
           }
+        });
 
+        socket.on('settings-result', data => {
+          $('#settings-result').removeClass('d-none');
+          $('#settings-result-status').html(data.status_msg);
         });
 
         socket.on('messages', data => {
