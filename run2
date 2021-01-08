@@ -1,0 +1,2 @@
+export FLASK_DEBUG=1
+gunicorn3 --worker-class eventlet -w 1 algonquin:app

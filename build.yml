@@ -47,9 +47,13 @@
       name: certbot
       classic: yes
 
+  - name: Add algonquin user
+    user:
+      name: algonquin
+
   - name: write the nginx config file
     template:
-      src: nginx/sites-available
+      src: nginx/default
       dest: /etc/nginx/sites-available/default
 
   - name: symlink for certbot on path
@@ -59,14 +63,19 @@
       owner: root
       group: root
       state: link
-      
-  - name: make https cert
-    command: 
-      argv:
-        - certbot
-        - --nginx
-      sudo: true
-       
+  
+  - name: get algonquin
+    git:
+      repo: 'https://github.com/Dav3xor/algonquin.git'
+      dest: /home/algonquin/algonquin
+
+  - name: set algonquin permissions
+    file:
+      dest: /home/algonqin/
+      owner: algonquin
+      group: algonquin
+      recurse: yes
+
   - name: symlink nginx config
     file:
       src: /etc/nginx/sites-available/default
@@ -74,4 +83,9 @@
       owner: root
       group: root
       state: link
-   
+  
+  - name: restart nginx
+    systemd:
+      state: restarted
+      daemon_reload: yes
+      name: nginx
