@@ -1,6 +1,14 @@
 server {
-    listen 80;
-    server_name $hostname "";
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name slow.pizza www.slow.pizza;
+
+    listen 443 ssl;
+
+    ssl_certificate /etc/letsencrypt/live/www.slow.pizza/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/www.slow.pizza/privkey.pem;
+
+    include /etc/letsencrypt/options-ssl-nginx.conf;
 
     location / {
       include proxy_params;
@@ -20,4 +28,9 @@ server {
         proxy_set_header Connection "Upgrade";
         proxy_pass http://127.0.0.1:8000/socket.io;
     }
+
+    # Redirect non-https traffic to https
+    if ($scheme != "https") {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
 }
