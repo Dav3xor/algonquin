@@ -389,22 +389,34 @@
 
         class Settings {
           constructor() {
-            this.settings = ['#settings-handle',
-                             '#settings-email',
-                             '#settings-old-password',
-                             '#settings-new-password']
+            this.settings = ['handle',
+                             'email',
+                             'old-password',
+                             'new-password']
           }
+
           send_settings() {
             var settings = {};
             for (var setting in this.settings) {
               setting = this.settings[setting];
-              var value = $(setting).val();
+              var value = $('#settings-'+setting).val();
               if (value) {
                 settings[setting] = value;
               }
             }
             socket.emit('settings', settings);
           }
+
+          set_defaults() {
+            var user = scoreboard[userid];
+            for (var setting in this.settings) {
+              setting = this.settings[setting];
+              if(setting in user) {
+                $("#settings-"+setting).val(user[setting]);
+              }
+            }
+          }
+
           allow_submission() {
             $('#change-settings').prop('disabled', false);
           }
@@ -651,6 +663,8 @@
 
         var scoreboard = {};
 
+        var userid = -1;
+
         var markdown = new showdown.Converter({'emoji':true, 'simplifiedAutoLink':true, 'openLinksInNewWindow':true});
 
 
@@ -693,7 +707,9 @@
         socket.on('login-result', data => {
           console.log(data);
           if(data.authenticated) {
+            userid = data.userid;
             if(url_parameters.has('token')) {
+              // if it's a new user logging in, remove the arguments from the url
               window.history.pushState({}, '', '/');
             }
             $('#navbar').removeClass('d-none');
@@ -706,6 +722,7 @@
               $('#new-user').modal('show');
             }
             lissajous.setb(4);
+            settings.set_defaults();
           } else {
             $('#login').modal('show');
             cookie.delete('sessionid');
@@ -753,6 +770,7 @@
 
         socket.on('user_info', data => {
           scoreboard[data.id] = data;
+          messages.render();
         });
           
     </script>

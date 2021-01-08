@@ -178,6 +178,7 @@ class DBTable:
                                       columns,
                                       'id = ?')
         print(stmt)
+        print(values)
         cursor.execute(stmt, values)
 
     def save(self):

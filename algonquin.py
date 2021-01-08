@@ -84,11 +84,12 @@ def do_login(user, session, send_session_id=False):
         print(membership.room)
 
 
-    send_user(user, True)
     send_users()
     send_memberships(user)
     send_messages(user)
+    send_user(user, True)
 
+    response['userid'] = user.id
     response['authenticated'] = True
     if send_session_id:
         response['sessionid'] = session.sessionid
@@ -206,20 +207,30 @@ def handle_settings(json):
     print('settings: ')
     print(json)
     for key,val in json.items():
-        if key == 'settings-email':
+        print(key)
+        print(val)
+        if key == 'email':
+            print("setting email")
             user.email = val
-        if key == 'settings-handle':
+        if key == 'handle':
+            print("setting handle")
             user.handle = val
-        if key == 'settings-new-password':
+        if key == 'new-password':
+            print("setting password")
             if user.pwhash != '':
-                if not 'settings-old-password' in json:
+                if not 'old-password' in json:
                     status_msg = 'Must use have correct old password to change to a new one.'
                     status_code = 0
-                elif not user.verify_password(json['settings-old-password']):
+                elif not user.verify_password(json['old-password']):
+                    status_code = 0
                     status_msg = 'Old password was incorrect, new password not set.'
+                else:
+                    user.set_password(val)
             else:
                 user.set_password(val)
-    if status_code:
+    if status_code == 1:
+        print("saving settings")
+        send_user(user, True)
         user.save()
         user.commit()
 
