@@ -1,0 +1,77 @@
+---
+- hosts: all
+  vars:
+    local_user: dave
+    chat_hostname: slow
+    chat_fqdn: slow.pizza
+    chat_fqdntwo: www.slow.pizza
+  remote_user: root
+
+  tasks:
+  - name: Upgrade the OS (apt-get dist-upgrade)
+    apt:
+      upgrade: dist
+
+  - name: Run the equivalent of "apt-get update" as a separate step
+    apt:
+      update_cache: yes
+
+  - name: Only run "update_cache=yes" if the last one is more than 3600 seconds ago
+    apt:
+      update_cache: yes
+      cache_valid_time: 3600
+
+  - name: ensure apt packages are installed
+    apt:
+      pkg:
+      - nginx
+      - snap
+      - git
+      - python3-pip
+      
+  - name: install pip packagees
+    pip:
+      executable: pip3
+      name:
+        - flask
+        - flask-socketio
+        - passlib
+        - eventlet
+
+  - name: install snap core
+    community.general.snap:
+      name: core
+
+  - name: install certbot
+    community.general.snap:
+      name: certbot
+      classic: yes
+
+  - name: write the nginx config file
+    template:
+      src: nginx/sites-available
+      dest: /etc/nginx/sites-available/default
+
+  - name: symlink for certbot on path
+    file:
+      src: /snap/bin/certbot
+      dest: /usr/bin/certbot
+      owner: root
+      group: root
+      state: link
+      
+  - name: make https cert
+    command: 
+      argv:
+        - certbot
+        - --nginx
+      sudo: true
+       
+  - name: symlink nginx config
+    file:
+      src: /etc/nginx/sites-available/default
+      dest: /etc/nginx/sites-enabled/default
+      owner: root
+      group: root
+      state: link
+   
