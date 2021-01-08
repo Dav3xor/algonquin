@@ -28,6 +28,7 @@
       - snap
       - git
       - python3-pip
+      - gunicorn3
       
   - name: install pip packagees
     pip:
@@ -71,7 +72,7 @@
 
   - name: set algonquin permissions
     file:
-      dest: /home/algonqin/
+      dest: /home/algonquin/algonquin
       owner: algonquin
       group: algonquin
       recurse: yes
