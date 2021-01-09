@@ -557,20 +557,22 @@
 
           render() {
             var unknown_users = {};
-
-            for(let message of this['rooms'][this.cur_room]['messages']) {
-              if (!scoreboard.hasOwnProperty(message.user)) {
-                unknown_users[message.user] = 1;
+ 
+            if(this['rooms'].hasOwnProperty(this.cur_room)) {
+              for(let message of this['rooms'][this.cur_room]['messages']) {
+                if (!scoreboard.hasOwnProperty(message.user)) {
+                  unknown_users[message.user] = 1;
+                }
               }
-            }
-            unknown_users = Object.keys(unknown_users);
+              unknown_users = Object.keys(unknown_users);
 
-            if(unknown_users.length > 0) {
-              people.get_info(unknown_users);
-            } else {
-              $('#messages').empty();
-              for (let message of this['rooms'][this.cur_room]['messages']) {
-                this.render_message(message);
+              if(unknown_users.length > 0) {
+                people.get_info(unknown_users);
+              } else {
+                $('#messages').empty();
+                for (let message of this['rooms'][this.cur_room]['messages']) {
+                  this.render_message(message);
+                }
               }
             }
           }
