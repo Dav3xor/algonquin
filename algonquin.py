@@ -12,6 +12,7 @@ config = {'site_name':      'Slow Pizza',
           'site_url':       'localhost',
           'sysop_handle':   'sysop',
           'sysop_email':    'sysop@sysop.com',
+          'public_rooms':   ['0 Day Warez', 'Poop', 'Dev/Test'],
           'default_room':   '0 Day Warez'}
 
 app = Flask(__name__, static_url_path='')
@@ -159,10 +160,11 @@ def handle_new_user(json):
     
     try:
         user.save()
+        user.join_public()
         token      = make_token(user)
         url        = make_token_url(token)
-        session = Session(sessionid=token,
-                          user = user.id)
+        session    = Session(sessionid=token,
+                             user = user.id)
         session.save()
         session.commit()
     except Exception as e:

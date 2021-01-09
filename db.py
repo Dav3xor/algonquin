@@ -82,7 +82,7 @@ class DBTable:
         db.commit()
     
     @classmethod
-    def raw_select(cls, tables, where, order_by):
+    def raw_select(cls, tables, where, order_by = None):
         columns  = cls.attrs.keys()
         columns2 = [cls.table_name + '.' + key for key in columns]
         stmt = DBTable.select_stmt % (",".join(columns2), 
@@ -204,6 +204,13 @@ class User(DBTable):
     def verify_password(self, password):
         return pbkdf2_sha256.verify(password, self.pwhash)
 
+    def join_public(self):
+        public_rooms = Room.raw_select("rooms", "public = 1")
+        for room in public_rooms:
+            membership = Membership(user = self.id,
+                                    room = room.id)
+            membership.save()
+        
 set_properties(User, User.attrs)
 
 class Room(DBTable):

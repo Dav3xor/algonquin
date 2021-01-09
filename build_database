@@ -14,15 +14,14 @@ s = db.Session(user      = u.id,
                sessionid = token)
 s.save()
 
-r = db.Room(owner  = u.id,
-            public = True,
-            name   = config['default_room'])
-r.save()
+for room in config['public_rooms']:
+    r = db.Room(owner  = u.id,
+                public = True,
+                name   = room)
+    r.save()
 
-m = db.Membership(user = u.id,
-                  room = r.id)
-m.save()
-m.commit()
+u.join_public()
+u.commit()
 
 print("Database Created.")
 print("login url: "+url)

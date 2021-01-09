@@ -279,9 +279,8 @@
     </div>    
     
     <canvas id="lissajous2" width="150" height="150"></canvas>
-
-    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" 
-            integrity="sha256-yr4fRk/GU1ehYJPAs8P4JlTgu0Hdsp4ZKrx8bDEDC3I=" 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.5/socket.io.min.js" 
+            integrity="sha512-L9L4VhE0D58fCxtJiYDHbIzSVfNGY24rhQPWTZPschTVKLpucPsLeT0FSjfnylLYARalTQqgwXsjjhi+wUTwIw==" 
             crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" 
             integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" 
@@ -542,7 +541,7 @@
               room = this.rooms[room];
               if ( room.id != this.cur_room ) {
                 $('#room_list').append(`<a class="dropdown-item" href="#" 
-                                           onclick="messages.change_room(\''+room.id+'\');">
+                                                                 onclick="messages.change_room('${room.id}');">
                                           ${room.name}
                                         </a>`);
               } else {
