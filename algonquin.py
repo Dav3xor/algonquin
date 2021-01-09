@@ -9,7 +9,7 @@ import eventlet
 
 
 config = {'site_name':      'Slow Pizza',
-          'site_url':       'localhost',
+          'site_url':       'slow.pizza',
           'sysop_handle':   'sysop',
           'sysop_email':    'sysop@sysop.com',
           'public_rooms':   ['0 Day Warez', 'Poop', 'Dev/Test'],
