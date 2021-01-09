@@ -68,7 +68,7 @@ def send_memberships(user):
 def send_messages(user):
     messages = Message.raw_select("messages, memberships", 
                                   "messages.room = memberships.room and memberships.user = %s" % user.id,
-                                  "messages.id desc limit 5")
+                                  "messages.id desc limit 100")
     messages = [ i.public_fields() for i in messages ]
     emit('messages', {'messages': messages})
 
