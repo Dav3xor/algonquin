@@ -351,7 +351,11 @@
         class People {
           constructor() {
           }
-          
+
+          get_info(people_list) {
+            socket.emit('user-info', {'users':people_list});
+          }
+
           render() {
             $('#people').empty();
             for (user in scoreboard) {
@@ -552,9 +556,22 @@
           }
 
           render() {
-            $('#messages').empty();
-            for (let message of this['rooms'][this.cur_room]['messages']) {
-              this.render_message(message);
+            var unknown_users = {};
+
+            for(let message of this['rooms'][this.cur_room]['messages']) {
+              if (!scoreboard.hasOwnProperty(message.user)) {
+                unknown_users[message.user] = 1;
+              }
+            }
+            unknown_users = Object.keys(unknown_users);
+
+            if(unknown_users.length > 0) {
+              people.get_info(unknown_users);
+            } else {
+              $('#messages').empty();
+              for (let message of this['rooms'][this.cur_room]['messages']) {
+                this.render_message(message);
+              }
             }
           }
 
@@ -765,6 +782,7 @@
             scoreboard[user] = data[user];
           }
           people.render();
+          messages.render();
         });
 
         socket.on('user_info', data => {

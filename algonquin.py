@@ -53,7 +53,7 @@ def handle_disconnect():
     if request.sid in scoreboard['sid-user']:
         del scoreboard['sid-user'][request.sid]
 
-def send_users():
+def send_online_users():
     emit('user_list', { user.id:user.public_fields() for user in scoreboard['users'].values() })
 
 def send_user(user, broadcast=False):
@@ -85,7 +85,7 @@ def do_login(user, session, send_session_id=False):
         print(membership.room)
 
 
-    send_users()
+    send_online_users()
     send_memberships(user)
     send_messages(user)
     send_user(user, True)
@@ -185,6 +185,11 @@ def handle_logout(json):
     print("logging out: " + str(json['sessionid']))
     Session.delete_where(sessionid=json['sessionid'])
     Session.commit()
+
+@socketio.on('user-info')
+def handle_user_info(json):
+    # TODO: this is inefficient...
+    emit('user_list', { id:User.get(id).public_fields()  for id in json['users']})
 
 @socketio.on('message')
 def handle_message(json):
