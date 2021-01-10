@@ -56,8 +56,8 @@ def handle_disconnect():
 def send_online_users():
     emit('user_list', { user.id:user.public_fields() for user in scoreboard['users'].values() })
 
-def send_user(user, broadcast=False):
-    emit('user_info', user.public_fields(), broadcast=broadcast)
+def send_user(label, user, broadcast=False):
+    emit(label, user.public_fields(), broadcast=broadcast)
 
 def send_memberships(user):
     rooms = Room.raw_select("rooms, memberships", 
@@ -88,7 +88,7 @@ def do_login(user, session, send_session_id=False):
     send_online_users()
     send_memberships(user)
     send_messages(user)
-    send_user(user, True)
+    send_user('user_info', user, True)
 
     response['userid'] = user.id
     response['authenticated'] = True
@@ -237,7 +237,7 @@ def handle_settings(json):
                 user.set_password(val)
     if status_code == 1:
         print("saving settings")
-        send_user(user, True)
+        send_user('user_change', user, True)
         user.save()
         user.commit()
 

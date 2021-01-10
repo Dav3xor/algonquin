@@ -592,9 +592,6 @@
               this.rooms[message.room] = { messages:[] };
             }
             this.rooms[message.room].messages.push(message);
-            if (message.room == this.cur_room){
-              this.render_message(message);
-            }
           }
         }
             
@@ -772,6 +769,7 @@
           for (let message of data['messages'].reverse()) {
             messages.add(message);
           }
+          messages.render();
         });
 
         socket.on('memberships', data => {
@@ -789,7 +787,12 @@
 
         socket.on('user_info', data => {
           scoreboard[data.id] = data;
+        });
+
+        socket.on('user_change', data => {
+          scoreboard[data.id] = data;
           messages.render();
+          alert('x');
         });
           
     </script>
