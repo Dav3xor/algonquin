@@ -224,7 +224,7 @@ def handle_settings(json):
             user.handle = val
         if key == 'new-password':
             print("setting password")
-            if user.pwhash != '':
+            if user.pwhash:
                 if not 'old-password' in json:
                     status_msg = 'Must use have correct old password to change to a new one.'
                     status_code = 0

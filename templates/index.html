@@ -704,8 +704,10 @@
 
         function send_message() {
           var message = $('#new-message').val();
-          socket.emit('message', {message:message, room:parseInt(messages.cur_room)});
-          $('#new-message').val("");
+          if (message.trim() != '') {
+            socket.emit('message', {message:message, room:parseInt(messages.cur_room)});
+            $('#new-message').val("");
+          }
         }
 
         function send_logout() {
@@ -792,7 +794,6 @@
         socket.on('user_change', data => {
           scoreboard[data.id] = data;
           messages.render();
-          alert('x');
         });
           
     </script>
