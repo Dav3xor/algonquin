@@ -146,11 +146,10 @@
         </div>
       </div>
     </div>
-
-    <div class="container-fluid d-none" id="messages">
+    <div style="padding-bottom:50px;" class="d-none" id="messages">
     </div>
 
-    <div class="container-flued d-none" id="people">
+    <div class="container-fluid d-none" id="people">
     </div>
 
 
@@ -432,6 +431,7 @@
           constructor() {
             this.rooms = {};
             this.expanded_input = false;
+            this.at_bottom = true;
 
             this.arrow_up = ` 
               <svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
@@ -573,6 +573,9 @@
                 for (let message of this['rooms'][this.cur_room]['messages']) {
                   this.render_message(message);
                 }
+                if (this.at_bottom) {
+                  this.go_to_bottom();
+                }
               }
             }
           }
@@ -593,6 +596,10 @@
             }
             this.rooms[message.room].messages.push(message);
           }
+          go_to_bottom() {
+            document.getElementById('messages').scrollIntoView({ behavior: 'smooth', block: 'end' });
+          }
+
         }
             
         var cookie = {
@@ -684,6 +691,11 @@
 
 
         $('.dropdown-toggle').dropdown();
+        $( window ).resize(function () { 
+          if(messages.at_bottom) {
+            messages.go_to_bottom() 
+          } 
+        });
 
         socket.on('connect', function() {
           var sessionid = cookie.read('sessionid');

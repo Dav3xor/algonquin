@@ -31,5 +31,6 @@
 }
 
 body {
+  overflow-y: hidden;
   padding-top: 4.2rem;
 }
