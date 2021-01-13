@@ -27,6 +27,28 @@ pp = Flask(__name__)
 scoreboard = { 'users': {},
                'sid-user': {} }
 
+def not_logged_in(f):
+    def wrapper(*args, **kwargs):
+        if request.sid not in scoreboard['sid-user']:
+            return f(*args, **kwargs)
+        else:
+            pass
+
+def user_logged_in(f):
+    def wrapper(*args, **kwargs):
+        if request.sid in scoreboard['sid-user']:
+            return f(*args, **kwargs)
+        else:
+            pass
+
+def admin_logged_in(f):
+    def wrapper(*args, **kwargs):
+        if request.sid in scoreboard['sid-user'] and scoreboard['sid-user'].id == 1:
+            # TODO: don't assume user id 1 is admin
+            return f(*args, **kwargs)
+        else:
+            pass
+
 def make_sessionid(user):
     return str(user.id) + '-' + str(int.from_bytes(os.urandom(32),'big'))
 
@@ -46,7 +68,7 @@ def index():
 def send_static(path):
     return send_from_directory('static', path)
 
-
+@user_logged_in
 @socketio.on('disconnect')
 def handle_disconnect():
     print("client disconnecting: " + request.sid)
@@ -97,6 +119,7 @@ def do_login(user, session, send_session_id=False):
     
     return response
 
+@not_logged_in
 @socketio.on('login-email')
 def handle_login_email(json):
     print("email login: " + str(json))
@@ -119,6 +142,7 @@ def handle_login_email(json):
     response = do_login(user, session, True)
     emit('login-result', response);
 
+@not_logged_in
 @socketio.on('login-session')
 def handle_login_session(json):
     print("session login: " + str(json))
@@ -143,6 +167,7 @@ def handle_login_session(json):
 
         emit('login-result', response)
 
+@user_logged_in
 @socketio.on('invite-new-user')
 def handle_new_user(json):
     print(json)
@@ -180,17 +205,20 @@ def handle_new_user(json):
     emit('invite-result', response);
 
 
+@user_logged_in
 @socketio.on('logout')
 def handle_logout(json):
     print("logging out: " + str(json['sessionid']))
     Session.delete_where(sessionid=json['sessionid'])
     Session.commit()
 
+@user_logged_in
 @socketio.on('user-info')
 def handle_user_info(json):
     # TODO: this is inefficient...
     emit('user_list', { id:User.get(id).public_fields()  for id in json['users']})
 
+@user_logged_in
 @socketio.on('message')
 def handle_message(json):
     print("message: sid="+str(request.sid))
@@ -205,6 +233,7 @@ def handle_message(json):
          {'messages':[message.public_fields()]}, 
          room = 'room-'+str(room))
 
+@user_logged_in
 @socketio.on('settings')
 def handle_settings(json):
     user_id = scoreboard['sid-user'][request.sid]
