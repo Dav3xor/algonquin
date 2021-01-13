@@ -146,7 +146,7 @@
         </div>
       </div>
     </div>
-    <div style="padding-bottom:50px;" class="d-none" id="messages">
+    <div style="padding-bottom:50px;" class="container-fluid d-none" id="messages">
     </div>
 
     <div class="container-fluid d-none" id="people">
@@ -530,6 +530,8 @@
             cookie.write('cur_room', room, '365');
             this.render();
             this.render_room_list();
+            this.at_bottom = true;
+            this.go_to_bottom();
           }
           
           build_rooms(rooms) {
@@ -569,10 +571,12 @@
               if(unknown_users.length > 0) {
                 people.get_info(unknown_users);
               } else {
+                var contents = "";
                 $('#messages').empty();
                 for (let message of this['rooms'][this.cur_room]['messages']) {
-                  this.render_message(message);
+                  contents += this.render_message(message);
                 }
+                $('#messages').append(contents);
                 if (this.at_bottom) {
                   this.go_to_bottom();
                 }
@@ -581,13 +585,13 @@
           }
 
           render_message(message) {
-            $('#messages').append(`<div class="row"> 
-                                     <div class="col">
-                                       <img src="/static/user-${message.user}.png" width=30 />
-                                       <b>${scoreboard[message.user].handle}</b>
-                                     </div> 
-                                     <div class="col-10">${markdown.makeHtml(message.message)}</div> 
-                                   </div>`);
+            return (`<div class="row"> 
+                       <div class="col">
+                         <img src="/static/user-${message.user}.png" width=30 />
+                         <b>${scoreboard[message.user].handle}</b>
+                       </div> 
+                       <div class="col-10">${markdown.makeHtml(message.message)}</div> 
+                     </div>`);
           }
             
           add(message) {
@@ -597,7 +601,10 @@
             this.rooms[message.room].messages.push(message);
           }
           go_to_bottom() {
-            document.getElementById('messages').scrollIntoView({ behavior: 'smooth', block: 'end' });
+            // this works, yay.
+            window.setTimeout(function() {
+              document.getElementById('messages').scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }, 0);
           }
 
         }
