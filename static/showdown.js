@@ -2907,7 +2907,7 @@ var simpleURLRegex  = /([*~_]+|\b)(((https?|ftp|dict):\/\/|www\.)[^'">\s]+?\.[^'
           target = ' rel="noopener noreferrer" target="¨E95Eblank"';
         }
         if (link.match(/\.(jpeg|jpg|gif|png)$/) != null) {
-          lnkTxt = '<img src="' + link + '" width=200/>';
+          lnkTxt = '<img src="' + link + '" height=200 onload="messages.go_to_bottom();" class="msg-inline-img"/>';
         }
         return lmc + '<a href="' + link + '"' + target + '>' + lnkTxt + '</a>' + append + tmc;
       };
