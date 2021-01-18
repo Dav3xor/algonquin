@@ -146,7 +146,7 @@
         </div>
       </div>
     </div>
-    <div style="padding-bottom:50px; flex-direction: column-reverse; display: flex;" class="container-fluid d-none" id="messages">
+    <div style="padding-bottom:50px;" class="container-fluid d-none" id="messages">
     </div>
 
     <div class="container-fluid d-none" id="people">
@@ -432,7 +432,6 @@
             this.rooms = {};
             this.expanded_input = false;
             this.at_bottom = true;
-
             this.arrow_up = ` 
               <svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                    fill="currentColor" class="bi bi-arrow-bar-up" viewBox="0 0 16 16">
@@ -531,7 +530,7 @@
             this.render();
             this.render_room_list();
             this.at_bottom = true;
-            this.go_to_bottom();
+            this.bottom();
           }
           
           build_rooms(rooms) {
@@ -561,7 +560,7 @@
             var unknown_users = {};
  
             if(this['rooms'].hasOwnProperty(this.cur_room)) {
-              for(let message of this['rooms'][this.cur_room]['messages'].reverse()) {
+              for(let message of this['rooms'][this.cur_room]['messages']) {
                 if (!scoreboard.hasOwnProperty(message.user)) {
                   unknown_users[message.user] = 1;
                 }
@@ -578,24 +577,15 @@
                 $('#messages').html(contents);
                 $('#messages').ready(function () {
                   if (messages.at_bottom) {
-                    messages.go_to_bottom();
+                    messages.bottom();
                   }
                 });
+
 
               }
             }
           }
 
-/*            
-if (img.complete) {
-  loaded()
-} else {
-  img.addEventListener('load', loaded)
-  img.addEventListener('error', function() {
-      alert('error')
-  })
-}
-*/
           render_message(message) {
             return (`<div class="row"> 
                        <div class="col">
@@ -612,12 +602,15 @@ if (img.complete) {
             }
             this.rooms[message.room].messages.push(message);
           }
-          go_to_bottom() {
-            // this works, yay.
-            window.setTimeout(function() {
+          
+          bottom(wait=0) {
+            if(wait > 0) {
+              setTimeout(function() {
+                document.getElementById('messages').scrollIntoView({ behavior: 'smooth', block: 'end' });
+              }, wait);
+            } else {
               document.getElementById('messages').scrollIntoView({ behavior: 'smooth', block: 'end' });
-            }, 0);
-
+            }
           }
 
         }
@@ -708,12 +701,12 @@ if (img.complete) {
         var userid = -1;
 
         var markdown = new showdown.Converter({'emoji':true, 'simplifiedAutoLink':true, 'openLinksInNewWindow':true});
-
+        
 
         $('.dropdown-toggle').dropdown();
         $( window ).resize(function () { 
           if(messages.at_bottom) {
-            messages.go_to_bottom() 
+            messages.bottom() 
           } 
         });
 

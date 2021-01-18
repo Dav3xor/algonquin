@@ -2906,8 +2906,8 @@ var simpleURLRegex  = /([*~_]+|\b)(((https?|ftp|dict):\/\/|www\.)[^'">\s]+?\.[^'
         if (options.openLinksInNewWindow) {
           target = ' rel="noopener noreferrer" target="¨E95Eblank"';
         }
-        if (link.match(/\.(jpeg|jpg|gif|png)$/) != null) {
-          lnkTxt = '<img src="' + link + '" height=200 onload="messages.go_to_bottom();" class="msg-inline-img"/>';
+        if (link.match(/[\w-]+.(jpg|png|txt)/g) != null) {
+          lnkTxt = `<img src="${link}" onload="messages.bottom(200);" class="msg-inline-img"/>`;
         }
         return lmc + '<a href="' + link + '"' + target + '>' + lnkTxt + '</a>' + append + tmc;
       };
