@@ -146,7 +146,7 @@
         </div>
       </div>
     </div>
-    <div style="padding-bottom:50px;" class="container-fluid d-none" id="messages">
+    <div style="overflow-y: scroll; padding-bottom:50px;" class="container-fluid d-none" id="messages">
     </div>
 
     <div class="container-fluid d-none" id="people">
@@ -154,47 +154,63 @@
 
 
     <div class="container-fluid d-none" id="settings">
-      <form "form-inline" autocomplete="off" onsubmit="return false;">
-        <div class="row">
-          <div class="form-group">
-            <label autocomplete="nope" for="settings-handle">Handle:</label>
-            <input type="text" class="form-control" 
-                   oninput="settings.allow_submission();"
-                   name="settings-handle" id="settings-handle" required>
-          </div>
+      <div class="row">
+        <div class="col-6">
+          <form "form-inline" autocomplete="off" onsubmit="return false;">
+            <div class="form-group">
+              <label autocomplete="nope" for="settings-handle">Handle:</label>
+              <input type="text" class="form-control" 
+                     oninput="settings.allow_submission();"
+                     name="settings-handle" id="settings-handle" required>
+            </div>
+            <div class="form-group">
+              <label for="settings-email">Email:</label>
+              <input autocomplete="nope" type="text" class="form-control" 
+                     oninput="settings.allow_submission();"
+                     name="settings-email" id="settings-email" required>
+            </div>
+            <div class="form-group">
+              <label for="settings-password">Old Password (if set):</label>
+              <input autocomplete="new-password" type="password" class="form-control" 
+                     oninput="settings.allow_submission();"
+                     name="settings-old-password" id="settings-old-password" required>
+            </div>
+            <div class="form-group">
+              <label for="settings-password">New Password:</label>
+              <input autocomplete="new-password" type="password" class="form-control" 
+                     oninput="settings.allow_submission();"
+                     name="settings-new-password" id="settings-new-password" required>
+            </div>
+            <button onclick="settings.send_settings();" 
+                    type="button" id="change-settings" 
+                    class="btn btn-success btn-lg" disabled>
+              Change Settings
+            </button>
+          </form>
         </div>
-        <div class="row">
-          <div class="form-group">
-            <label for="settings-email">Email:</label>
-            <input autocomplete="nope" type="text" class="form-control" 
-                   oninput="settings.allow_submission();"
-                   name="settings-email" id="settings-email" required>
-          </div>
+        <div class="col-1">
         </div>
-        <div class="row">
-          <div class="form-group">
-            <label for="settings-password">Old Password (if set):</label>
-            <input autocomplete="new-password" type="password" class="form-control" 
-                   oninput="settings.allow_submission();"
-                   name="settings-old-password" id="settings-old-password" required>
-          </div>
+        <div class="col-4">
+          <form "form-inline" id="portrait-form" name="portrait-form" autocomplete="off" onsubmit="return false;">
+            <div class="form-group">
+              <img style="padding-top: 100px;" width="100%" id="portrait-image" src="/static/portraits/user-1.png"/>
+            </div>
+            <div class="form-group">
+              <input type="file" class="custom-file-label" 
+                     name="portrait-image" id="portrait-image" required>
+              <label for="settings-portrait">Filename</label>
+            </div>
+            <div class="form-group">
+              <button onclick="settings.send_portrait();" 
+                      type="button" id="change-portrait" 
+                      class="btn btn-success btn-lg">
+                Change Portrait
+              </button>
+            </div>
+          </form>
         </div>
-        <div class="row">
-          <div class="form-group">
-            <label for="settings-password">New Password:</label>
-            <input autocomplete="new-password" type="password" class="form-control" 
-                   oninput="settings.allow_submission();"
-                   name="settings-new-password" id="settings-new-password" required>
-          </div>
-        </div>
-        <div class="row">
-          <button onclick="settings.send_settings();" 
-                  type="button" id="change-settings" 
-                  class="btn btn-success btn-lg" disabled>
-            Change Settings
-          </button>
-        </div>
-      </form>
+      </div>
+
       <div class="row d-none" id="settings-result">
         <div class="col-4"><h1>Settings Result:</h1></div>
         <div class="col-6"><div class="alert alert-danger" id="settings-result-status">User Created Successfully</div></div>
@@ -281,8 +297,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.5/socket.io.min.js" 
             integrity="sha512-L9L4VhE0D58fCxtJiYDHbIzSVfNGY24rhQPWTZPschTVKLpucPsLeT0FSjfnylLYARalTQqgwXsjjhi+wUTwIw==" 
             crossorigin="anonymous"></script>
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" 
-            integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" 
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"
+            integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="
             crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" 
             integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" 
@@ -361,7 +377,7 @@
               user = scoreboard[user];
               $('#people').append(`<div class="row"> 
                                      <div class="col-1">
-                                       <img src="/static/user-${user.id}.png" width="40" />
+                                       <img src="/static/portraits/user-${user.id}.png" width="40" />
                                      </div>
                                      <div class="col-2">
                                        <span class="badge badge-dark btn-sm">
@@ -409,8 +425,36 @@
             socket.emit('settings', settings);
           }
 
+          send_portrait() {
+            var filename = $('#settings-portrait').val();
+            var sessionid = cookie.read('sessionid');
+            var user = scoreboard[userid];
+
+            var form = new FormData(document.getElementById("portrait-form"));
+            form.append('sessionid', sessionid);
+
+            $.ajax({ url: 'upload-portrait',
+                     type: 'POST',
+                     data: form,
+                     processData: false,
+                     contentType: false,
+                     success: function(data) {
+                       console.log(data);
+                       data = JSON.parse(data);
+                       $('#portrait-image').attr('src', '/static/portraits/' + data.user.portrait);
+                       scoreboard[data.user.id] = user;
+                       messages.render();
+                     }
+            });
+          }
+
+
+
           set_defaults() {
             var user = scoreboard[userid];
+            
+            $('#portrait-image').attr('src', '/static/portraits/' + user.portrait);
+
             for (var setting in this.settings) {
               setting = this.settings[setting];
               if(setting in user) {
@@ -570,11 +614,10 @@
               if(unknown_users.length > 0) {
                 people.get_info(unknown_users);
               } else {
-                var contents = "";
+                alert("r");
                 for (let message of this['rooms'][this.cur_room]['messages']) {
-                  contents += this.render_message(message);
+                  this.render_message(message);
                 }
-                $('#messages').html(contents);
                 $('#messages').ready(function () {
                   if (messages.at_bottom) {
                     messages.bottom();
@@ -587,13 +630,15 @@
           }
 
           render_message(message) {
-            return (`<div class="row"> 
-                       <div class="col">
-                         <img src="/static/user-${message.user}.png" width=30 />
-                         <b>${scoreboard[message.user].handle}</b>
-                       </div> 
-                       <div class="col-10">${markdown.makeHtml(message.message)}</div> 
-                     </div>`);
+            user = scoreboard[message.user];
+            $('#messages').append(`
+              <div class="row"> 
+                <div class="col">
+                  <img class="mb-1" src="/static/portraits/${user.portrait}" width=40 />
+                  <b>${user.handle}</b>
+                </div> 
+              <div class="col-10">${markdown.makeHtml(message.message)}</div> 
+            </div>`);
           }
             
           add(message) {
@@ -702,6 +747,7 @@
 
         var markdown = new showdown.Converter({'emoji':true, 'simplifiedAutoLink':true, 'openLinksInNewWindow':true});
         
+        $('#messages').scroll(function () { alert('x'); } );
 
         $('.dropdown-toggle').dropdown();
         $( window ).resize(function () { 
@@ -819,6 +865,7 @@
         socket.on('user_change', data => {
           scoreboard[data.id] = data;
           messages.render();
+          alert(JSON.stringify(data));
         });
           
     </script>

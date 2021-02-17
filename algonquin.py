@@ -3,16 +3,20 @@ from db import User, Session, Message, File, Room, build_tables
 from flask import Flask, render_template, send_from_directory, request
 from flask_socketio import SocketIO, emit, send, disconnect, join_room
 from urllib.parse import urlencode
+from werkzeug.utils import secure_filename
 
 import os
 import eventlet
-
+import json
+import time
 
 config = {'site_name':      'Slow Pizza',
           'site_url':       'slow.pizza',
           'sysop_handle':   'sysop',
           'sysop_email':    'sysop@sysop.com',
           'public_rooms':   ['0 Day Warez', 'Poop', 'Dev/Test'],
+          'file_root':      '/home/dave/dev/algonquin/',
+          'portrait_types': ['png', 'jpg', 'jpeg', 'gif'],
           'default_room':   '0 Day Warez'}
 
 app = Flask(__name__, static_url_path='')
@@ -24,8 +28,12 @@ if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0')
 pp = Flask(__name__)
 
-scoreboard = { 'users': {},
-               'sid-user': {} }
+scoreboard = { 'sid-user': {} }
+
+def valid_portrait(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in config['portrait_types']
+
 
 def not_logged_in(f):
     def wrapper(*args, **kwargs):
@@ -64,6 +72,43 @@ def make_token_url(token):
 def index():
     return render_template('index.html', config=config)
 
+@app.route('/upload-portrait', methods=['POST'])
+def upload_portrait():
+    print(request)
+    print(request.files)
+    if 'portrait-image' not in request.files:
+        return json.dumps({'error': 'no file'})
+    file = request.files['portrait-image']
+    print(file)
+    if file.filename == '':
+        return json.dumps({'error': 'no filename'})
+    
+    if not valid_portrait(file.filename):
+        return json.dumps({'error': 'image not supported'})
+
+    if 'sessionid' not in request.form:
+        return json.dumps({'error': 'no sessionid'})
+
+    session = Session.get_where(sessionid=request.form['sessionid'])
+    if not session:
+        return json.dumps({'error': 'bad sessionid'})
+
+    user = User.get(session.user)
+
+    filename = str(time.time()) + '.' + file.filename.split('.')[-1]
+
+    file.save(os.path.join(config['file_root'], 'static', 'portraits', filename))
+
+    user.portrait = filename
+    user.save()
+    user.commit()
+
+    send_user('user_change', user, True)
+    
+    return json.dumps({'status': 'ok', 'user': user.public_fields()})
+
+
+
 @app.route('/static/<path:path>')
 def send_static(path):
     return send_from_directory('static', path)
@@ -76,10 +121,12 @@ def handle_disconnect():
         del scoreboard['sid-user'][request.sid]
 
 def send_online_users():
-    emit('user_list', { user.id:user.public_fields() for user in scoreboard['users'].values() })
+    users = { i for i in scoreboard['sid-user'].values() }
+    print(users)
+    emit('user_list', { user:User.get(user).public_fields() for user in users })
 
 def send_user(label, user, broadcast=False):
-    emit(label, user.public_fields(), broadcast=broadcast)
+    socketio.emit(label, user.public_fields(), broadcast=broadcast)
 
 def send_memberships(user):
     rooms = Room.raw_select("rooms, memberships", 
@@ -98,8 +145,6 @@ def do_login(user, session, send_session_id=False):
     response = {}
     if (not user) or (not session):
         return {'authenticated': False}
-    if user.id not in scoreboard['users']:
-        scoreboard['users'][user.id] = user
     scoreboard['sid-user'][request.sid] = user.id
 
     for membership in user.memberships:
@@ -237,7 +282,7 @@ def handle_message(json):
 @socketio.on('settings')
 def handle_settings(json):
     user_id = scoreboard['sid-user'][request.sid]
-    user = scoreboard['users'][user_id]
+    user = User.get(user_id)
     status_msg = "Settings Updated."
     status_code = 1
     print('settings: ')
