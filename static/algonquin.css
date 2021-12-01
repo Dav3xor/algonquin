@@ -3,6 +3,13 @@
   src: url(/static/RadioRanchNF.ttf);
 }
 
+.messages {
+  height: 500px;
+  overflow: visible;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
 .login-banner {
   font-size: 3.0rem !important;
 }
