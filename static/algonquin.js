@@ -322,6 +322,7 @@ class Messages {
       if(unknown_users.length > 0) {
         people.get_info(unknown_users);
       } else {
+        $('#messages').html('');
         for (let message of this['rooms'][this.cur_room]['messages']) {
           this.render_message(message);
         }
