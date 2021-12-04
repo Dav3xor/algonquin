@@ -192,6 +192,7 @@ class User(DBTable):
              'email':    {'type': 'TEXT NOT NULL UNIQUE'}, 
              'handle':   {'type': 'TEXT NOT NULL'},
              'portrait': {'type': 'TEXT'},
+             'about':    {'type': 'TEXT'},
              'pwhash':   {'type': 'TEXT', 'private': True}}
     table_name = 'users'
 

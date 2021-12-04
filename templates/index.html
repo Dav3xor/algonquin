@@ -73,7 +73,7 @@
       </form>
     </div>
 
-    <div id="new-user" class="modal" tabindex="-1">
+    <div id="new-user" class="modal" data-keyboard="false" data-backdrop="static" tabindex="-1">
       <div class="modal-dialog modal-light">
         <div class="modal-content">
           <div class="modal-header">
@@ -98,7 +98,9 @@
                 <label for="new-password">Password:</label>
                 <input type="password" class="form-control" name="new-password" id="new-password" placeholder="Password" required>
               </div>
-              <div class="pb-2"><button onclick="$('#new-user').modal('hide');" type="button" class="btn btn-success btn-sm">Ok</button></div>
+              <div class="pb-2">
+                <button onclick="$('#new-user').modal('hide');" type="button" class="btn btn-success btn-sm">Ok</button>
+              </div>
             </form>
             <div class="modal-footer">
               <div class="float-right"> 
@@ -113,7 +115,7 @@
       </div>
     </div>
 
-    <div id="login" class="modal" tabindex="-1">
+    <div id="login" class="modal" data-keyboard="false" data-backdrop="static" tabindex="-1">
       <div class="modal-dialog modal-light">
         <div class="modal-content">
           <div class="modal-header">
@@ -132,8 +134,11 @@
                 <label for="password">Password:</label>
                 <input type="password" class="form-control" name="password" id="password" placeholder="Password" required>
               </div>
-              <div class="pb-2"><button onclick="send_login_email();" type="button" class="btn btn-success btn-sm">Login</button></div>
+              <div class="pb-2"><button id="do-login" onclick="send_login_email();" type="button" class="btn btn-success btn-sm">Login</button></div>
             </form>
+            <div class="alert alert-danger d-none" id="login-result-status">
+              Login Failed
+            </div>
             <div class="modal-footer">
               <div class="float-right"> 
                 <span class="badge badge-secondary badge-dark">
@@ -181,6 +186,12 @@
                      oninput="settings.allow_submission();"
                      name="settings-new-password" id="settings-new-password" required>
             </div>
+            <div class="form-group">
+              <label for="settings-about">About You:</label>
+              <textarea class="form-control" name="settings-about" id="settings-about" cols=60 rows="5"
+                     oninput="settings.allow_submission();"
+                     required></textarea>
+            </div>
             <button onclick="settings.send_settings();" 
                     type="button" id="change-settings" 
                     class="btn btn-success btn-lg" disabled>
@@ -213,7 +224,11 @@
 
       <div class="row d-none" id="settings-result">
         <div class="col-4"><h1>Settings Result:</h1></div>
-        <div class="col-6"><div class="alert alert-danger" id="settings-result-status">User Created Successfully</div></div>
+        <div class="col-6">
+          <div class="alert alert-danger" id="settings-result-status">
+            User Created Successfully
+          </div>
+        </div>
       </div>
     </div>
 

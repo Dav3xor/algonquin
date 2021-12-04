@@ -72,17 +72,27 @@ class People {
                              <div class="col-1">
                                <img src="/static/portraits/user-${user.id}.png" width="40" />
                              </div>
-                             <div class="col-2">
+                             <div class="col-3">
                                <span class="badge badge-dark btn-sm">
                                  <h5>${user.handle}</h5>
                                </span>
                              </div>
-                             <div class="col-2">
+                             <div class="col-3">
                                <span class="badge badge-dark btn-sm">
                                  <h5>${user.email}</h5>
                                </span>
                              </div> 
-                             <div class="col-2">
+                             <div class="col-5">
+                               <a tabindex="0" role="button" 
+                                       class="btn btn-sm btn-danger ml-2 pb-0" 
+                                       title="About ${user.handle}"
+                                       data-placement="bottom"
+                                       data-bs-toggle="popover"
+                                       data-bs-trigger="hover"
+                                       data-bs-animation="true"
+                                       data-content="${user.about}">
+                                 <h5>about...</h5>
+                               </a>
                                <button class="btn btn-warning btn-sm ml-2" 
                                        type="button" id="new-file">
                                  ${messages.paperclip}
@@ -92,9 +102,14 @@ class People {
                                        id="send-message" type="button">
                                  ${messages.chat_bubble}
                                </button>
+                             </div>
 
                            </div>`);
     }
+  var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+  var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+  return new bootstrap.Popover(popoverTriggerEl, { trigger: 'focus' })
+  })
   }
 }
 
@@ -103,7 +118,8 @@ class Settings {
     this.settings = ['handle',
                      'email',
                      'old-password',
-                     'new-password']
+                     'new-password',
+                     'about']
   }
 
   send_settings() {
@@ -441,6 +457,11 @@ $( window ).resize(function () {
 });
 
 
+$("#password").keyup(function(event) {
+  if (event.keyCode === 13) {
+    $("#do-login").click();
+  }
+});
 
 socket.on('connect', function() {
   var sessionid = cookie.read('sessionid');
@@ -499,6 +520,8 @@ socket.on('login-result', data => {
     settings.set_defaults();
   } else {
     $('#login').modal('show');
+    $('#login-result-status').html(data.result);
+    $('#login-result-status').removeClass('d-none');
     cookie.delete('sessionid');
     lissajous.setb(1);
     lissajous.seta(1);
@@ -554,7 +577,6 @@ socket.on('user_info', data => {
 });
 
 socket.on('user_change', data => {
-  alert(JSON.stringify(data));
   scoreboard[data.id] = data;
   messages.render();
 });

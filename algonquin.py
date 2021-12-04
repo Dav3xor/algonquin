@@ -142,9 +142,10 @@ def send_messages(user):
     emit('messages', {'messages': messages})
 
 def do_login(user, session, send_session_id=False):
-    response = {}
+    response = {'authenticated': False}
     if (not user) or (not session):
-        return {'authenticated': False}
+        response['result'] = 'Bad Email/Password'
+        return response
     scoreboard['sid-user'][request.sid] = user.id
 
     for membership in user.memberships:
@@ -159,6 +160,7 @@ def do_login(user, session, send_session_id=False):
 
     response['userid'] = user.id
     response['authenticated'] = True
+    response['result'] = 'Login Ok'
     if send_session_id:
         response['sessionid'] = session.sessionid
     
@@ -171,13 +173,6 @@ def handle_login_email(json):
     email    = json['email']
     password = json['password']
     user     = User.get_where(email=email)
-    if not user:
-        # TODO: handle weird login attempts here
-        #       3 strikes you're out, etc?
-        #       
-        #       just disconnect for now
-        disconnect()
-        return None
     session = None
     if user and user.verify_password(password):
         session = Session(sessionid=make_sessionid(user),
@@ -309,6 +304,9 @@ def handle_settings(json):
                     user.set_password(val)
             else:
                 user.set_password(val)
+        if key == 'about':
+            print("setting handle")
+            user.about = val
     if status_code == 1:
         print("saving settings")
         send_user('user_change', user, True)
