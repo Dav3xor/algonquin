@@ -98,8 +98,8 @@ class People {
                                  ${messages.paperclip}
                                </button>
                                <button class="btn btn-success btn-sm ml-2" 
-                                       onclick="send_message();" 
-                                       id="send-message" type="button">
+                                       onclick="start_chat([{$user.id},userid]);" 
+                                       id="start-chat-${user.id}" type="button">
                                  ${messages.chat_bubble}
                                </button>
                              </div>
@@ -479,6 +479,10 @@ function send_login_email() {
   var email = qsv('#email');
   var password = qsv('#password');
   socket.emit('login-email', {email: email, password: password});
+}
+
+function start_chat(ids) {
+  socket.emit('start-chat', {users:ids})
 }
 
 function send_message() {

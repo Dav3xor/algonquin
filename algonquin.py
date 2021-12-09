@@ -28,7 +28,35 @@ if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0')
 pp = Flask(__name__)
 
-scoreboard = { 'sid-user': {} }
+class Scoreboard:
+    def __init__(self):
+        self.sid_to_user   = {}
+        self.user_to_sid   = {}
+    def add(self, sid, user):
+        self.sid_to_user[sid] = user
+        if user not in self.user_to_sid:
+            self.user_to_sid[user] = set()
+        self.user_to_sid[user].add(sid)
+    def remove(self, sid):
+        if sid in self.sid_to_user:
+            user = self.sid_to_user[sid]
+            if user in self.user_to_sid and sid in self.user_to_sid[user]:
+                self.user_to_sid[user].discard(sid)
+            del self.sid_to_user[sid]
+    def get_user_from_sid(self,sid):
+        if sid not in self.sid_to_user:
+            return False
+        else:
+            return self.sid_to_user[sid]
+    def get_sids_from_user(self,user):
+        if user not in self.user_to_sid:
+            return set()
+        else:
+            return self.user_to_sid(user)
+    def online_users(self):
+        return set(self.sid_to_user.values())
+
+scoreboard=Scoreboard()
 
 def valid_portrait(filename):
     return '.' in filename and \
@@ -37,21 +65,21 @@ def valid_portrait(filename):
 
 def not_logged_in(f):
     def wrapper(*args, **kwargs):
-        if request.sid not in scoreboard['sid-user']:
+        if request.sid not in scoreboard.sid_to_user:
             return f(*args, **kwargs)
         else:
             pass
 
 def user_logged_in(f):
     def wrapper(*args, **kwargs):
-        if request.sid in scoreboard['sid-user']:
+        if request.sid in scoreboard.sid_to_user:
             return f(*args, **kwargs)
         else:
             pass
 
 def admin_logged_in(f):
     def wrapper(*args, **kwargs):
-        if request.sid in scoreboard['sid-user'] and scoreboard['sid-user'].id == 1:
+        if request.sid in scoreboard.sid_to_user and scoreboard.sid_to_user == 1:
             # TODO: don't assume user id 1 is admin
             return f(*args, **kwargs)
         else:
@@ -117,11 +145,10 @@ def send_static(path):
 @socketio.on('disconnect')
 def handle_disconnect():
     print("client disconnecting: " + request.sid)
-    if request.sid in scoreboard['sid-user']:
-        del scoreboard['sid-user'][request.sid]
+    scoreboard.remove(request.sid)
 
 def send_online_users():
-    users = { i for i in scoreboard['sid-user'].values() }
+    users = scoreboard.online_users()
     print(users)
     emit('user_list', { user:User.get(user).public_fields() for user in users })
 
@@ -146,7 +173,7 @@ def do_login(user, session, send_session_id=False):
     if (not user) or (not session):
         response['result'] = 'Bad Email/Password'
         return response
-    scoreboard['sid-user'][request.sid] = user.id
+    scoreboard.add(request.sid, user.id)
 
     for membership in user.memberships:
         join_room('room-'+str(membership.room))
@@ -251,6 +278,7 @@ def handle_logout(json):
     print("logging out: " + str(json['sessionid']))
     Session.delete_where(sessionid=json['sessionid'])
     Session.commit()
+    scoreboard.remove(request.sid)
 
 @user_logged_in
 @socketio.on('user-info')
@@ -259,10 +287,22 @@ def handle_user_info(json):
     emit('user_list', { id:User.get(id).public_fields()  for id in json['users']})
 
 @user_logged_in
+@socketio.on('start-chat')
+def handle_start_chat(json):
+    user = scoreboard.get_user_from_sid(request.sid)
+    room = Room.get_or_set_chat(user, json['users'])
+    for member in json['users']:
+        if user == member:
+            emit('goto_chat', {'name', room.name})
+        else:
+            emit('add_room', {'name', room.name})
+
+
+@user_logged_in
 @socketio.on('message')
 def handle_message(json):
     print("message: sid="+str(request.sid))
-    user = scoreboard['sid-user'][request.sid]
+    user = scoreboard.get_user_from_sid(request.sid)
     room = json['room']
     message = Message(user    = user, 
                       room    = room, 
@@ -276,7 +316,7 @@ def handle_message(json):
 @user_logged_in
 @socketio.on('settings')
 def handle_settings(json):
-    user_id = scoreboard['sid-user'][request.sid]
+    user_id = scoreboard.get_user_from_sid(request.sid)
     user = User.get(user_id)
     status_msg = "Settings Updated."
     status_code = 1

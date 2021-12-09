@@ -221,6 +221,23 @@ class Room(DBTable):
              'public': {'type': 'BOOLEAN'},
              'name':   {'type': 'TEXT NOT NULL'}}
     table_name = 'rooms'
+
+    @classmethod
+    def chat_name(cls, user_ids):
+        user_ids.sort()
+        return '$%^&-' + '-'.join(str(i) for i in user_ids)
+    @classmethod
+    def get_or_set_chat(cls, owner, user_ids):
+        name = cls.chat_name(user_ids)
+        chat = Room.get_where(name=name)
+        if not chat:
+            chat = Room(owner=owner, public=False, name=name)
+            chat.save()
+            for user in user_ids:
+                Membership.join(user, chat.id)
+            chat.commit()
+        return chat
+
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
 
@@ -257,6 +274,11 @@ class Membership(DBTable):
     table_name = 'memberships'
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
+    @classmethod
+    def join(cls, user, room):
+        membership = Membership(user=user, room=room)
+        membership.save()
+
 set_properties(Membership, Membership.attrs)
 
 
