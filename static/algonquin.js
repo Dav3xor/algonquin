@@ -310,7 +310,6 @@ class Messages {
 
   render() {
     var unknown_users = {};
-
     if(this['rooms'].hasOwnProperty(this.cur_room)) {
       for(let message of this['rooms'][this.cur_room]['messages']) {
         if (!scoreboard.hasOwnProperty(message.user)) {
@@ -331,15 +330,23 @@ class Messages {
   }
 
   render_message(message) {
-    user = scoreboard[message.user];
-    $('#messages').prepend(`
-      <div class="row"> 
-        <div class="col">
-          <img class="mb-1" src="/static/portraits/${user.portrait}" width=40 />
-          <b>${user.handle}</b>
-        </div> 
-      <div class="col-10">${markdown.makeHtml(message.message)}</div> 
-    </div>`);
+    var user = scoreboard[message.user];
+    
+    var contents = ` <div class="col">
+                       <img class="mb-1" src="/static/portraits/${user.portrait}" width=40 />
+                       <b>${user.handle}</b>
+                     </div> 
+                     <div class="col-10">${markdown.makeHtml(message.message)}</div>`;
+    if($(`#message-${message.id}`).length) {
+      $(`#message-${message.id}`).html(contents);
+    } else {
+      $('#messages').prepend(`<div class="row" id="message-${message.id}"> 
+                                ${contents}
+                              </div>`);
+    }
+
+
+
   }
     
   add(message) {
@@ -497,7 +504,6 @@ function send_logout() {
     $('#navbar').addClass('d-none');
     $('#footer').addClass('d-none');
     $('#login').modal('show');
-    $('#messages').empty();
     var sessionid = cookie.read('sessionid');
     cookie.delete('sessionid');
     socket.emit('logout', {sessionid: sessionid});
@@ -553,12 +559,10 @@ socket.on('settings-result', data => {
 });
 
 socket.on('messages', data => {
-  var should_scroll = false;
   for (let message of data['messages'].reverse()) {
     messages.add(message);
     if (message.room == messages.cur_room) {
       $('#messages').append(messages.render_message(message));
-      should_scroll = true;
     }
 
   }
