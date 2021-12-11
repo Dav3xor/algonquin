@@ -98,7 +98,7 @@ class People {
                                  ${messages.paperclip}
                                </button>
                                <button class="btn btn-success btn-sm ml-2" 
-                                       onclick="start_chat([{$user.id},userid]);" 
+                                       onclick="start_chat([${user.id},userid]);" 
                                        id="start-chat-${user.id}" type="button">
                                  ${messages.chat_bubble}
                                </button>
@@ -284,11 +284,15 @@ class Messages {
     this.render();
     this.render_room_list();
   }
-  
+ 
+  add_room(room) {
+    this.rooms[room.id] = room;
+    this.rooms[room.id].messages = [];
+  }
+
   build_rooms(rooms) {
     for (let room of rooms) {
-      this.rooms[room.id] = room;
-      this.rooms[room.id].messages = [];
+      this.add_room(room);
     }
   }
 
@@ -489,7 +493,7 @@ function send_login_email() {
 }
 
 function start_chat(ids) {
-  socket.emit('start-chat', {users:ids})
+  socket.emit('start-chat', {users:ids});
 }
 
 function send_message() {
@@ -572,7 +576,14 @@ socket.on('memberships', data => {
   messages.build_rooms(data);
   messages.render_room_list();
 });
-  
+
+socket.on('goto_chat', data => {
+  alert(JSON.stringify(data));
+  messages.add_room(data.room); 
+  messages.change_room(data.room.id);
+  tabs.show('messages');
+});
+
 socket.on('user_list', data => {
   for (user in data) {
     scoreboard[user] = data[user];

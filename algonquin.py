@@ -291,11 +291,12 @@ def handle_user_info(json):
 def handle_start_chat(json):
     user = scoreboard.get_user_from_sid(request.sid)
     room = Room.get_or_set_chat(user, json['users'])
+    online_users = scoreboard.online_users();
     for member in json['users']:
         if user == member:
-            emit('goto_chat', {'name', room.name})
-        else:
-            emit('add_room', {'name', room.name})
+            emit('goto_chat', {'room': room.public_fields()})
+        elif member in online_users:
+            emit('add_room', {'room': room.public_fields()}, to=scoreboard.user_to_sid(member))
 
 
 @user_logged_in
