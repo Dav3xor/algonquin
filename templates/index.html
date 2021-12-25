@@ -151,7 +151,10 @@
         </div>
       </div>
     </div>
-    <div class="messages container-fluid d-none" id="messages">
+    <div ondrop="drop_handler(event)" 
+         ondragover="dragover_handler(event)" 
+         class="messages container-fluid d-none" 
+         id="messages">
     </div>
 
     <div class="container-fluid d-none" id="people">
@@ -208,7 +211,7 @@
             </div>
             <div class="form-group">
               <input type="file" class="custom-file-label" 
-                     name="portrait-image" id="portrait-image" required>
+                     name="portrait-image" id="portrait-file" required>
               <label for="settings-portrait">Filename</label>
             </div>
             <div class="form-group">

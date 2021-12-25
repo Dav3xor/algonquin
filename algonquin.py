@@ -9,6 +9,9 @@ import os
 import eventlet
 import json
 import time
+import pprint
+
+pprint = pprint.PrettyPrinter()
 
 config = {'site_name':      'Slow Pizza',
           'site_url':       'slow.pizza',
@@ -100,40 +103,70 @@ def make_token_url(token):
 def index():
     return render_template('index.html', config=config)
 
-@app.route('/upload-portrait', methods=['POST'])
-def upload_portrait():
-    print(request)
-    print(request.files)
-    if 'portrait-image' not in request.files:
-        return json.dumps({'error': 'no file'})
-    file = request.files['portrait-image']
-    print(file)
+
+def file_upload_common(req):
+    if 'file' not in req.files:
+        return None, json.dumps({'error': 'no file'})
+    file = req.files['file']
+    #print(file)
     if file.filename == '':
-        return json.dumps({'error': 'no filename'})
+        return  None, None, None, json.dumps({'error': 'no filename'})
     
     if not valid_portrait(file.filename):
-        return json.dumps({'error': 'image not supported'})
+        return  None, None, None, json.dumps({'error': 'image not supported'})
 
-    if 'sessionid' not in request.form:
-        return json.dumps({'error': 'no sessionid'})
-
+    if 'sessionid' not in req.form:
+        return  None, None, None, json.dumps({'error': 'no sessionid'})
+    
     session = Session.get_where(sessionid=request.form['sessionid'])
     if not session:
         return json.dumps({'error': 'bad sessionid'})
 
     user = User.get(session.user)
 
+
+    return file, session, user, None
+
+
+
+@app.route('/upload-file', methods=['POST'])
+def upload_file():
+    print("------------")
+    print(request)
+    file, session, user, errors = file_upload_common(request)
+
     filename = str(time.time()) + '.' + file.filename.split('.')[-1]
-
     file.save(os.path.join(config['file_root'], 'static', 'portraits', filename))
-
-    user.portrait = filename
-    user.save()
-    user.commit()
-
-    send_user('user_change', user, True)
     
-    return json.dumps({'status': 'ok', 'user': user.public_fields()})
+    db_file = File(owner     = user.id,
+                   public    = True,
+                   name      = file.filename,
+                   localname = filename)
+    db_file.save()
+    db_file.commit()
+
+    
+    file = request.files['file']
+    print(file.filename)
+    return json.dumps({'status': 'ok', 'file_id': db_file.id})
+
+@app.route('/upload-portrait', methods=['POST'])
+def upload_portrait():
+    file, session, user, errors = file_upload_common(request)
+    if errors:
+        return errors
+    else:
+        filename = str(time.time()) + '.' + file.filename.split('.')[-1]
+
+        file.save(os.path.join(config['file_root'], 'static', 'portraits', filename))
+
+        user.portrait = filename
+        user.save()
+        user.commit()
+
+        send_user('user_change', user, True)
+        
+        return json.dumps({'status': 'ok', 'user': user.public_fields()})
 
 
 
@@ -144,12 +177,12 @@ def send_static(path):
 @user_logged_in
 @socketio.on('disconnect')
 def handle_disconnect():
-    print("client disconnecting: " + request.sid)
+    #print("client disconnecting: " + request.sid)
     scoreboard.remove(request.sid)
 
 def send_online_users():
     users = scoreboard.online_users()
-    print(users)
+    #print(users)
     emit('user_list', { user:User.get(user).public_fields() for user in users })
 
 def send_user(label, user, broadcast=False):
@@ -177,7 +210,7 @@ def do_login(user, session, send_session_id=False):
 
     for membership in user.memberships:
         join_room('room-'+str(membership.room))
-        print(membership.room)
+        #print(membership.room)
 
 
     send_online_users()
@@ -196,7 +229,7 @@ def do_login(user, session, send_session_id=False):
 @not_logged_in
 @socketio.on('login-email')
 def handle_login_email(json):
-    print("email login: " + str(json))
+    #print("email login: " + str(json))
     email    = json['email']
     password = json['password']
     user     = User.get_where(email=email)
@@ -212,7 +245,7 @@ def handle_login_email(json):
 @not_logged_in
 @socketio.on('login-session')
 def handle_login_session(json):
-    print("session login: " + str(json))
+    #print("session login: " + str(json))
     sessionid = json['sessionid']
     send_sessionid = False
     session   = Session.get_where(sessionid=sessionid)
@@ -237,7 +270,7 @@ def handle_login_session(json):
 @user_logged_in
 @socketio.on('invite-new-user')
 def handle_new_user(json):
-    print(json)
+    #print(json)
     
     status     = 1
     status_msg = 'User Successfully Created'
@@ -262,20 +295,20 @@ def handle_new_user(json):
     except Exception as e:
         status = 0
         status_msg = str(e)
-        print(type(e))
+        #print(type(e))
 
     response = {'message': json['message'] + '\n\n' + url,
                 'url': url,
                 'status': status,
                 'status_msg': status_msg}
-    print(response)
+    #print(response)
     emit('invite-result', response);
 
 
 @user_logged_in
 @socketio.on('logout')
 def handle_logout(json):
-    print("logging out: " + str(json['sessionid']))
+    #print("logging out: " + str(json['sessionid']))
     Session.delete_where(sessionid=json['sessionid'])
     Session.commit()
     scoreboard.remove(request.sid)
@@ -284,7 +317,7 @@ def handle_logout(json):
 @socketio.on('user-info')
 def handle_user_info(json):
     # TODO: this is inefficient...
-    emit('user_list', { id:User.get(id).public_fields()  for id in json['users']})
+    emit('user_list', { id:User.get_public_where(id=id) for id in json['users']})
 
 @user_logged_in
 @socketio.on('start-chat')
@@ -294,15 +327,21 @@ def handle_start_chat(json):
     online_users = scoreboard.online_users();
     for member in json['users']:
         if user == member:
-            emit('goto_chat', {'room': room.public_fields()})
+            join_room('room-'+str(room.id))
+            emit('goto_chat', 
+                 {'room': room.public_fields()})
         elif member in online_users:
-            emit('add_room', {'room': room.public_fields()}, to=scoreboard.user_to_sid(member))
+            join_room('room-'+str(room.id), 
+                      sid=scoreboard.get_sid_from_user(member))
+            emit('add_room', 
+                 {'room': room.public_fields()}, 
+                 to=scoreboard.user_to_sid(member))
 
 
 @user_logged_in
 @socketio.on('message')
 def handle_message(json):
-    print("message: sid="+str(request.sid))
+    #print("message: sid="+str(request.sid))
     user = scoreboard.get_user_from_sid(request.sid)
     room = json['room']
     message = Message(user    = user, 
@@ -321,19 +360,19 @@ def handle_settings(json):
     user = User.get(user_id)
     status_msg = "Settings Updated."
     status_code = 1
-    print('settings: ')
-    print(json)
+    #print('settings: ')
+    #print(json)
     for key,val in json.items():
-        print(key)
-        print(val)
+        #print(key)
+        #print(val)
         if key == 'email':
-            print("setting email")
+            #print("setting email")
             user.email = val
         if key == 'handle':
-            print("setting handle")
+            #print("setting handle")
             user.handle = val
         if key == 'new-password':
-            print("setting password")
+            #print("setting password")
             if user.pwhash:
                 if not 'old-password' in json:
                     status_msg = 'Must use have correct old password to change to a new one.'
@@ -346,10 +385,10 @@ def handle_settings(json):
             else:
                 user.set_password(val)
         if key == 'about':
-            print("setting handle")
+            #print("setting handle")
             user.about = val
     if status_code == 1:
-        print("saving settings")
+        #print("saving settings")
         send_user('user_change', user, True)
         user.save()
         user.commit()

@@ -58,6 +58,7 @@ class Invite {
 
 class People {
   constructor() {
+    this.scoreboard = {};
   }
 
   get_info(people_list) {
@@ -66,50 +67,52 @@ class People {
 
   render() {
     $('#people').empty();
-    for (user in scoreboard) {
-      user = scoreboard[user];
-      $('#people').append(`<div class="row"> 
-                             <div class="col-1">
-                               <img src="/static/portraits/user-${user.id}.png" width="40" />
-                             </div>
-                             <div class="col-3">
-                               <span class="badge badge-dark btn-sm">
-                                 <h5>${user.handle}</h5>
-                               </span>
-                             </div>
-                             <div class="col-3">
-                               <span class="badge badge-dark btn-sm">
-                                 <h5>${user.email}</h5>
-                               </span>
-                             </div> 
-                             <div class="col-5">
-                               <a tabindex="0" role="button" 
-                                       class="btn btn-sm btn-danger ml-2 pb-0" 
-                                       title="About ${user.handle}"
-                                       data-placement="bottom"
-                                       data-bs-toggle="popover"
-                                       data-bs-trigger="hover"
-                                       data-bs-animation="true"
-                                       data-content="${user.about}">
-                                 <h5>about...</h5>
-                               </a>
-                               <button class="btn btn-warning btn-sm ml-2" 
-                                       type="button" id="new-file">
-                                 ${messages.paperclip}
-                               </button>
-                               <button class="btn btn-success btn-sm ml-2" 
-                                       onclick="start_chat([${user.id},userid]);" 
-                                       id="start-chat-${user.id}" type="button">
-                                 ${messages.chat_bubble}
-                               </button>
-                             </div>
+    for (var user in this.scoreboard) {
+      user = this.scoreboard[user];
+      if(user) {
+        $('#people').append(`<div class="row"> 
+                               <div class="col-1">
+                                 <img src="/static/portraits/user-${user.id}.png" width="40" />
+                               </div>
+                               <div class="col-3">
+                                 <span class="badge badge-dark btn-sm">
+                                   <h5>${user.handle}</h5>
+                                 </span>
+                               </div>
+                               <div class="col-3">
+                                 <span class="badge badge-dark btn-sm">
+                                   <h5>${user.email}</h5>
+                                 </span>
+                               </div> 
+                               <div class="col-5">
+                                 <a tabindex="0" role="button" 
+                                         class="btn btn-sm btn-danger ml-2 pb-0" 
+                                         title="About ${user.handle}"
+                                         data-placement="bottom"
+                                         data-bs-toggle="popover"
+                                         data-bs-trigger="hover"
+                                         data-bs-animation="true"
+                                         data-content="${user.about}">
+                                   <h5>about...</h5>
+                                 </a>
+                                 <button class="btn btn-warning btn-sm ml-2" 
+                                         type="button" id="new-file">
+                                   ${messages.paperclip}
+                                 </button>
+                                 <button class="btn btn-success btn-sm ml-2" 
+                                         onclick="start_chat([${user.id},userid]);" 
+                                         id="start-chat-${user.id}" type="button">
+                                   ${messages.chat_bubble}
+                                 </button>
+                               </div>
 
-                           </div>`);
+                             </div>`);
+      }
     }
   var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
-  var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
-  return new bootstrap.Popover(popoverTriggerEl, { trigger: 'focus' })
-  })
+  //var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+    //return new bootstrap.Popover(popoverTriggerEl);
+  ////})
   }
 }
 
@@ -135,32 +138,21 @@ class Settings {
   }
 
   send_portrait() {
-    var filename = $('#settings-portrait').val();
-    var sessionid = cookie.read('sessionid');
-    //var user = scoreboard[userid];
-
-    var form = new FormData(document.getElementById("portrait-form"));
-    form.append('sessionid', sessionid);
-
-    $.ajax({ url: 'upload-portrait',
-             type: 'POST',
-             data: form,
-             processData: false,
-             contentType: false,
-             success: function(data) {
-               console.log(data);
-               data = JSON.parse(data);
-               $('#portrait-image').attr('src', '/static/portraits/' + data.user.portrait);
-               scoreboard[data.user.id] = data.user;
-               messages.render();
-             }
-    });
+    var file = document.getElementById('portrait-file').files[0];
+    upload_file(file, 
+                'upload-portrait', 
+                function(data) {
+      console.log(data);
+      data = JSON.parse(data);
+      $('#portrait-image').attr('src', '/static/portraits/' + data.user.portrait);
+      people.scoreboard[data.user.id] = data.user;
+      messages.render(); });
   }
 
 
 
   set_defaults() {
-    var user = scoreboard[userid];
+    var user = people.scoreboard[userid];
     
     $('#portrait-image').attr('src', '/static/portraits/' + user.portrait);
 
@@ -286,8 +278,11 @@ class Messages {
   }
  
   add_room(room) {
-    this.rooms[room.id] = room;
-    this.rooms[room.id].messages = [];
+    if(!this.rooms.hasOwnProperty(room.id))
+      {
+        this.rooms[room.id] = room;
+        this.rooms[room.id].messages = [];
+      }
   }
 
   build_rooms(rooms) {
@@ -298,8 +293,32 @@ class Messages {
 
   render_room_list() {
     $('#room_list').empty();
+    var unknown_users = {};
     for (var room in this.rooms) {
-      room = this.rooms[room];
+      var room = this.rooms[room];
+      if ( room.name.startsWith('$%^&-') ) {
+        var ids = room.name.split('-').slice(1);
+        var expanded_name = "Chat With:";
+        var change_name = true;
+        for (var id in ids) {
+          id = ids[id].toString();
+          if (!people.scoreboard.hasOwnProperty(id)) {
+            unknown_users[id] = 1;
+            change_name = false;
+          } else {
+            if(people.scoreboard[id]){
+              expanded_name += " " + people.scoreboard[id].handle;
+            } else {
+              expanded_name += " (unknown user?)";
+            }
+
+          }
+        }
+        if(change_name == true) {
+          room.name = expanded_name;
+        }       
+      }
+
       if ( room.id != this.cur_room ) {
         $('#room_list').append(`<a class="dropdown-item" href="#" 
                                                          onclick="messages.change_room('${room.id}');">
@@ -310,13 +329,22 @@ class Messages {
       }
 
     }
+    
+    unknown_users = Object.keys(unknown_users);
+    if(unknown_users.length > 0) {
+      for(var u in unknown_users) {
+        unknown_users[u] = parseInt(unknown_users[u]);
+      }
+      people.get_info(unknown_users);
+    }
+
   }
 
   render() {
     var unknown_users = {};
     if(this['rooms'].hasOwnProperty(this.cur_room)) {
       for(let message of this['rooms'][this.cur_room]['messages']) {
-        if (!scoreboard.hasOwnProperty(message.user)) {
+        if (!people.scoreboard.hasOwnProperty(message.user)) {
           unknown_users[message.user] = 1;
         }
       }
@@ -334,7 +362,7 @@ class Messages {
   }
 
   render_message(message) {
-    var user = scoreboard[message.user];
+    var user = people.scoreboard[message.user];
     
     var contents = ` <div class="col">
                        <img class="mb-1" src="/static/portraits/${user.portrait}" width=40 />
@@ -444,7 +472,6 @@ var people    = new People();
 var invite    = new Invite();
 var settings  = new Settings();
 
-var scoreboard = {};
 
 var userid = -1;
 
@@ -510,9 +537,64 @@ function send_logout() {
     $('#login').modal('show');
     var sessionid = cookie.read('sessionid');
     cookie.delete('sessionid');
+    cookie.delete('cur_room');
     socket.emit('logout', {sessionid: sessionid});
     lissajous.setb(5);
 }
+
+
+// general function to handle uploading files to 
+// the server.
+
+function upload_file(file, url, success_fn) {
+  var sessionid = cookie.read('sessionid');
+  var form = new FormData();
+
+  form.append('sessionid', sessionid);
+  form.append('file', file);
+  $.ajax({ url: url,
+           type: 'POST',
+           data: form,
+           processData: false,
+           contentType: false,
+           success: success_fn });
+}
+
+
+
+// The following functions are for handling file drag/drop
+
+function dragover_handler(ev) {
+ ev.preventDefault();
+ ev.stopPropagation();
+ ev.dataTransfer.dropEffect = "move";
+}
+
+
+function handle_dropped_file(file) {
+  upload_file(file, 'upload-file', function(data) {
+    console.log(data); });
+}
+
+function drop_handler(ev) {
+ ev.preventDefault();
+ ev.stopPropagation();
+ ([...ev.dataTransfer.files]).forEach(handle_dropped_file);
+}
+
+function dragstart_handler(ev) {
+  // TODO: allow user to drag things out of the window...
+  alert('hi!');
+  ev.dataTransfer.setData("text/plain", ev.target.id);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  // Get the element by id
+  const element = document.getElementById("messages");
+  // Add the ondragstart event listener
+  element.addEventListener("dragstart", dragstart_handler);
+});
+
 
 socket.on('login-result', data => {
   console.log(data);
@@ -578,7 +660,6 @@ socket.on('memberships', data => {
 });
 
 socket.on('goto_chat', data => {
-  alert(JSON.stringify(data));
   messages.add_room(data.room); 
   messages.change_room(data.room.id);
   tabs.show('messages');
@@ -586,18 +667,18 @@ socket.on('goto_chat', data => {
 
 socket.on('user_list', data => {
   for (user in data) {
-    scoreboard[user] = data[user];
+    people.scoreboard[user] = data[user];
   }
   people.render();
   messages.render();
 });
 
 socket.on('user_info', data => {
-  scoreboard[data.id] = data;
+  people.scoreboard[data.id] = data;
 });
 
 socket.on('user_change', data => {
-  scoreboard[data.id] = data;
+  people.scoreboard[data.id] = data;
   messages.render();
 });
   

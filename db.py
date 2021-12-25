@@ -1,8 +1,11 @@
 import sqlite3
+import pprint
 from passlib.hash import pbkdf2_sha256
 
 db = sqlite3.connect('algonquin.db', check_same_thread=False)
 cursor = db.cursor()
+
+pprint = pprint.PrettyPrinter()
 
 def set_properties(c, properties):
     class Attr(object):
@@ -28,7 +31,7 @@ def set_properties(c, properties):
     for i in properties: 
         setattr(c, i, Attr(i))
         if 'fkey' in properties[i]:
-            print(properties[i])
+            #print(properties[i])
             from_table = DBTable.tables[properties[i]['fkey'][2]]
             to_table   = c
             setattr(from_table, 
@@ -90,14 +93,14 @@ class DBTable:
                                       where)
         if order_by:
             stmt += " order by " + order_by
-        print(stmt)
+        #print(stmt)
         cursor.execute(stmt)
         rows = cursor.fetchall()
         return [ cls(**dict(zip(columns, values))) for values in rows ]
 
     def select(table, columns, where_clause):
         stmt = DBTable.select_stmt % (",".join(columns), table, where_clause)
-        print(stmt)
+        #print(stmt)
         cursor.execute(stmt)
         return cursor.fetchall()
 
@@ -109,15 +112,16 @@ class DBTable:
             where_values.append(kwargs[key])
 
         stmt = DBTable.select_stmt % (",".join(columns), table, where_columns)
-        print(stmt)
+        #print(stmt)
         cursor.execute(stmt, where_values)
         return cursor.fetchone()
 
-    def is_public(self, field):
-        if 'private' not in self.attrs[field]:
+    @classmethod
+    def is_public(cls, field):
+        if 'private' not in cls.attrs[field]:
             return True
         else:
-            return not self.attrs[field]['private']
+            return not cls.attrs[field]['private']
 
     def public_fields(self):
         return { key:value for (key, value) in self.data.items() if self.is_public(key) }
@@ -126,7 +130,10 @@ class DBTable:
     def get(cls, id):
         columns = [i for i in cls.attrs]
         values  = DBTable.select_one(cls.table_name, columns, id=id)
-        return cls(**dict(zip(columns, values)))
+        if values:
+            return cls(**dict(zip(columns, values)))
+        else:
+            return None
 
     @classmethod
     def get_where(cls, **kwargs):
@@ -136,6 +143,17 @@ class DBTable:
             return cls(**dict(zip(columns, values)))
         else:
             return None
+
+    @classmethod
+    def get_public_where(cls, **kwargs):
+        columns = [i for i in cls.attrs if 'private' not in cls.attrs[i] or cls.attrs[i]['private'] == False]
+        values = DBTable.select_one(cls.table_name, columns, **kwargs)
+        if values:
+            return cls(**dict(zip(columns, values)))
+        else:
+            return None
+
+
     @classmethod
     def delete_where(cls, limit=1, **kwargs):
         where_columns = ""
@@ -144,7 +162,7 @@ class DBTable:
             where_columns += key + "=? "
             where_values.append(kwargs[key])
         stmt = DBTable.delete_stmt % (cls.table_name, where_columns, str(limit))
-        print(stmt+"-->"+str(where_values))
+        #print(stmt+"-->"+str(where_values))
         cursor.execute(stmt, where_values)
 
     def insert(self):
@@ -159,7 +177,7 @@ class DBTable:
         stmt = DBTable.insert_stmt % (self.table_name,
                                        columns,
                                        ("?,"*len(values))[:-1])
-        print(stmt)
+        #print(stmt)
         cursor.execute(stmt, values)
         self.id = cursor.lastrowid
 
@@ -177,8 +195,8 @@ class DBTable:
         stmt = DBTable.update_stmt % (self.table_name,
                                       columns,
                                       'id = ?')
-        print(stmt)
-        print(values)
+        #print(stmt)
+        #print(values)
         cursor.execute(stmt, values)
 
     def save(self):
@@ -243,6 +261,20 @@ class Room(DBTable):
 
 set_properties(Room, Room.attrs)
 
+
+class File(DBTable):
+    attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
+             'owner':     {'type': 'INTEGER NOT NULL',
+                           'fkey': ['user', 'id', 'User', 'files']},
+             'public':    {'type': 'BOOLEAN'},
+             'name':      {'type': 'TEXT'},
+             'localname': {'type': 'TEXT'},
+             'uploaded':  {'type': "TIMESTAMP DATETIME DEFAULT (datetime('now', 'localtime'))"}}
+    table_name = 'files'
+    def __init__(self, **kwargs):
+        DBTable.__init__(self, **kwargs)
+set_properties(File, File.attrs)
+
 class Session(DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'user':      {'type': 'INTEGER NOT NULL',
@@ -259,6 +291,7 @@ class Message(DBTable):
                            'fkey': ['user', 'id', 'User', 'messages']},
              'room':      {'type': 'INTEGER NOT NULL',
                            'fkey': ['room', 'id', 'Room', 'messages']},
+             'written':   {'type': "TIMESTAMP DATETIME DEFAULT (datetime('now', 'localtime'))"},
              'message':   {'type': 'TEXT'}}
     table_name = 'messages'
     def __init__(self, **kwargs):
