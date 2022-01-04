@@ -33,11 +33,8 @@
           <li class="nav-item" id="people-nav">
             <a class="nav-link" onclick="tabs.show('people');">people</a>
           </li>
-          <li class="nav-item" id="images-nav">
-            <a class="nav-link">images</a>
-          </li>
-          <li class="nav-item" id="audio-nav">
-            <a class="nav-link">audio</a>
+          <li class="nav-item" id="files-nav">
+            <a class="nav-link" onclick="tabs.show('files');">files</a>
           </li>
           <li class="nav-item" id="search-nav">
             <a class="nav-link">search</a>
@@ -63,6 +60,7 @@
     <div id="footer" class="navbar navbar-dark bg-dark fixed-bottom d-none">
       <form class="form-inline my-1" id="write_message">
         <textarea class="form-control" name="new-message" id="new-message" cols=60 rows="1"></textarea>
+        <input type="file" style="display: none" id="footer-upload-file" multiple />
         <button class="btn btn-light btn-sm ml-2" id="message-expand-button" 
                 type="button" onclick="messages.resize_input();">
         </button>
@@ -70,6 +68,7 @@
         <button class="btn btn-success btn-sm ml-2" onclick="send_message();" id="send-message" type="button">
           <span>Send</span>
         </button>
+        <button class="btn btn-danger btn-sm ml-2" onclick="send_bell();" id="ring-bell" type="button">
       </form>
     </div>
 
@@ -96,10 +95,10 @@
             <form "form-inline" onsubmit="return false;">
               <div class="form-group">
                 <label for="new-password">Password:</label>
-                <input type="password" class="form-control" name="new-password" id="new-password" placeholder="Password" required>
+                <input type="password" class="form-control" name="new-user-password" id="new-user-password" placeholder="Password" required>
               </div>
               <div class="pb-2">
-                <button onclick="$('#new-user').modal('hide');" type="button" class="btn btn-success btn-sm">Ok</button>
+                <button id="new-user-ok" type="button" class="btn btn-success btn-sm">Ok</button>
               </div>
             </form>
             <div class="modal-footer">
@@ -160,6 +159,9 @@
     <div class="container-fluid d-none" id="people">
     </div>
 
+    <div class="container-fluid d-none" id="files">
+    </div>
+
 
     <div class="container-fluid d-none" id="settings">
       <div class="row">
@@ -207,7 +209,7 @@
         <div class="col-4">
           <form "form-inline" id="portrait-form" name="portrait-form" autocomplete="off" onsubmit="return false;">
             <div class="form-group">
-              <img style="padding-top: 100px;" width="100%" id="portrait-image" src="/static/portraits/user-1.png"/>
+              <img style="padding-top: 100px;" width="100%" id="portrait-image" src="/portraits/default.png"/>
             </div>
             <div class="form-group">
               <input type="file" class="custom-file-label" 

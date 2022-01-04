@@ -1,5 +1,5 @@
-from db import User, Session, Message, File, Room, build_tables
-
+from db import User, Session, Message, File, Room, Membership, build_tables
+from formats import formats
 from flask import Flask, render_template, send_from_directory, request
 from flask_socketio import SocketIO, emit, send, disconnect, join_room
 from urllib.parse import urlencode
@@ -13,14 +13,15 @@ import pprint
 
 pprint = pprint.PrettyPrinter()
 
-config = {'site_name':      'Slow Pizza',
-          'site_url':       'slow.pizza',
-          'sysop_handle':   'sysop',
-          'sysop_email':    'sysop@sysop.com',
-          'public_rooms':   ['0 Day Warez', 'Poop', 'Dev/Test'],
-          'file_root':      '/home/dave/dev/algonquin/',
-          'portrait_types': ['png', 'jpg', 'jpeg', 'gif'],
-          'default_room':   '0 Day Warez'}
+config = {'site_name':        'Slow Pizza',
+          'site_url':         'slow.pizza',
+          'sysop_handle':     'sysop',
+          'sysop_email':      'sysop@sysop.com',
+          'public_rooms':     ['0 Day Warez', 'Poop', 'Dev/Test'],
+          'file_root':        '/home/dave/dev/algonquin/',
+          'portrait_types':   ['png', 'jpg', 'jpeg', 'gif'],
+          'default_portrait': 'default.png',
+          'default_room':     '0 Day Warez'}
 
 app = Flask(__name__, static_url_path='')
 app.config['SECRET_KEY'] = 'a very very sekrit sekrit key'
@@ -55,7 +56,7 @@ class Scoreboard:
         if user not in self.user_to_sid:
             return set()
         else:
-            return self.user_to_sid(user)
+            return self.user_to_sid[user]
     def online_users(self):
         return set(self.sid_to_user.values())
 
@@ -112,15 +113,12 @@ def file_upload_common(req):
     if file.filename == '':
         return  None, None, None, json.dumps({'error': 'no filename'})
     
-    if not valid_portrait(file.filename):
-        return  None, None, None, json.dumps({'error': 'image not supported'})
-
     if 'sessionid' not in req.form:
         return  None, None, None, json.dumps({'error': 'no sessionid'})
     
     session = Session.get_where(sessionid=request.form['sessionid'])
     if not session:
-        return json.dumps({'error': 'bad sessionid'})
+        return None, None, None, json.dumps({'error': 'bad sessionid'})
 
     user = User.get(session.user)
 
@@ -135,20 +133,37 @@ def upload_file():
     print(request)
     file, session, user, errors = file_upload_common(request)
 
-    filename = str(time.time()) + '.' + file.filename.split('.')[-1]
-    file.save(os.path.join(config['file_root'], 'static', 'portraits', filename))
-    
-    db_file = File(owner     = user.id,
-                   public    = True,
-                   name      = file.filename,
-                   localname = filename)
-    db_file.save()
-    db_file.commit()
+    if not errors:
+        extension = file.filename.split('.')[-1]
+        filename  = str(time.time()) + '.' + extension
+        file.save(os.path.join(config['file_root'], 'files', filename))
+       
+        
+        db_file = File(owner     = user.id,
+                       public    = True,
+                       name      = file.filename,
+                       localname = filename)
 
-    
-    file = request.files['file']
-    print(file.filename)
-    return json.dumps({'status': 'ok', 'file_id': db_file.id})
+        if 'room' in request.form:
+            db_file.room = request.form['room']
+
+        if extension.lower() in formats:
+            db_file.type = formats[extension.lower()]
+        else:
+            db_file.type = "unknown"
+
+        db_file.save()
+        db_file.commit()
+
+        if db_file.room: 
+            emit('files', 
+                 {'files':[db_file.public_fields()]}, 
+                 room = 'room-'+str(db_file.room),
+                 namespace = None)
+
+        return json.dumps({'status': 'ok'})
+    else:
+        return errors
 
 @app.route('/upload-portrait', methods=['POST'])
 def upload_portrait():
@@ -156,9 +171,12 @@ def upload_portrait():
     if errors:
         return errors
     else:
+        if not valid_portrait(file.filename):
+            return  json.dumps({'error': 'filetype not supported for portrait'})
+
         filename = str(time.time()) + '.' + file.filename.split('.')[-1]
 
-        file.save(os.path.join(config['file_root'], 'static', 'portraits', filename))
+        file.save(os.path.join(config['file_root'], 'portraits', filename))
 
         user.portrait = filename
         user.save()
@@ -174,6 +192,14 @@ def upload_portrait():
 def send_static(path):
     return send_from_directory('static', path)
 
+@app.route('/files/<path:path>')
+def send_files(path):
+    return send_from_directory('files', path)
+
+@app.route('/portraits/<path:path>')
+def send_portraits(path):
+    return send_from_directory('portraits', path)
+
 @user_logged_in
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -182,8 +208,10 @@ def handle_disconnect():
 
 def send_online_users():
     users = scoreboard.online_users()
-    #print(users)
-    emit('user_list', { user:User.get(user).public_fields() for user in users })
+    print(users)
+    emit('user_list', 
+         { user:User.get(user).public_fields() for user in users },
+         broadcast=False)
 
 def send_user(label, user, broadcast=False):
     socketio.emit(label, user.public_fields(), broadcast=broadcast)
@@ -192,14 +220,22 @@ def send_memberships(user):
     rooms = Room.raw_select("rooms, memberships", 
                                   "rooms.id = memberships.room and memberships.user = %s" % user.id,
                                   "rooms.id")
-    emit('memberships', [ room.public_fields() for room in rooms ])
+    emit('memberships', [ room.public_fields() for room in rooms ], broadcast=False)
 
 def send_messages(user):
     messages = Message.raw_select("messages, memberships", 
                                   "messages.room = memberships.room and memberships.user = %s" % user.id,
                                   "messages.id desc limit 100")
     messages = [ i.public_fields() for i in messages ]
-    emit('messages', {'messages': messages})
+    emit('messages', {'messages': messages}, broadcast=False)
+
+def send_files(user):
+    files = File.raw_select("files, memberships", 
+                                  "files.room = memberships.room and memberships.user = %s" % user.id,
+                                  "files.id desc limit 100")
+    files = [ i.public_fields() for i in files ]
+    print(files)
+    emit('files', {'files': files}, broadcast=False)
 
 def do_login(user, session, send_session_id=False):
     response = {'authenticated': False}
@@ -216,6 +252,7 @@ def do_login(user, session, send_session_id=False):
     send_online_users()
     send_memberships(user)
     send_messages(user)
+    send_files(user)
     send_user('user_info', user, True)
 
     response['userid'] = user.id
@@ -240,18 +277,18 @@ def handle_login_email(json):
         session.save()
         session.commit()
     response = do_login(user, session, True)
-    emit('login-result', response);
+    emit('login-result', response, broadcast=False);
 
 @not_logged_in
 @socketio.on('login-session')
 def handle_login_session(json):
-    #print("session login: " + str(json))
+    print("session login: " + str(json))
     sessionid = json['sessionid']
     send_sessionid = False
     session   = Session.get_where(sessionid=sessionid)
     if not session:
         # TODO: more bad sessionid handling?
-        emit('login-result', {'authenticated': False})
+        emit('login-result', {'authenticated': False}, broadcast=False)
     else:
         user = User.get(int(sessionid.split('-')[0]))
         if '-token-' in sessionid:
@@ -265,7 +302,7 @@ def handle_login_session(json):
         if '-token-' in sessionid:
             response['new-user'] = True
 
-        emit('login-result', response)
+        emit('login-result', response, broadcast=False)
 
 @user_logged_in
 @socketio.on('invite-new-user')
@@ -276,7 +313,8 @@ def handle_new_user(json):
     status_msg = 'User Successfully Created'
 
     user  = User(email=json['email'], 
-                 handle=json['handle'])
+                 handle=json['handle'],
+                 portrait=config['default_portrait'])
 
     if json['password'] != '':
         user.set_password(json['password'])
@@ -302,7 +340,7 @@ def handle_new_user(json):
                 'status': status,
                 'status_msg': status_msg}
     #print(response)
-    emit('invite-result', response);
+    emit('invite-result', response, broadcast=False);
 
 
 @user_logged_in
@@ -317,7 +355,49 @@ def handle_logout(json):
 @socketio.on('user-info')
 def handle_user_info(json):
     # TODO: this is inefficient...
-    emit('user_list', { id:User.get_public_where(id=id) for id in json['users']})
+    print("ssssss")
+    print(json['users'])
+    print("ssssss")
+    emit('user_list', { id:User.get_where(id=id).public_fields() for id in json['users']})
+
+@user_logged_in
+@socketio.on('file-info')
+def handle_file_info(json):
+    # TODO: this is inefficient...
+    files = File.raw_select("files", 
+                            "files.public=1",
+                            "files.id desc limit 100")
+    files = [ i.public_fields() for i in messages ]
+    emit('files', {'files': messages}, broadcast=False)
+
+@user_logged_in
+@socketio.on('delete-file')
+def handle_delete_file(json):
+    if 'file_id' not in json:
+        emit('delete-file-result', {'error': 'invalid request'}, broadcast=False)
+
+    file = File.get_where(id=json['file_id'])
+    if not file:
+        emit('delete-file-result', {'error': "file doesn't exist"}, broadcast=False)
+
+    user_id = scoreboard.get_user_from_sid(request.sid)
+    print(user_id)
+    membership = Membership.get_where(room=file.room, user=user_id)
+
+    if (not membership):       
+        emit('delete-file-result', {'error': "no rights to delete"}, broadcast=False)
+   
+    File.delete_where(id=file.id)
+    emit('delete-file-result', {'status': 'ok', 'file_id': file.id}, room = 'room-'+str(file.room))
+
+
+@user_logged_in
+@socketio.on('send-bell')
+def handle_send_bell(json):
+    userid = json['user']
+    print(userid)
+    for sid in scoreboard.get_sids_from_user(userid):
+        emit('bell', {}, room = sid)
 
 @user_logged_in
 @socketio.on('start-chat')
@@ -329,7 +409,8 @@ def handle_start_chat(json):
         if user == member:
             join_room('room-'+str(room.id))
             emit('goto_chat', 
-                 {'room': room.public_fields()})
+                 {'room': room.public_fields()},
+                 broadcast=False)
         elif member in online_users:
             join_room('room-'+str(room.id), 
                       sid=scoreboard.get_sid_from_user(member))
@@ -394,7 +475,8 @@ def handle_settings(json):
         user.commit()
 
     emit('settings-result', { 'status_msg': status_msg, 
-                              'status_code': status_code })
+                              'status_code': status_code },
+         broadcast=False)
 
         
 

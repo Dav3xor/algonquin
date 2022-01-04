@@ -55,64 +55,343 @@ class Invite {
     $('#add-user').prop('disabled', false);
   }
 }
-
-class People {
+class Files {
   constructor() {
-    this.scoreboard = {};
+    this.files = {};
+    this.icons = {
+    'unknown': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                     fill="currentColor" class="bi bi-file" viewBox="0 0 16 16">
+                  <path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 
+                           2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 
+                           1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
+                </svg>`,
+
+    'play':    `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                      fill="currentColor" class="bi bi-caret-right" viewBox="0 0 16 16">
+                   <path d="M6 12.796V3.204L11.481 8 6 12.796zm.659.753 5.48-4.796a1 
+                            1 0 0 0 0-1.506L6.66 2.451C6.011 1.885 5 2.345 5 
+                            3.204v9.592a1 1 0 0 0 1.659.753z"/>
+                 </svg>`,
+    'trash':    `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                       fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 
+                             .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 
+                             .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                    <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 
+                                     2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 
+                                     1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 
+                                     1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 
+                                     1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                  </svg>`,
+
+    'new_tab':   `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                         fill="currentColor" class="bi bi-box-arrow-up-right" viewBox="0 0 16 16">
+                      <path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 
+                                       4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 
+                                       1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 
+                                       1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 
+                                       .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
+                      <path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 
+                                       1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 
+                                       1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
+                    </svg>`,
+
+    'pdf':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                     fill="currentColor" class="bi bi-file-pdf" viewBox="0 0 16 16">
+                  <path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 
+                           0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 
+                           1 0 0 1 1-1z"/>
+                  <path d="M4.603 12.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 
+                           0 0 1 1.482-.645 19.701 19.701 0 0 0 1.062-2.227 7.269 7.269 0 0 
+                           1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 
+                           0 0 1 .477.365c.088.164.12.356.127.538.007.187-.012.395-.047.614-.084.51-.27 1.134-.52 
+                           1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 
+                           1.334.05c.364.065.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 
+                           0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.716 5.716 0 0 
+                           1-.911-.95 11.642 11.642 0 0 0-1.997.406 11.311 11.311 0 0 1-1.021 
+                           1.51c-.29.35-.608.655-.926.787a.793.793 0 0 
+                           1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361.01.022.02.036.026.044a.27.27 
+                           0 0 0 .035-.012c.137-.056.355-.235.635-.572a8.18 8.18 0 0 0 .45-.606zm1.64-1.33a12.647 
+                           12.647 0 0 1 1.01-.193 11.666 11.666 0 0 1-.51-.858 20.741 20.741 0 0 1-.5 
+                           1.05zm2.446.45c.15.162.296.3.435.41.24.19.407.253.498.256a.107.107 0 0 0 .07-.015.307.307 
+                           0 0 0 .094-.125.436.436 0 0 0 .059-.2.095.095 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a3.881 
+                           3.881 0 0 0-.612-.053zM8.078 5.8a6.7 6.7 0 0 0 .2-.828c.031-.188.043-.343.038-.465a.613.613 
+                           0 0 0-.032-.198.517.517 0 0 
+                           0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822.024.111.054.227.09.346z"/>
+                </svg>`,
+
+    'image':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                       fill="currentColor" class="bi bi-file-image" viewBox="0 0 16 16">
+                    <path d="M8.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
+                    <path d="M12 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 
+                             2-2V2a2 2 0 0 0-2-2zM3 2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 
+                             1v8l-2.083-2.083a.5.5 0 0 0-.76.063L8 11 5.835 
+                             9.7a.5.5 0 0 0-.611.076L3 12V2z"/>
+                  </svg>`,
+
+    'video':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                       fill="currentColor" class="bi bi-camera-video" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M0 5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 1.983 
+                                     1.738l3.11-1.382A1 1 0 0 1 16 4.269v7.462a1 1 0 0 
+                                     1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 13H2a2 2 0 0 
+                                     1-2-2V5zm11.5 5.175 3.5 1.556V4.269l-3.5 1.556v4.35zM2 
+                                     4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h7.5a1 1 0 0 0 1-1V5a1 
+                                     1 0 0 0-1-1H2z"/>
+                  </svg>`,
+
+    'audio':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                       fill="currentColor" class="bi bi-file-music" viewBox="0 0 16 16">
+                  <path d="M10.304 3.13a1 1 0 0 1 1.196.98v1.8l-2.5.5v5.09c0 
+                           .495-.301.883-.662 1.123C7.974 12.866 7.499 13 7 
+                           13c-.5 0-.974-.134-1.338-.377-.36-.24-.662-.628-.662-1.123s.301-.883.662-1.123C6.026 
+                           10.134 6.501 10 7 10c.356 0 .7.068 1 .196V4.41a1 1 0 0 1 .804-.98l1.5-.3z"/>
+                  <path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 
+                           2-2V2a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 
+                           1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
+                </svg>`,
+
+    'archive':        `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                            fill="currentColor" class="bi bi-file-zip" viewBox="0 0 16 16">
+                         <path d="M6.5 7.5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v.938l.4 1.599a1 1 0 0 
+                                  1-.416 1.074l-.93.62a1 1 0 0 1-1.109 0l-.93-.62a1 1 0 0 
+                                  1-.415-1.074l.4-1.599V7.5zm2 0h-1v.938a1 1 0 0 1-.03.243l-.4 
+                                  1.598.93.62.93-.62-.4-1.598a1 1 0 0 1-.03-.243V7.5z"/>
+                         <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 
+                                  1-2-2V2zm5.5-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 
+                                  1-1V2a1 1 0 0 0-1-1H9v1H8v1h1v1H8v1h1v1H7.5V5h-1V4h1V3h-1V2h1V1z"/>
+                       </svg>`,
+
+    'binoculars':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                            fill="currentColor" class="bi bi-binoculars" viewBox="0 0 16 16">
+                         <path d="M3 2.5A1.5 1.5 0 0 1 4.5 1h1A1.5 1.5 0 0 1 7 
+                                  2.5V5h2V2.5A1.5 1.5 0 0 1 10.5 1h1A1.5 1.5 0 0 1 13 
+                                  2.5v2.382a.5.5 0 0 0 .276.447l.895.447A1.5 1.5 0 0 1 15 
+                                  7.118V14.5a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 
+                                  14.5v-3a.5.5 0 0 1 .146-.354l.854-.853V9.5a.5.5 0 0 
+                                  0-.5-.5h-3a.5.5 0 0 0-.5.5v.793l.854.853A.5.5 0 0 1 7 
+                                  11.5v3A1.5 1.5 0 0 1 5.5 16h-3A1.5 1.5 0 0 1 1 
+                                  14.5V7.118a1.5 1.5 0 0 1 .83-1.342l.894-.447A.5.5 0 0 0 3 
+                                  4.882V2.5zM4.5 2a.5.5 0 0 0-.5.5V3h2v-.5a.5.5 0 0 
+                                  0-.5-.5h-1zM6 4H4v.882a1.5 1.5 0 0 1-.83 1.342l-.894.447A.5.5 0 0 0 2 
+                                  7.118V13h4v-1.293l-.854-.853A.5.5 0 0 1 5 10.5v-1A1.5 1.5 0 0 1 6.5 
+                                  8h3A1.5 1.5 0 0 1 11 9.5v1a.5.5 0 0 1-.146.354l-.854.853V13h4V7.118a.5.5 0 0 
+                                  0-.276-.447l-.895-.447A1.5 1.5 0 0 1 12 4.882V4h-2v1.5a.5.5 0 0 
+                                  1-.5.5h-3a.5.5 0 0 1-.5-.5V4zm4-1h2v-.5a.5.5 0 0 
+                                  0-.5-.5h-1a.5.5 0 0 0-.5.5V3zm4 11h-4v.5a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 
+                                  .5-.5V14zm-8 0H2v.5a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5V14z"/>
+                       </svg>`,
+    'download':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                          fill="currentColor" class="bi bi-cloud-download" viewBox="0 0 16 16">
+                       <path d="M4.406 1.342A5.53 5.53 0 0 1 8 0c2.69 0 4.923 2 5.166 
+                                4.579C14.758 4.804 16 6.137 16 7.773 16 9.569 14.502 11 
+                                12.687 11H10a.5.5 0 0 1 0-1h2.688C13.979 10 15 8.988 15 
+                                7.773c0-1.216-1.02-2.228-2.313-2.228h-.5v-.5C12.188 2.825 
+                                10.328 1 8 1a4.53 4.53 0 0 0-2.941 1.1c-.757.652-1.153 
+                                1.438-1.153 2.055v.448l-.445.049C2.064 4.805 1 5.952 1 
+                                7.318 1 8.785 2.23 10 3.781 10H6a.5.5 0 0 1 0 1H3.781C1.708 
+                                11 0 9.366 0 7.318c0-1.763 1.266-3.223 
+                                2.942-3.593.143-.863.698-1.723 1.464-2.383z"/>
+                       <path d="M7.646 15.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 
+                                14.293V5.5a.5.5 0 0 0-1 0v8.793l-2.146-2.147a.5.5 0 0 0-.708.708l3 3z"/>
+                     </svg>`,
+    'message':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                         fill="currentColor" class="bi bi-journal-arrow-up" viewBox="0 0 16 16">
+                      <path fill-rule="evenodd" 
+                            d="M8 11a.5.5 0 0 0 .5-.5V6.707l1.146 1.147a.5.5 0 0 0 
+                               .708-.708l-2-2a.5.5 0 0 0-.708 0l-2 2a.5.5 0 1 0 
+                               .708.708L7.5 6.707V10.5a.5.5 0 0 0 .5.5z"/>
+                      <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 
+                               1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 
+                               1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2z"/>
+                      <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 
+                               0-1H1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 
+                               1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 
+                               0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1z"/>
+                    </svg>`
+    };
   }
 
-  get_info(people_list) {
-    socket.emit('user-info', {'users':people_list});
+  add_file(file) {
+    this.files[file.id] = file;
+  }
+
+  get_latest() {
+    socket.emit('get-file-list', {'latest':20});
+  }
+
+  delete_file(file) {
+    delete this.files[file];
   }
 
   render() {
-    $('#people').empty();
-    for (var user in this.scoreboard) {
-      user = this.scoreboard[user];
-      if(user) {
-        $('#people').append(`<div class="row"> 
-                               <div class="col-1">
-                                 <img src="/static/portraits/user-${user.id}.png" width="40" />
+    $('#files').empty();
+    for (var file in this.files) {
+      var file  = this.files[file];
+      //alert(JSON.stringify(file));
+      var owner = people.get_person(file.owner);
+      if(owner) {
+
+        var file_icon = this.icons.unknown;
+        if (this.icons.hasOwnProperty(file.type)) {
+          file_icon = this.icons[file.type];
+        }
+
+        $('#files').append(`<div class="row"> 
+                               <div class="col-2">
+                                 <button class="btn btn-info btn-sm">
+                                   ${this.icons.play}
+                                 </button>
+                                 <a download class="btn btn-light btn-sm" href="/files/${file.localname}">
+                                   ${this.icons.download}
+                                 </a>
+                                 <button class="btn btn-light btn-sm" onclick="window.open('/files/${file.localname}','_blank');">
+                                   ${this.icons.new_tab}
+                                 </button>
+                              </div>
+                              <div class="col-5">
+                                 <button class="btn btn-secondary btn-sm btn-block text-left">
+                                   ${file_icon}
+                                   ${file.name}
+                                 </button>
                                </div>
                                <div class="col-3">
                                  <span class="badge badge-dark btn-sm">
-                                   <h5>${user.handle}</h5>
-                                 </span>
-                               </div>
-                               <div class="col-3">
-                                 <span class="badge badge-dark btn-sm">
-                                   <h5>${user.email}</h5>
+                                   <h5>${owner.handle}</h5>
                                  </span>
                                </div> 
-                               <div class="col-5">
-                                 <a tabindex="0" role="button" 
-                                         class="btn btn-sm btn-danger ml-2 pb-0" 
-                                         title="About ${user.handle}"
-                                         data-placement="bottom"
-                                         data-bs-toggle="popover"
-                                         data-bs-trigger="hover"
-                                         data-bs-animation="true"
-                                         data-content="${user.about}">
-                                   <h5>about...</h5>
-                                 </a>
-                                 <button class="btn btn-warning btn-sm ml-2" 
-                                         type="button" id="new-file">
-                                   ${messages.paperclip}
-                                 </button>
+                               <div class="col-2">
                                  <button class="btn btn-success btn-sm ml-2" 
-                                         onclick="start_chat([${user.id},userid]);" 
-                                         id="start-chat-${user.id}" type="button">
+                                         onclick="start_chat([${owner.id},people.get_this_person().id]);" 
+                                         id="start-chat-${owner.id}" type="button">
                                    ${messages.chat_bubble}
+                                 </button>
+                                 <button class="btn btn-warning btn-sm" onclick="send_delete_file(${file.id});">
+                                   ${this.icons.trash}
                                  </button>
                                </div>
 
                              </div>`);
       }
     }
-  var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
-  //var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
-    //return new bootstrap.Popover(popoverTriggerEl);
-  ////})
+  people.get_unknown();  
+  }
+}
+
+
+class People {
+  constructor() {
+    this.people = {};
+    this.unknown_people = {};
+    this.this_person = -1;
+
+    this.bell = `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                      fill="currentColor" class="bi bi-bell" viewBox="0 0 16 16">
+                   <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.797.161A4.002 
+                            4.002 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 
+                            1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 
+                            8.197 12 6.628 12 6a4.002 4.002 0 0 0-3.203-3.92L8 1.917zM14.22 
+                            12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 
+                            6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 
+                            0A5.002 5.002 0 0 1 13 6c0 .88.32 4.2 1.22 6z"/>
+                </svg>`;
+
+    $('#ring-bell').append(this.bell);
+  }
+
+  get_info(people_list) {
+    socket.emit('user-info', {'users':people_list});
+  }
+
+  get_person(id) {
+    // sigh, javascript...
+    if(id==undefined) {
+      return null;
+    }
+
+    if (! this.people.hasOwnProperty(id)) {
+      this.unknown_people[id] = 1;
+      return null;
+    } else {
+      return this.people[id];
+    }
+  }
+   
+  get_unknown() {
+    var users = Object.keys(this.unknown_people);
+    if(users.length > 0) {
+
+      //for(var u in users) {
+        //users[u] = parseInt(users[u]);
+      //}
+      this.get_info(users);
+    }
+    this.unknown_people = {};
+  }
+
+  get_this_person() {
+    return this.get_person(this.this_person);
+  }
+
+  set_this_person(id) {
+    this.this_person = id;
+  }
+
+  set_person(person) {
+    this.people[person.id] = person;
+  }
+
+  render() {
+    $('#people').empty();
+    for (var user in this.people) {
+      user = this.get_person(user);
+      if(user) {
+        var about = "";
+        if(user.hasOwnProperty('about')) {
+          about = `<a tabindex="0" role="button" 
+                      class="btn btn-sm btn-danger ml-2 pb-0" 
+                      title="About ${user.handle}"
+                      data-placement="bottom"
+                      data-bs-toggle="popover"
+                      data-bs-trigger="hover"
+                      data-bs-animation="true"
+                      data-content="${user.about}">
+                      <h5>About...</h5>
+                    </a>`;
+        }
+
+        $('#people').append(`<div class="row"> 
+                               <div class="col-1 ml-2">
+                                 <img src="/portraits/${user.portrait}" height="36" />
+                               </div>
+                               <div class="col-3">
+                                 <span class="badge badge-dark btn-sm ml-2">
+                                   <h5>${user.handle}</h5>
+                                 </span>
+                               </div>
+                               <div class="col-1">
+                                 ${about}
+                               </div>
+                               <div class="col-6">
+                                 <button class="btn btn-warning btn-sm ml-2" 
+                                         type="button" id="new-file">
+                                   ${messages.paperclip}
+                                 </button>
+                                 <button class="btn btn-success btn-sm ml-2" 
+                                         onclick="start_chat([${user.id},people.get_this_person().id]);" 
+                                         id="start-chat-${user.id}" type="button">
+                                   ${messages.chat_bubble}
+                                 </button>
+                                 <button class="btn btn-success btn-danger btn-sm ml-2" 
+                                         onclick="send_bell(${user.id});" 
+                                         id="start-chat-${user.id}" type="button">
+                                   ${people.bell}
+                                 </button>
+                               </div>
+
+                             </div>`);
+      }
+    }
+    this.get_unknown();
   }
 }
 
@@ -123,6 +402,10 @@ class Settings {
                      'old-password',
                      'new-password',
                      'about']
+  }
+
+  set_new_password(password) {
+    socket.emit('settings', {'new-password': password});
   }
 
   send_settings() {
@@ -142,19 +425,19 @@ class Settings {
     upload_file(file, 
                 'upload-portrait', 
                 function(data) {
+      // following is done when upload is finished...
       console.log(data);
       data = JSON.parse(data);
-      $('#portrait-image').attr('src', '/static/portraits/' + data.user.portrait);
-      people.scoreboard[data.user.id] = data.user;
+      $('#portrait-image').attr('src', '/portraits/' + data.user.portrait);
+      people.set_person(data);
       messages.render(); });
   }
 
 
 
   set_defaults() {
-    var user = people.scoreboard[userid];
-    
-    $('#portrait-image').attr('src', '/static/portraits/' + user.portrait);
+    var user = people.get_this_person();
+    $('#portrait-image').attr('src', '/portraits/' + user.portrait);
 
     for (var setting in this.settings) {
       setting = this.settings[setting];
@@ -246,6 +529,11 @@ class Messages {
     this.input_small();
     $('#send-message').append(this.chat_bubble);
     $('#new-file').append(this.paperclip);
+    $('#new-file').on('click touchstart', function() {
+      $(this).val('');
+      $('#footer-upload-file').trigger('click');
+    });
+
   }
 
   input_small() {
@@ -293,7 +581,6 @@ class Messages {
 
   render_room_list() {
     $('#room_list').empty();
-    var unknown_users = {};
     for (var room in this.rooms) {
       var room = this.rooms[room];
       if ( room.name.startsWith('$%^&-') ) {
@@ -301,13 +588,14 @@ class Messages {
         var expanded_name = "Chat With:";
         var change_name = true;
         for (var id in ids) {
-          id = ids[id].toString();
-          if (!people.scoreboard.hasOwnProperty(id)) {
-            unknown_users[id] = 1;
-            change_name = false;
+          var id = ids[id].toString();
+          var person = people.get_person(id);
+          
+          if (person) {
+            expanded_name += " " + people.people[id].handle;
           } else {
-            if(people.scoreboard[id]){
-              expanded_name += " " + people.scoreboard[id].handle;
+            change_name = false;
+            if(people.people[id]){
             } else {
               expanded_name += " (unknown user?)";
             }
@@ -329,44 +617,33 @@ class Messages {
       }
 
     }
-    
-    unknown_users = Object.keys(unknown_users);
-    if(unknown_users.length > 0) {
-      for(var u in unknown_users) {
-        unknown_users[u] = parseInt(unknown_users[u]);
-      }
-      people.get_info(unknown_users);
-    }
+    people.get_unknown(); 
 
   }
 
   render() {
-    var unknown_users = {};
     if(this['rooms'].hasOwnProperty(this.cur_room)) {
-      for(let message of this['rooms'][this.cur_room]['messages']) {
-        if (!people.scoreboard.hasOwnProperty(message.user)) {
-          unknown_users[message.user] = 1;
-        }
-      }
-      unknown_users = Object.keys(unknown_users);
-
-      if(unknown_users.length > 0) {
-        people.get_info(unknown_users);
-      } else {
         $('#messages').html('');
         for (let message of this['rooms'][this.cur_room]['messages']) {
           this.render_message(message);
         }
-      }
     }
+    people.get_unknown();
   }
 
   render_message(message) {
-    var user = people.scoreboard[message.user];
-    
+    var user = people.get_person(message.user);
+    var portrait = "default.png";
+    var handle   = "loading...";
+
+    if(user) {
+      portrait = user.portrait;
+      handle   = user.handle;
+    }
+
     var contents = ` <div class="col">
-                       <img class="mb-1" src="/static/portraits/${user.portrait}" width=40 />
-                       <b>${user.handle}</b>
+                       <img class="mb-1" src="/portraits/${portrait}" width=40 />
+                       <b>${handle}</b>
                      </div> 
                      <div class="col-10">${markdown.makeHtml(message.message)}</div>`;
     if($(`#message-${message.id}`).length) {
@@ -469,11 +746,11 @@ var lissajous = new Lissajous(canvas, 30, 30);
 var tabs      = new Tabs('messages');
 var messages  = new Messages();
 var people    = new People();
+var files     = new Files();
 var invite    = new Invite();
 var settings  = new Settings();
 
 
-var userid = -1;
 
 var markdown = new showdown.Converter({'emoji':true, 'simplifiedAutoLink':true, 'openLinksInNewWindow':true});
 
@@ -513,6 +790,12 @@ socket.on('connect', function() {
   }
 });
 
+function send_delete_file(file) {
+  socket.emit('delete-file', {file_id: file});
+}
+
+
+
 function send_login_email() {
   var email = qsv('#email');
   var password = qsv('#password');
@@ -521,6 +804,10 @@ function send_login_email() {
 
 function start_chat(ids) {
   socket.emit('start-chat', {users:ids});
+}
+
+function send_bell(userid) {
+  socket.emit('send-bell', {user:userid});
 }
 
 function send_message() {
@@ -551,6 +838,7 @@ function upload_file(file, url, success_fn) {
   var form = new FormData();
 
   form.append('sessionid', sessionid);
+  form.append('room', messages.cur_room);
   form.append('file', file);
   $.ajax({ url: url,
            type: 'POST',
@@ -559,7 +847,6 @@ function upload_file(file, url, success_fn) {
            contentType: false,
            success: success_fn });
 }
-
 
 
 // The following functions are for handling file drag/drop
@@ -573,7 +860,11 @@ function dragover_handler(ev) {
 
 function handle_dropped_file(file) {
   upload_file(file, 'upload-file', function(data) {
-    console.log(data); });
+    console.log(data);
+    for(file in data.files) {
+      files.add_file(file); 
+    }
+  });
 }
 
 function drop_handler(ev) {
@@ -584,9 +875,20 @@ function drop_handler(ev) {
 
 function dragstart_handler(ev) {
   // TODO: allow user to drag things out of the window...
-  alert('hi!');
+  //alert('hi!');
   ev.dataTransfer.setData("text/plain", ev.target.id);
 }
+
+
+
+$('#new-user-ok').click(function() {
+  $('#new-user').modal('hide');
+  var entered_password = $('#new-user-password').val();
+  if (entered_password.length > 0) {
+    settings.set_new_password(entered_password);
+  }
+});
+
 
 window.addEventListener('DOMContentLoaded', () => {
   // Get the element by id
@@ -595,11 +897,15 @@ window.addEventListener('DOMContentLoaded', () => {
   element.addEventListener("dragstart", dragstart_handler);
 });
 
+socket.on('bell', data => {
+  const audio = new Audio("bell.wav");
+  audio.play();
+});
 
 socket.on('login-result', data => {
   console.log(data);
   if(data.authenticated) {
-    userid = data.userid;
+    people.set_this_person(data.userid);
     if(url_parameters.has('token')) {
       // if it's a new user logging in, remove the arguments from the url
       window.history.pushState({}, '', '/');
@@ -620,6 +926,7 @@ socket.on('login-result', data => {
     $('#login-result-status').html(data.result);
     $('#login-result-status').removeClass('d-none');
     cookie.delete('sessionid');
+    cookie.delete('cur_room');
     lissajous.setb(1);
     lissajous.seta(1);
   }
@@ -639,6 +946,17 @@ socket.on('invite-result', data => {
   }
 });
 
+socket.on('delete-file-result', data => {
+  if(data.status == 'ok') {
+    files.delete_file(data.file_id);
+    files.render();
+    messages.render();
+  } else {
+      console.log(data);
+  }
+});
+
+
 socket.on('settings-result', data => {
   $('#settings-result').removeClass('d-none');
   $('#settings-result-status').html(data.status_msg);
@@ -654,6 +972,14 @@ socket.on('messages', data => {
   }
 });
 
+socket.on('files', data => {
+  for (file in data.files) {
+    file = data.files[file];
+    files.add_file(file);
+  }
+  files.render();
+});
+
 socket.on('memberships', data => {
   messages.build_rooms(data);
   messages.render_room_list();
@@ -667,18 +993,20 @@ socket.on('goto_chat', data => {
 
 socket.on('user_list', data => {
   for (user in data) {
-    people.scoreboard[user] = data[user];
+    people.set_person(data[user]);
   }
   people.render();
   messages.render();
+  files.render();
 });
 
 socket.on('user_info', data => {
-  people.scoreboard[data.id] = data;
+  people.people[data.id] = data;
 });
 
 socket.on('user_change', data => {
-  people.scoreboard[data.id] = data;
+  people.people[data.id] = data;
   messages.render();
+  files.render();
 });
   

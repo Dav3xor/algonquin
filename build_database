@@ -4,7 +4,8 @@ import db
 from algonquin import make_token, make_token_url, config
 
 u = db.User(email  = config['sysop_email'],
-            handle = config['sysop_handle'])
+            handle = config['sysop_handle'],
+            portrait = config['default_portrait'])
 u.save()
 
 token = make_token(u)

@@ -108,11 +108,13 @@ class DBTable:
         where_columns = ""
         where_values = []
         for key in kwargs:
+            if len(where_columns) > 0:
+                where_columns += "and "
             where_columns += key + "=? "
             where_values.append(kwargs[key])
 
         stmt = DBTable.select_stmt % (",".join(columns), table, where_columns)
-        #print(stmt)
+        print(stmt)
         cursor.execute(stmt, where_values)
         return cursor.fetchone()
 
@@ -221,7 +223,10 @@ class User(DBTable):
         self.pwhash = pbkdf2_sha256.hash(password)
         
     def verify_password(self, password):
-        return pbkdf2_sha256.verify(password, self.pwhash)
+        if self.pwhash:
+            return pbkdf2_sha256.verify(password, self.pwhash)
+        else:
+            return None
 
     def join_public(self):
         public_rooms = Room.raw_select("rooms", "public = 1")
@@ -242,14 +247,21 @@ class Room(DBTable):
 
     @classmethod
     def chat_name(cls, user_ids):
+        print(user_ids)
         user_ids.sort()
+        print(user_ids)
+        user_ids = set(user_ids)
+        print(user_ids)
         return '$%^&-' + '-'.join(str(i) for i in user_ids)
+    
     @classmethod
     def get_or_set_chat(cls, owner, user_ids):
         name = cls.chat_name(user_ids)
         chat = Room.get_where(name=name)
         if not chat:
-            chat = Room(owner=owner, public=False, name=name)
+            chat = Room(owner  = owner, 
+                        public = False, 
+                        name   = name)
             chat.save()
             for user in user_ids:
                 Membership.join(user, chat.id)
@@ -266,9 +278,12 @@ class File(DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'owner':     {'type': 'INTEGER NOT NULL',
                            'fkey': ['user', 'id', 'User', 'files']},
-             'public':    {'type': 'BOOLEAN'},
+             'room':      {'type': 'INTEGER',
+                           'fkey': ['room', 'id', 'Room', 'files']},
              'name':      {'type': 'TEXT'},
              'localname': {'type': 'TEXT'},
+             'public':    {'type': 'BOOLEAN'},
+             'type':      {'type': 'TEXT'},
              'uploaded':  {'type': "TIMESTAMP DATETIME DEFAULT (datetime('now', 'localtime'))"}}
     table_name = 'files'
     def __init__(self, **kwargs):
@@ -315,18 +330,6 @@ class Membership(DBTable):
 set_properties(Membership, Membership.attrs)
 
 
-class File(DBTable):
-    attrs = {'id':      {'type': 'INTEGER PRIMARY KEY'},
-             'owner':   {'type': 'INTEGER NOT NULL',
-                         'fkey': ['user', 'id', 'User', 'files']},
-             'message': {'type': 'INTEGER',
-                         'fkey': ['user', 'id', 'Message', 'files']},
-             'name':    {'type': 'TEXT NOT NULL'}}
-    table_name = 'files'
-    def __init__(self, **kwargs):
-        DBTable.__init__(self, **kwargs)
-set_properties(File, File.attrs)
-
 def build_tables():
     for table in [User, Session, Message, Room, File, Membership]:
         attrs = table.attrs
@@ -335,7 +338,10 @@ def build_tables():
         for i in attrs:
             if 'fkey' in attrs[i]:
                 clauses += "," + DBTable.foreign_key % (i,attrs[i]['fkey'][0],attrs[i]['fkey'][1])
-
-        cursor.execute(DBTable.create_stmt % ( table_name, clauses ))
+        db_stmt = DBTable.create_stmt % ( table_name, clauses )
+        print("--------")
+        print(db_stmt)
+        print("--------")
+        cursor.execute(db_stmt)
 
 build_tables()
