@@ -2906,9 +2906,9 @@ var simpleURLRegex  = /([*~_]+|\b)(((https?|ftp|dict):\/\/|www\.)[^'">\s]+?\.[^'
         if (options.openLinksInNewWindow) {
           target = ' rel="noopener noreferrer" target="¨E95Eblank"';
         }
-        if (link.match(/[\w-]+.(jpg|png|txt)/g) != null) {
+        if (link.match(/[\w-]+.(jpg|png|txt|jpeg)/g) != null) {
           //lnkTxt = `<div class="image-border">image</div>`;
-          lnkTxt = `<img src="${link}" height="200" />`;
+          lnkTxt = `<img src="${link}" height="200" class="m-1 p-1"/>`;
         }
         return lmc + '<a href="' + link + '"' + target + '>' + lnkTxt + '</a>' + append + tmc;
       };
@@ -2932,7 +2932,6 @@ var simpleURLRegex  = /([*~_]+|\b)(((https?|ftp|dict):\/\/|www\.)[^'">\s]+?\.[^'
 
 showdown.subParser('autoLinks', function (text, options, globals) {
   'use strict';
-
   text = globals.converter._dispatch('autoLinks.before', text, options, globals);
 
   text = text.replace(delimUrlRegex, replaceLink(options));

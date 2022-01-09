@@ -1,6 +1,7 @@
 import sqlite3
 import pprint
 from passlib.hash import pbkdf2_sha256
+from pxfilter import XssHtml
 
 db = sqlite3.connect('algonquin.db', check_same_thread=False)
 cursor = db.cursor()
@@ -9,14 +10,20 @@ pprint = pprint.PrettyPrinter()
 
 def set_properties(c, properties):
     class Attr(object):
-        def __init__(self, attr):
+        def __init__(self, attr, attr_attrs):
             self.attr = attr
+            self.attr_attrs = attr_attrs
         def __get__(self, obj, objtype):
             if self.attr in obj.data:
                 return obj.data[self.attr]
             else:
                 return None
         def __set__(self, obj, value):
+            if 'xss-filter' in self.attr_attrs:
+                parser = XssHtml()
+                parser.feed(value)
+                parser.close()
+                value = parser.getHtml()
             obj.data[self.attr] = value
 
     class ChildAttr(object):
@@ -28,15 +35,16 @@ def set_properties(c, properties):
             return DBChild(self.table, obj.id, self.related_column)
 
     DBTable.add_table(c)
-    for i in properties: 
-        setattr(c, i, Attr(i))
-        if 'fkey' in properties[i]:
+    for i, attrs in properties.items(): 
+        setattr(c, i, Attr(i, attrs))
+        if 'fkey' in attrs:
             #print(properties[i])
-            from_table = DBTable.tables[properties[i]['fkey'][2]]
+            from_table = DBTable.tables[attrs['fkey'][2]]
             to_table   = c
             setattr(from_table, 
-                    properties[i]['fkey'][3],
+                    attrs['fkey'][3],
                     ChildAttr(to_table, i))
+
 class DBChild:
     def __init__(self, table, key, related_column):
         self.table          = table
@@ -75,7 +83,10 @@ class DBTable:
     tables      = {}
 
     def __init__(self, **kwargs):
-        self.data = kwargs
+        self.data = {}
+        for name, value in kwargs.items():
+            if value:
+                setattr(self, name, value)
    
     def add_table(table_class):
         DBTable.tables[table_class.__name__] = table_class
@@ -114,7 +125,7 @@ class DBTable:
             where_values.append(kwargs[key])
 
         stmt = DBTable.select_stmt % (",".join(columns), table, where_columns)
-        print(stmt)
+        
         cursor.execute(stmt, where_values)
         return cursor.fetchone()
 
@@ -209,10 +220,10 @@ class DBTable:
 
 class User(DBTable):
     attrs = {'id':       {'type': 'INTEGER PRIMARY KEY'},
-             'email':    {'type': 'TEXT NOT NULL UNIQUE'}, 
-             'handle':   {'type': 'TEXT NOT NULL'},
+            'email':    {'type': 'TEXT NOT NULL UNIQUE', 'xss-filter': True}, 
+            'handle':   {'type': 'TEXT NOT NULL', 'xss-filter': True},
              'portrait': {'type': 'TEXT'},
-             'about':    {'type': 'TEXT'},
+             'about':    {'type': 'TEXT', 'xss-filter': True},
              'pwhash':   {'type': 'TEXT', 'private': True}}
     table_name = 'users'
 
@@ -242,16 +253,13 @@ class Room(DBTable):
              'owner':  {'type': 'INTEGER NOT NULL',
                        'fkey': ['user', 'id', 'User','rooms']},
              'public': {'type': 'BOOLEAN'},
-             'name':   {'type': 'TEXT NOT NULL'}}
+             'name':   {'type': 'TEXT NOT NULL', 'xss-filter': True}}
     table_name = 'rooms'
 
     @classmethod
     def chat_name(cls, user_ids):
-        print(user_ids)
         user_ids.sort()
-        print(user_ids)
         user_ids = set(user_ids)
-        print(user_ids)
         return '$%^&-' + '-'.join(str(i) for i in user_ids)
     
     @classmethod
@@ -280,7 +288,7 @@ class File(DBTable):
                            'fkey': ['user', 'id', 'User', 'files']},
              'room':      {'type': 'INTEGER',
                            'fkey': ['room', 'id', 'Room', 'files']},
-             'name':      {'type': 'TEXT'},
+             'name':      {'type': 'TEXT', 'xss-filter': True},
              'localname': {'type': 'TEXT'},
              'public':    {'type': 'BOOLEAN'},
              'type':      {'type': 'TEXT'},
@@ -307,7 +315,7 @@ class Message(DBTable):
              'room':      {'type': 'INTEGER NOT NULL',
                            'fkey': ['room', 'id', 'Room', 'messages']},
              'written':   {'type': "TIMESTAMP DATETIME DEFAULT (datetime('now', 'localtime'))"},
-             'message':   {'type': 'TEXT'}}
+             'message':   {'type': 'TEXT', 'xss-filter': True}}
     table_name = 'messages'
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
@@ -339,9 +347,6 @@ def build_tables():
             if 'fkey' in attrs[i]:
                 clauses += "," + DBTable.foreign_key % (i,attrs[i]['fkey'][0],attrs[i]['fkey'][1])
         db_stmt = DBTable.create_stmt % ( table_name, clauses )
-        print("--------")
-        print(db_stmt)
-        print("--------")
         cursor.execute(db_stmt)
 
 build_tables()

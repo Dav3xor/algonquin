@@ -373,7 +373,7 @@ class People {
                                </div>
                                <div class="col-6">
                                  <button class="btn btn-warning btn-sm ml-2" 
-                                         type="button" id="new-file">
+                                         type="button" id="new-file-${user.id}">
                                    ${messages.paperclip}
                                  </button>
                                  <button class="btn btn-success btn-sm ml-2" 
@@ -528,11 +528,7 @@ class Messages {
 
     this.input_small();
     $('#send-message').append(this.chat_bubble);
-    $('#new-file').append(this.paperclip);
-    $('#new-file').on('click touchstart', function() {
-      $(this).val('');
-      $('#footer-upload-file').trigger('click');
-    });
+    $('#footer-new-file').append(this.paperclip);
 
   }
 
@@ -556,6 +552,18 @@ class Messages {
       this.input_small();
     }
 
+  }
+
+  insert_at_cursor(text) {
+    var target = document.getElementById("new-message");
+
+    if (target.setRangeText) {
+        //if setRangeText function is supported by current browser
+        target.setRangeText(text)
+    } else {
+        target.focus()
+        document.execCommand('insertText', false /*no UI*/, text);
+    }
   }
 
   change_room(room) {
@@ -858,11 +866,12 @@ function dragover_handler(ev) {
 }
 
 
-function handle_dropped_file(file) {
+function handle_file_upload(file) {
   upload_file(file, 'upload-file', function(data) {
-    console.log(data);
+    data = JSON.parse(data);
     for(file in data.files) {
-      files.add_file(file); 
+      file = data.files[file];
+      messages.insert_at_cursor(file.localname);
     }
   });
 }
@@ -870,7 +879,7 @@ function handle_dropped_file(file) {
 function drop_handler(ev) {
  ev.preventDefault();
  ev.stopPropagation();
- ([...ev.dataTransfer.files]).forEach(handle_dropped_file);
+ ([...ev.dataTransfer.files]).forEach(handle_file_upload);
 }
 
 function dragstart_handler(ev) {
@@ -889,6 +898,14 @@ $('#new-user-ok').click(function() {
   }
 });
 
+$('#footer-new-file').on('click touchstart', function() {
+  $(this).val('');
+  $('#footer-upload-file').trigger('click');
+});
+
+$('#footer-upload-file').on('change', function(evt) {
+  ([...evt.target.files]).forEach(handle_file_upload);
+});
 
 window.addEventListener('DOMContentLoaded', () => {
   // Get the element by id

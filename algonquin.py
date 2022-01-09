@@ -129,8 +129,6 @@ def file_upload_common(req):
 
 @app.route('/upload-file', methods=['POST'])
 def upload_file():
-    print("------------")
-    print(request)
     file, session, user, errors = file_upload_common(request)
 
     if not errors:
@@ -161,7 +159,7 @@ def upload_file():
                  room = 'room-'+str(db_file.room),
                  namespace = None)
 
-        return json.dumps({'status': 'ok'})
+        return json.dumps({'status': 'ok', 'files': [db_file.public_fields()]})
     else:
         return errors
 
@@ -208,7 +206,7 @@ def handle_disconnect():
 
 def send_online_users():
     users = scoreboard.online_users()
-    print(users)
+    #print(users)
     emit('user_list', 
          { user:User.get(user).public_fields() for user in users },
          broadcast=False)
@@ -234,7 +232,7 @@ def send_files(user):
                                   "files.room = memberships.room and memberships.user = %s" % user.id,
                                   "files.id desc limit 100")
     files = [ i.public_fields() for i in files ]
-    print(files)
+    #print(files)
     emit('files', {'files': files}, broadcast=False)
 
 def do_login(user, session, send_session_id=False):
@@ -282,7 +280,7 @@ def handle_login_email(json):
 @not_logged_in
 @socketio.on('login-session')
 def handle_login_session(json):
-    print("session login: " + str(json))
+    #print("session login: " + str(json))
     sessionid = json['sessionid']
     send_sessionid = False
     session   = Session.get_where(sessionid=sessionid)
@@ -355,9 +353,6 @@ def handle_logout(json):
 @socketio.on('user-info')
 def handle_user_info(json):
     # TODO: this is inefficient...
-    print("ssssss")
-    print(json['users'])
-    print("ssssss")
     emit('user_list', { id:User.get_where(id=id).public_fields() for id in json['users']})
 
 @user_logged_in
@@ -381,7 +376,6 @@ def handle_delete_file(json):
         emit('delete-file-result', {'error': "file doesn't exist"}, broadcast=False)
 
     user_id = scoreboard.get_user_from_sid(request.sid)
-    print(user_id)
     membership = Membership.get_where(room=file.room, user=user_id)
 
     if (not membership):       
@@ -395,7 +389,6 @@ def handle_delete_file(json):
 @socketio.on('send-bell')
 def handle_send_bell(json):
     userid = json['user']
-    print(userid)
     for sid in scoreboard.get_sids_from_user(userid):
         emit('bell', {}, room = sid)
 
