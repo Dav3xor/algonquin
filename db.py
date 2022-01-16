@@ -292,6 +292,8 @@ class File(DBTable):
              'localname': {'type': 'TEXT'},
              'public':    {'type': 'BOOLEAN'},
              'type':      {'type': 'TEXT'},
+             'size':      {'type': 'INTEGER'},
+             'hash':      {'type': 'INTEGER'},
              'uploaded':  {'type': "TIMESTAMP DATETIME DEFAULT (datetime('now', 'localtime'))"}}
     table_name = 'files'
     def __init__(self, **kwargs):

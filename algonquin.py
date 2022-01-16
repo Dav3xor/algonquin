@@ -9,6 +9,7 @@ import os
 import eventlet
 import json
 import time
+import hashlib
 import pprint
 
 pprint = pprint.PrettyPrinter()
@@ -61,6 +62,24 @@ class Scoreboard:
         return set(self.sid_to_user.values())
 
 scoreboard=Scoreboard()
+
+def hash_file(file):
+    BUF_SIZE = 65536
+    md5 = hashlib.md5()
+    while True:
+        data = file.read(BUF_SIZE)
+        if not data:
+            break
+        md5.update(data)
+
+    length = file.tell()
+
+    # seek back to the beginning
+    file.seek(0);
+
+    return md5.hexdigest(), length
+
+
 
 def valid_portrait(filename):
     return '.' in filename and \
@@ -132,23 +151,41 @@ def upload_file():
     file, session, user, errors = file_upload_common(request)
 
     if not errors:
-        extension = file.filename.split('.')[-1]
-        filename  = str(time.time()) + '.' + extension
-        file.save(os.path.join(config['file_root'], 'files', filename))
+        extension    = file.filename.split('.')[-1]
+        type         = "unknown"
+        hash, size   = hash_file(file)
+
+        if extension.lower() in formats:
+            type = formats[extension.lower()]
+
+        print ("hash = " + hash)
+        print ("size = " + str(size))
+
+        # check for duplicates
+        original_file = File.get_where(hash=hash, size=size)
+        if original_file:
+            print("duplicate file upload -- " + 
+                  original_file.name + " - " + 
+                  file.filename + " - " + 
+                  original_file.localname)
+            # if the filename is different
+            # make a new file row, but point it at the
+            # already existing one
+            filename = original_file.localname
+        else:
+            filename     = str(time.time()) + '.' + extension
+            file.save(os.path.join(config['file_root'], 'files', filename))
        
-        
         db_file = File(owner     = user.id,
                        public    = True,
                        name      = file.filename,
+                       hash      = hash,
+                       size      = size,
                        localname = filename)
 
         if 'room' in request.form:
             db_file.room = request.form['room']
 
-        if extension.lower() in formats:
-            db_file.type = formats[extension.lower()]
-        else:
-            db_file.type = "unknown"
 
         db_file.save()
         db_file.commit()
@@ -261,6 +298,14 @@ def do_login(user, session, send_session_id=False):
     
     return response
 
+@user_logged_in
+@socketio.on('logout')
+def handle_logout(json):
+    #print("logging out: " + str(json['sessionid']))
+    Session.delete_where(sessionid=json['sessionid'])
+    Session.commit()
+    scoreboard.remove(request.sid)
+
 @not_logged_in
 @socketio.on('login-email')
 def handle_login_email(json):
@@ -302,57 +347,43 @@ def handle_login_session(json):
 
         emit('login-result', response, broadcast=False)
 
-@user_logged_in
-@socketio.on('invite-new-user')
-def handle_new_user(json):
-    #print(json)
-    
-    status     = 1
-    status_msg = 'User Successfully Created'
-
-    user  = User(email=json['email'], 
-                 handle=json['handle'],
-                 portrait=config['default_portrait'])
-
-    if json['password'] != '':
-        user.set_password(json['password'])
-    else:
-        user.password = str(int.from_bytes(os.urandom(32),'big'))
-    
-    try:
-        user.save()
-        user.join_public()
-        token      = make_token(user)
-        url        = make_token_url(token)
-        session    = Session(sessionid=token,
-                             user = user.id)
-        session.save()
-        session.commit()
-    except Exception as e:
-        status = 0
-        status_msg = str(e)
-        #print(type(e))
-
-    response = {'message': json['message'] + '\n\n' + url,
-                'url': url,
-                'status': status,
-                'status_msg': status_msg}
-    #print(response)
-    emit('invite-result', response, broadcast=False);
-
+stuff = {'users': {'class': User, 
+                   'tables': 'users',
+                   'where': '',
+                   'order_by': 'users.id'},
+         'files': {'class': File, 
+                   'tables': 'files, memberships',
+                   'where': 'files.id = memberships.room and memberships.user = %s',
+                   'order_by': 'files.id'},
+         'rooms': {'class': Room, 
+                   'tables': 'rooms, memberships',
+                   'where': 'rooms.id = memberships.room and memberships.user = %s',
+                   'order_by': 'rooms.id'},
+         'messages': {'class': Message, 
+                      'tables': 'messages, memberships',
+                      'where': 'messages.room = memberships.room and memberships.user = %s',
+                      'order_by': 'rooms.id'}}
 
 @user_logged_in
-@socketio.on('logout')
-def handle_logout(json):
-    #print("logging out: " + str(json['sessionid']))
-    Session.delete_where(sessionid=json['sessionid'])
-    Session.commit()
-    scoreboard.remove(request.sid)
+@socketio.on('get-stuff')
+def handle_get_stuff(json):
+    output = {}
+    for key, table in stuff.items():
+        if key in json:
+            rows = stuff[key]['class'].raw_select(table['tables'], 
+                                                  table['where'], 
+                                                  table['order_by'])
+            output[key] = { id:row.public_fields() for row in rows }
+    print("---")
+    print(output)
+    print("---")
+    emit('stuff_list', output, broadcast=False)
 
 @user_logged_in
 @socketio.on('user-info')
 def handle_user_info(json):
     # TODO: this is inefficient...
+    handle_get_stuff(json)
     emit('user_list', { id:User.get_where(id=id).public_fields() for id in json['users']})
 
 @user_logged_in
@@ -411,7 +442,7 @@ def handle_start_chat(json):
                  {'room': room.public_fields()}, 
                  to=scoreboard.user_to_sid(member))
 
-
+# user has uploaded a message
 @user_logged_in
 @socketio.on('message')
 def handle_message(json):
@@ -426,6 +457,44 @@ def handle_message(json):
     emit('messages', 
          {'messages':[message.public_fields()]}, 
          room = 'room-'+str(room))
+
+@user_logged_in
+@socketio.on('invite-new-user')
+def handle_new_user(json):
+    #print(json)
+    
+    status     = 1
+    status_msg = 'User Successfully Created'
+
+    user  = User(email=json['email'], 
+                 handle=json['handle'],
+                 portrait=config['default_portrait'])
+
+    if json['password'] != '':
+        user.set_password(json['password'])
+    else:
+        user.password = str(int.from_bytes(os.urandom(32),'big'))
+    
+    try:
+        user.save()
+        user.join_public()
+        token      = make_token(user)
+        url        = make_token_url(token)
+        session    = Session(sessionid=token,
+                             user = user.id)
+        session.save()
+        session.commit()
+    except Exception as e:
+        status = 0
+        status_msg = str(e)
+        #print(type(e))
+
+    response = {'message': json['message'] + '\n\n' + url,
+                'url': url,
+                'status': status,
+                'status_msg': status_msg}
+    #print(response)
+    emit('invite-result', response, broadcast=False);
 
 @user_logged_in
 @socketio.on('settings')

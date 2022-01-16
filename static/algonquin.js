@@ -58,6 +58,8 @@ class Invite {
 class Files {
   constructor() {
     this.files = {};
+    this.unknown_files = {};
+
     this.icons = {
     'unknown': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                      fill="currentColor" class="bi bi-file" viewBox="0 0 16 16">
@@ -221,6 +223,20 @@ class Files {
 
   delete_file(file) {
     delete this.files[file];
+  }
+
+  get_file(id) {
+    // sigh, javascript...
+    if(id==undefined) {
+      return null;
+    }
+
+    if (! this.files.hasOwnProperty(id)) {
+      this.unknown_files[id] = 1;
+      return null;
+    } else {
+      return this.people[id];
+    }
   }
 
   render() {
@@ -458,6 +474,7 @@ class Settings {
 class Messages {
   constructor() {
     this.rooms = {};
+    this.uploaded_files = [];
     this.expanded_input = false;
     this.arrow_up = ` 
       <svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
@@ -554,6 +571,11 @@ class Messages {
 
   }
 
+  add_file(file) {
+    this.uploaded_files.push(file);
+    this.insert_at_cursor(`~file${file}~`);
+  }
+
   insert_at_cursor(text) {
     var target = document.getElementById("new-message");
 
@@ -563,6 +585,14 @@ class Messages {
     } else {
         target.focus()
         document.execCommand('insertText', false /*no UI*/, text);
+    }
+  }
+
+  send(socket) {
+    var message = $('#new-message').val();
+    if (message.trim() != '') {
+      socket.emit('message', {message:message, room:parseInt(messages.cur_room)});
+      $('#new-message').val("");
     }
   }
 
@@ -643,6 +673,14 @@ class Messages {
     var user = people.get_person(message.user);
     var portrait = "default.png";
     var handle   = "loading...";
+    var inline_files = message.message.match(/~file(\d+)~/gm);
+
+    for (var file in inline_files) {
+      file = inline_files[file];
+      var file_id = parseInt(file.slice(5,-1));
+      console.log(file_id);
+    }
+
 
     if(user) {
       portrait = user.portrait;
@@ -819,11 +857,7 @@ function send_bell(userid) {
 }
 
 function send_message() {
-  var message = $('#new-message').val();
-  if (message.trim() != '') {
-    socket.emit('message', {message:message, room:parseInt(messages.cur_room)});
-    $('#new-message').val("");
-  }
+  messages.send(socket);
 }
 
 function send_logout() {
@@ -871,7 +905,7 @@ function handle_file_upload(file) {
     data = JSON.parse(data);
     for(file in data.files) {
       file = data.files[file];
-      messages.insert_at_cursor(file.localname);
+      messages.add_file(file.id);
     }
   });
 }
