@@ -181,6 +181,7 @@ def upload_file():
                        name      = file.filename,
                        hash      = hash,
                        size      = size,
+                       type      = type,
                        localname = filename)
 
         if 'room' in request.form:
@@ -191,8 +192,8 @@ def upload_file():
         db_file.commit()
 
         if db_file.room: 
-            emit('files', 
-                 {'files':[db_file.public_fields()]}, 
+            emit('stuff_list', 
+                 {'files':{db_file.id:db_file.public_fields()}},
                  room = 'room-'+str(db_file.room),
                  namespace = None)
 
@@ -222,7 +223,7 @@ def upload_portrait():
         return json.dumps({'status': 'ok', 'user': user.public_fields()})
 
 
-
+# TODO: handle these with a real web server?
 @app.route('/static/<path:path>')
 def send_static(path):
     return send_from_directory('static', path)
@@ -241,36 +242,30 @@ def handle_disconnect():
     #print("client disconnecting: " + request.sid)
     scoreboard.remove(request.sid)
 
-def send_online_users():
+def online_users():
     users = scoreboard.online_users()
-    #print(users)
-    emit('user_list', 
-         { user:User.get(user).public_fields() for user in users },
-         broadcast=False)
+    return {user:User.get(user).public_fields() for user in users }
 
 def send_user(label, user, broadcast=False):
     socketio.emit(label, user.public_fields(), broadcast=broadcast)
 
-def send_memberships(user):
+def memberships(user):
     rooms = Room.raw_select("rooms, memberships", 
                                   "rooms.id = memberships.room and memberships.user = %s" % user.id,
                                   "rooms.id")
-    emit('memberships', [ room.public_fields() for room in rooms ], broadcast=False)
+    return { room.id:room.public_fields() for room in rooms }
 
-def send_messages(user):
+def messages(user):
     messages = Message.raw_select("messages, memberships", 
                                   "messages.room = memberships.room and memberships.user = %s" % user.id,
                                   "messages.id desc limit 100")
-    messages = [ i.public_fields() for i in messages ]
-    emit('messages', {'messages': messages}, broadcast=False)
+    return { message.id:message.public_fields() for message in messages }
 
-def send_files(user):
+def files(user):
     files = File.raw_select("files, memberships", 
                                   "files.room = memberships.room and memberships.user = %s" % user.id,
                                   "files.id desc limit 100")
-    files = [ i.public_fields() for i in files ]
-    #print(files)
-    emit('files', {'files': files}, broadcast=False)
+    return { file.id:file.public_fields() for file in files }
 
 def do_login(user, session, send_session_id=False):
     response = {'authenticated': False}
@@ -283,16 +278,16 @@ def do_login(user, session, send_session_id=False):
         join_room('room-'+str(membership.room))
         #print(membership.room)
 
-
-    send_online_users()
-    send_memberships(user)
-    send_messages(user)
-    send_files(user)
-    send_user('user_info', user, True)
-
-    response['userid'] = user.id
+    response['users']    = online_users()
+    response['rooms']    = memberships(user)
+    response['messages'] = messages(user)
+    response['files']    = files(user)
+    response['userid']   = user.id
     response['authenticated'] = True
     response['result'] = 'Login Ok'
+
+    send_user('user_info', user, True)
+
     if send_session_id:
         response['sessionid'] = session.sessionid
     
@@ -349,52 +344,38 @@ def handle_login_session(json):
 
 stuff = {'users': {'class': User, 
                    'tables': 'users',
-                   'where': '',
+                   'where': 'users.id in (%s)',
                    'order_by': 'users.id'},
          'files': {'class': File, 
                    'tables': 'files, memberships',
-                   'where': 'files.id = memberships.room and memberships.user = %s',
+                   'where': 'files.id = memberships.room and memberships.user = %s and files.id in (%s)',
                    'order_by': 'files.id'},
          'rooms': {'class': Room, 
                    'tables': 'rooms, memberships',
-                   'where': 'rooms.id = memberships.room and memberships.user = %s',
+                   'where': 'rooms.id = memberships.room and memberships.user = %s and rooms.id in (%s)',
                    'order_by': 'rooms.id'},
          'messages': {'class': Message, 
                       'tables': 'messages, memberships',
-                      'where': 'messages.room = memberships.room and memberships.user = %s',
+                      'where': 'messages.room = memberships.room and memberships.user = %s and messages.id in (%s)',
                       'order_by': 'rooms.id'}}
 
 @user_logged_in
 @socketio.on('get-stuff')
 def handle_get_stuff(json):
+    user = scoreboard.get_user_from_sid(request.sid)
     output = {}
     for key, table in stuff.items():
-        if key in json:
+        if key in json and len(json[key])>0:
+            where = table['where'] % (user, ','.join(str(i) for i in json[key].keys()))
             rows = stuff[key]['class'].raw_select(table['tables'], 
-                                                  table['where'], 
+                                                  where, 
                                                   table['order_by'])
-            output[key] = { id:row.public_fields() for row in rows }
+            output[key] = { row.id:row.public_fields() for row in rows }
     print("---")
     print(output)
     print("---")
     emit('stuff_list', output, broadcast=False)
 
-@user_logged_in
-@socketio.on('user-info')
-def handle_user_info(json):
-    # TODO: this is inefficient...
-    handle_get_stuff(json)
-    emit('user_list', { id:User.get_where(id=id).public_fields() for id in json['users']})
-
-@user_logged_in
-@socketio.on('file-info')
-def handle_file_info(json):
-    # TODO: this is inefficient...
-    files = File.raw_select("files", 
-                            "files.public=1",
-                            "files.id desc limit 100")
-    files = [ i.public_fields() for i in messages ]
-    emit('files', {'files': messages}, broadcast=False)
 
 @user_logged_in
 @socketio.on('delete-file')
@@ -426,9 +407,10 @@ def handle_send_bell(json):
 @user_logged_in
 @socketio.on('start-chat')
 def handle_start_chat(json):
-    user = scoreboard.get_user_from_sid(request.sid)
-    room = Room.get_or_set_chat(user, json['users'])
+    user         = scoreboard.get_user_from_sid(request.sid)
+    room         = Room.get_or_set_chat(user, json['users'])
     online_users = scoreboard.online_users();
+
     for member in json['users']:
         if user == member:
             join_room('room-'+str(room.id))
@@ -454,8 +436,7 @@ def handle_message(json):
                       message = json['message'])
     message.save()
     message.commit()
-    emit('messages', 
-         {'messages':[message.public_fields()]}, 
+    emit('stuff_list', {'messages': { message.id:message.public_fields() }}, 
          room = 'room-'+str(room))
 
 @user_logged_in

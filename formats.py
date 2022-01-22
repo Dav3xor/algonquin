@@ -218,5 +218,7 @@ formats = {
     'dd':      'disk_image',
     'iso':     'disk_image',
     'rpm':     'package',
-    'deb':     'package' 
+    'deb':     'package',
+    'txt':     'text',
+    'readme':  'text'
     }

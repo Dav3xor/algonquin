@@ -58,7 +58,6 @@ class Invite {
 class Files {
   constructor() {
     this.files = {};
-    this.unknown_files = {};
 
     this.icons = {
     'unknown': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
@@ -232,10 +231,10 @@ class Files {
     }
 
     if (! this.files.hasOwnProperty(id)) {
-      this.unknown_files[id] = 1;
+      getter.add('files', id);
       return null;
     } else {
-      return this.people[id];
+      return this.files[id];
     }
   }
 
@@ -289,7 +288,6 @@ class Files {
                              </div>`);
       }
     }
-  people.get_unknown();  
   }
 }
 
@@ -297,7 +295,6 @@ class Files {
 class People {
   constructor() {
     this.people = {};
-    this.unknown_people = {};
     this.this_person = -1;
 
     this.bell = `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
@@ -314,10 +311,6 @@ class People {
     $('#ring-bell').append(this.bell);
   }
 
-  get_info(people_list) {
-    socket.emit('user-info', {'users':people_list});
-  }
-
   get_person(id) {
     // sigh, javascript...
     if(id==undefined) {
@@ -325,24 +318,13 @@ class People {
     }
 
     if (! this.people.hasOwnProperty(id)) {
-      this.unknown_people[id] = 1;
+      getter.add('users', id);
       return null;
     } else {
       return this.people[id];
     }
   }
    
-  get_unknown() {
-    var users = Object.keys(this.unknown_people);
-    if(users.length > 0) {
-
-      //for(var u in users) {
-        //users[u] = parseInt(users[u]);
-      //}
-      this.get_info(users);
-    }
-    this.unknown_people = {};
-  }
 
   get_this_person() {
     return this.get_person(this.this_person);
@@ -407,7 +389,6 @@ class People {
                              </div>`);
       }
     }
-    this.get_unknown();
   }
 }
 
@@ -655,7 +636,6 @@ class Messages {
       }
 
     }
-    people.get_unknown(); 
 
   }
 
@@ -666,19 +646,46 @@ class Messages {
           this.render_message(message);
         }
     }
-    people.get_unknown();
+  }
+
+  render_inline_file(file) {
+    if (!file) {
+      return `<span class='btn btn-danger'> <b> loading... </b> </span>`;
+    } else {
+      switch(file.type) {
+        case 'image': 
+          return `<img height=200 src="/files/${file.localname}">`;
+          break;
+        case 'audio':
+          return `<button class="btn btn-light btn-sm" onclick="play_sound('/files/${file.localname}');">
+                    ${files.icons.play}
+                  </button>
+                  <span class="btn btn-light-btn-sm">
+                    ${file.name}
+                  </span>`;
+        default:
+          return `<button class="btn btn-light btn-sm" onclick="window.open('/files/${file.localname}','_blank');">
+                    ${files.icons.new_tab} ${file.name}
+                  </button>`;
+          //return `<span class="btn btn-warning">${file.name}</span>`;
+          break;
+      }
+
+    }
   }
 
   render_message(message) {
-    var user = people.get_person(message.user);
-    var portrait = "default.png";
-    var handle   = "loading...";
+    var user         = people.get_person(message.user);
+    var portrait     = "default.png";
+    var handle       = "loading...";
     var inline_files = message.message.match(/~file(\d+)~/gm);
+    var msg          = message.message;
 
-    for (var file in inline_files) {
-      file = inline_files[file];
-      var file_id = parseInt(file.slice(5,-1));
-      console.log(file_id);
+    for (var tag in inline_files) {
+      tag = inline_files[tag];
+      var file_id = tag.slice(5,-1);
+      var file = files.get_file(file_id);
+      msg = msg.replace(tag, this.render_inline_file(file));
     }
 
 
@@ -687,11 +694,11 @@ class Messages {
       handle   = user.handle;
     }
 
-    var contents = ` <div class="col">
-                       <img class="mb-1" src="/portraits/${portrait}" width=40 />
-                       <b>${handle}</b>
-                     </div> 
-                     <div class="col-10">${markdown.makeHtml(message.message)}</div>`;
+    var contents = `<div class="col">
+                      <img class="mb-1" src="/portraits/${portrait}" width=40 />
+                      <b>${handle}</b>
+                    </div> 
+                    <div class="col-10">${markdown.makeHtml(msg)}</div>`;
     if($(`#message-${message.id}`).length) {
       $(`#message-${message.id}`).html(contents);
     } else {
@@ -734,6 +741,82 @@ var cookie = {
     var expires = "expires="+d.toUTCString();
     document.cookie = cname + "=; " + expires;
   }
+};
+
+class Getter {
+  constructor() {
+    this.reset();
+    this.requested = false;
+  }
+
+  add(type, id) {
+    this.unknown[type][id] = 1;
+    if (!this.requested) {
+      setTimeout(() => { this.request(); }, 250);
+      this.requested = true;
+    }
+  }
+
+  handle_stuff(stuff) {
+    var update_messages = false;
+    var update_files = false;
+    var update_users = false;
+
+    if ('users' in stuff) {
+      for(var user in stuff['users']) {
+        people.set_person(stuff['users'][user])
+      }
+      update_messages = true;
+      update_files = true;
+      update_users = true;
+    }
+
+    if ('files' in stuff) {
+      for(var file in stuff['files']) {
+        files.add_file(stuff['files'][file])
+      }
+      update_messages = true;
+      update_files = true;
+    }
+
+    if ('rooms' in stuff) {
+      for (var room in stuff['rooms']) {
+        messages.add_room(stuff['rooms'][room]);
+      }
+      update_messages = true;
+    }
+
+    if ('messages' in stuff) {
+      for(var message in stuff['messages']) {
+        messages.add(stuff['messages'][message])
+      }
+      update_messages = true;
+    }
+
+    if(update_messages) {
+      messages.render();
+    }
+    if(update_files) {
+      files.render();
+    }
+    if(update_users) {
+      people.render();
+    }
+  }
+
+  reset() {
+    this.unknown = {'users': {},
+                    'files': {},
+                    'messages': {},
+                    'rooms': {} }
+  }
+
+  request() {
+    console.log(this.unknown);
+    socket.emit('get-stuff', this.unknown);
+    this.reset();
+  }
+
 };
 
 class Lissajous {
@@ -790,6 +873,7 @@ ctx.strokeStyle = 'rgb(50,200,100)';
 ctx.lineWidth = 2;
 var lissajous = new Lissajous(canvas, 30, 30);
 var tabs      = new Tabs('messages');
+var getter    = new Getter();
 var messages  = new Messages();
 var people    = new People();
 var files     = new Files();
@@ -894,6 +978,7 @@ function upload_file(file, url, success_fn) {
 // The following functions are for handling file drag/drop
 
 function dragover_handler(ev) {
+ console.log('dragover');
  ev.preventDefault();
  ev.stopPropagation();
  ev.dataTransfer.dropEffect = "move";
@@ -970,6 +1055,7 @@ socket.on('login-result', data => {
     if ('new-user' in data) {
       $('#new-user').modal('show');
     }
+    getter.handle_stuff(data);
     lissajous.setb(4);
     settings.set_defaults();
   } else {
@@ -1013,42 +1099,14 @@ socket.on('settings-result', data => {
   $('#settings-result-status').html(data.status_msg);
 });
 
-socket.on('messages', data => {
-  for (let message of data['messages'].reverse()) {
-    messages.add(message);
-    if (message.room == messages.cur_room) {
-      $('#messages').append(messages.render_message(message));
-    }
-
-  }
-});
-
-socket.on('files', data => {
-  for (file in data.files) {
-    file = data.files[file];
-    files.add_file(file);
-  }
-  files.render();
-});
-
-socket.on('memberships', data => {
-  messages.build_rooms(data);
-  messages.render_room_list();
-});
-
 socket.on('goto_chat', data => {
   messages.add_room(data.room); 
   messages.change_room(data.room.id);
   tabs.show('messages');
 });
 
-socket.on('user_list', data => {
-  for (user in data) {
-    people.set_person(data[user]);
-  }
-  people.render();
-  messages.render();
-  files.render();
+socket.on('stuff_list', data => {
+  getter.handle_stuff(data);
 });
 
 socket.on('user_info', data => {
