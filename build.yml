@@ -3,8 +3,8 @@
   vars:
     local_user: dave
     chat_hostname: slow
-    chat_fqdn: slow.pizza
-    chat_fqdntwo: www.slow.pizza
+    chat_fqdn: orgone.institute
+    chat_fqdntwo: www.orgone.institute
   remote_user: root
 
   tasks:
@@ -39,14 +39,14 @@
         - passlib
         - eventlet
 
-  - name: install snap core
-    community.general.snap:
-      name: core
+#  - name: install snap core
+#    community.general.snap:
+#      name: core
 
-  - name: install certbot
-    community.general.snap:
-      name: certbot
-      classic: yes
+# - name: install certbot
+#   community.general.snap:
+#     name: certbot
+#     classic: yes
 
   - name: Add algonquin user
     user:
@@ -57,13 +57,13 @@
       src: nginx/default
       dest: /etc/nginx/sites-available/default
 
-  - name: symlink for certbot on path
-    file:
-      src: /snap/bin/certbot
-      dest: /usr/bin/certbot
-      owner: root
-      group: root
-      state: link
+# - name: symlink for certbot on path
+#   file:
+#     src: /snap/bin/certbot
+#     dest: /usr/bin/certbot
+#     owner: root
+#     group: root
+#     state: link
   
   - name: get algonquin
     git:

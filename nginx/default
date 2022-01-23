@@ -1,12 +1,12 @@
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
-    server_name slow.pizza www.slow.pizza;
+    server_name orgone.institute www.orgone.institute;
 
     listen 443 ssl;
 
-    ssl_certificate /etc/letsencrypt/live/www.slow.pizza/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/www.slow.pizza/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/orgone.institute/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/orgone.institute/privkey.pem;
 
     include /etc/letsencrypt/options-ssl-nginx.conf;
 
