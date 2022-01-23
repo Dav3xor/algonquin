@@ -14,8 +14,8 @@ import pprint
 
 pprint = pprint.PrettyPrinter()
 
-config = {'site_name':        'Slow Pizza',
-          'site_url':         'slow.pizza',
+config = {'site_name':        'Orgone Accumulator',
+          'site_url':         'orgone.institute',
           'sysop_handle':     'sysop',
           'sysop_email':      'sysop@sysop.com',
           'public_rooms':     ['0 Day Warez', 'Poop', 'Dev/Test'],

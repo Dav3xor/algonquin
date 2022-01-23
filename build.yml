@@ -2,7 +2,7 @@
 - hosts: all
   vars:
     local_user: dave
-    chat_hostname: slow
+    chat_hostname: orgone
     chat_fqdn: orgone.institute
     chat_fqdntwo: www.orgone.institute
   remote_user: root
