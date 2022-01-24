@@ -10,6 +10,7 @@ class Tabs {
     setTimeout(function() { $('#new-message').focus() }, 500);
   }
   show(tab) {
+    $('#navb').collapse('hide');
     if(tab == 'messages') {
       $('#messages-deselected-nav').addClass('d-none');
       $('#messages-nav').removeClass('d-none');
@@ -59,6 +60,11 @@ class Files {
   constructor() {
     this.files = {};
 
+  }
+
+  empty() {
+    this.files = {};
+    this.render();
   }
 
   add_file(file) {
@@ -150,6 +156,12 @@ class People {
     $('#ring-bell').append(icons.bell);
   }
 
+  empty() {
+    this.people = {};
+    this.this_person = -1
+    this.render();
+  }
+
   get_person(id) {
     // sigh, javascript...
     if(id==undefined) {
@@ -179,30 +191,30 @@ class People {
 
   render() {
     $('#people').empty();
-    for (var user in this.people) {
-      user = this.get_person(user);
-      if(user) {
+    for (var person in this.people) {
+      person = this.get_person(person);
+      if(person) {
         var about = "";
-        if(user.hasOwnProperty('about')) {
+        if(person.hasOwnProperty('about')) {
           about = `<a tabindex="0" role="button" 
                       class="btn btn-sm btn-danger ml-2 pb-0" 
-                      title="About ${user.handle}"
+                      title="About ${person.handle}"
                       data-placement="bottom"
                       data-bs-toggle="popover"
                       data-bs-trigger="hover"
                       data-bs-animation="true"
-                      data-content="${user.about}">
+                      data-content="${person.about}">
                       <h5>About...</h5>
                     </a>`;
         }
 
         $('#people').append(`<div class="row"> 
                                <div class="col-1 ml-2">
-                                 <img src="/portraits/${user.portrait}" height="36" />
+                                 <img src="/portraits/${person.portrait}" height="36" />
                                </div>
                                <div class="col-3">
                                  <span class="badge badge-dark btn-sm ml-2">
-                                   <h5>${user.handle}</h5>
+                                   <h5>${person.handle}</h5>
                                  </span>
                                </div>
                                <div class="col-1">
@@ -210,17 +222,17 @@ class People {
                                </div>
                                <div class="col-6">
                                  <button class="btn btn-warning btn-sm ml-2" 
-                                         type="button" id="new-file-${user.id}">
+                                         type="button" id="new-file-${person.id}">
                                    ${icons.paperclip}
                                  </button>
                                  <button class="btn btn-success btn-sm ml-2" 
-                                         onclick="start_chat([${user.id},people.get_this_person().id]);" 
-                                         id="start-chat-${user.id}" type="button">
+                                         onclick="start_chat([${person.id},people.get_this_person().id]);" 
+                                         id="start-chat-${person.id}" type="button">
                                    ${icons.chat_bubble}
                                  </button>
                                  <button class="btn btn-success btn-danger btn-sm ml-2" 
-                                         onclick="send_bell(${user.id});" 
-                                         id="start-chat-${user.id}" type="button">
+                                         onclick="send_bell(${person.id});" 
+                                         id="start-chat-${person.id}" type="button">
                                    ${icons.bell}
                                  </button>
                                </div>
@@ -241,7 +253,7 @@ class Settings {
   }
 
   set_new_password(password) {
-    socket.emit('settings', {'new-password': password});
+    socket.emit('settings', {'new-password': password, 'no-status':true});
   }
 
   send_settings() {
@@ -266,19 +278,21 @@ class Settings {
       data = JSON.parse(data);
       $('#portrait-image').attr('src', '/portraits/' + data.user.portrait);
       people.set_person(data);
+      people.render();
+      files.render()
       messages.render(); });
   }
 
 
 
   set_defaults() {
-    var user = people.get_this_person();
-    $('#portrait-image').attr('src', '/portraits/' + user.portrait);
+    var person = people.get_this_person();
+    $('#portrait-image').attr('src', '/portraits/' + person.portrait);
 
     for (var setting in this.settings) {
       setting = this.settings[setting];
-      if(setting in user) {
-        $("#settings-"+setting).val(user[setting]);
+      if(setting in person) {
+        $("#settings-"+setting).val(person[setting]);
       }
     }
   }
@@ -294,7 +308,6 @@ class Settings {
 class Messages {
   constructor() {
     this.rooms = {};
-    this.uploaded_files = [];
     this.expanded_input = false;
 
 
@@ -322,6 +335,11 @@ class Messages {
     $('#send-message').append(icons.chat_bubble);
     $('#footer-new-file').append(icons.paperclip);
 
+  }
+
+  empty() {
+    this.rooms = {};
+    this.render();
   }
 
   input_small() {
@@ -410,7 +428,7 @@ class Messages {
             change_name = false;
             if(people.people[id]){
             } else {
-              expanded_name += " (unknown user?)";
+              expanded_name += " (unknown person?)";
             }
 
           }
@@ -888,7 +906,7 @@ $('.dropdown-toggle').dropdown();
 
 function resize_message_list(header, footer) {
   var new_height = window.innerHeight - header - footer - 5;
-  $('.messages').css('height',new_height.toString()+'px');
+  $('#messages').css('height',new_height.toString()+'px');
 }
 
 $( window ).ready(function () { 
@@ -944,8 +962,16 @@ function send_message() {
 }
 
 function send_logout() {
+    people.empty();
+    files.empty();
+    messages.empty();
     $('#navbar').addClass('d-none');
     $('#footer').addClass('d-none');
+    $('#contents').addClass('d-none');
+
+    $('#invite-result').addClass('d-none'); 
+    $('#settings-result').addClass('d-none'); 
+
     $('#login').modal('show');
     var sessionid = cookie.read('sessionid');
     cookie.delete('sessionid');
@@ -1010,6 +1036,7 @@ function dragstart_handler(ev) {
 
 $('#new-user-ok').click(function() {
   $('#new-user').modal('hide');
+  $('#contents').removeClass('d-none');
   var entered_password = $('#new-user-password').val();
   if (entered_password.length > 0) {
     settings.set_new_password(entered_password);
@@ -1053,6 +1080,8 @@ socket.on('login-result', data => {
     }
     if ('new-user' in data) {
       $('#new-user').modal('show');
+    } else {
+      $('#contents').removeClass('d-none');
     }
     getter.handle_stuff(data);
     lissajous.setb(4);
@@ -1071,6 +1100,7 @@ socket.on('login-result', data => {
 socket.on('invite-result', data => {
   $('#invite-result').removeClass('d-none');
   $('#invite-result-status').html(data.status_msg);
+  getter.handle_stuff(data);
   if(data.status == 1) {
     $('#invite-result-message').removeClass('d-none');
     $('#invite-result-url').removeClass('d-none');

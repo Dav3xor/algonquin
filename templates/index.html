@@ -11,6 +11,7 @@
   </head>
 
   <body>
+
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark d-none fixed-top" id="navbar">
       <a class="navbar-brand" href="#">
         <span><canvas id="lissajous" width=30 height=30></canvas></span>
@@ -54,12 +55,12 @@
             Logout
           </button>
         </form>
-    </div>
+      </div>
+    </nav>
 
-  </nav>
     <div id="footer" class="navbar navbar-dark bg-dark fixed-bottom d-none">
       <form class="form-inline my-1" id="write_message">
-        <textarea class="form-control" name="new-message" id="new-message" cols=60 rows="1"></textarea>
+        <textarea style="resize:none;" class="form-control" name="new-message" id="new-message" cols="60" rows="1"></textarea>
         <input type="file" style="display: none" id="footer-upload-file" multiple />
         <button class="btn btn-light btn-sm ml-2" id="message-expand-button" 
                 type="button" onclick="messages.resize_input();">
@@ -83,7 +84,7 @@
               {{ config.site_name }}
             </div>
             <p>
-              Slow Pizza is a <i>small scale</i> and <i>personal</i> chat service for me and my friends.
+              {{ config.site_name }} is a <i>small scale</i> and <i>personal</i> chat service for me and my friends.
             </p>
             <p>
               You are more than welcome to use this site without a password on this computer for up to a year, 
@@ -150,168 +151,173 @@
         </div>
       </div>
     </div>
-    <div ondrop="drop_handler(event)" 
-         ondragover="dragover_handler(event)" 
-         class="messages container-fluid d-none" 
-         id="messages">
-    </div>
-
-    <div class="container-fluid d-none" id="people">
-    </div>
-
-    <div class="container-fluid d-none" id="files">
-    </div>
 
 
-    <div class="container-fluid d-none" id="settings">
-      <div class="row">
-        <div class="col-6">
-          <form "form-inline" autocomplete="off" onsubmit="return false;">
-            <div class="form-group">
-              <label autocomplete="nope" for="settings-handle">Handle:</label>
-              <input type="text" class="form-control" 
-                     oninput="settings.allow_submission();"
-                     name="settings-handle" id="settings-handle" required>
-            </div>
-            <div class="form-group">
-              <label for="settings-email">Email:</label>
-              <input autocomplete="nope" type="text" class="form-control" 
-                     oninput="settings.allow_submission();"
-                     name="settings-email" id="settings-email" required>
-            </div>
-            <div class="form-group">
-              <label for="settings-password">Old Password (if set):</label>
-              <input autocomplete="new-password" type="password" class="form-control" 
-                     oninput="settings.allow_submission();"
-                     name="settings-old-password" id="settings-old-password" required>
-            </div>
-            <div class="form-group">
-              <label for="settings-password">New Password:</label>
-              <input autocomplete="new-password" type="password" class="form-control" 
-                     oninput="settings.allow_submission();"
-                     name="settings-new-password" id="settings-new-password" required>
-            </div>
-            <div class="form-group">
-              <label for="settings-about">About You:</label>
-              <textarea class="form-control" name="settings-about" id="settings-about" cols=60 rows="5"
-                     oninput="settings.allow_submission();"
-                     required></textarea>
-            </div>
-            <button onclick="settings.send_settings();" 
-                    type="button" id="change-settings" 
-                    class="btn btn-success btn-lg" disabled>
-              Change Settings
-            </button>
-          </form>
-        </div>
-        <div class="col-1">
-        </div>
-        <div class="col-4">
-          <form "form-inline" id="portrait-form" name="portrait-form" autocomplete="off" onsubmit="return false;">
-            <div class="form-group">
-              <img style="padding-top: 100px;" width="100%" id="portrait-image" src="/portraits/default.png"/>
-            </div>
-            <div class="form-group">
-              <input type="file" class="custom-file-label" 
-                     name="portrait-image" id="portrait-file" required>
-              <label for="settings-portrait">Filename</label>
-            </div>
-            <div class="form-group">
-              <button onclick="settings.send_portrait();" 
-                      type="button" id="change-portrait" 
-                      class="btn btn-success btn-lg">
-                Change Portrait
-              </button>
-            </div>
-          </form>
-        </div>
+
+    <div id="contents">
+      <div ondrop="drop_handler(event)" 
+           ondragover="dragover_handler(event)" 
+           class="messages container-fluid d-none" 
+           id="messages">
       </div>
 
-      <div class="row d-none" id="settings-result">
-        <div class="col-4"><h1>Settings Result:</h1></div>
-        <div class="col-6">
-          <div class="alert alert-danger" id="settings-result-status">
-            User Created Successfully
-          </div>
-        </div>
+      <div class="container-fluid d-none" id="people">
       </div>
-    </div>
+
+      <div class="container-fluid d-none" id="files">
+      </div>
 
 
-    <div class="container-fluid d-none" id="invite">
-      <form "form-inline" autocomplete="off" onsubmit="return false;">
+      <div class="container-fluid d-none" id="settings">
         <div class="row">
-          <div class="col">
-            <div class="form-group">
-              <label for="invite-message">Message:</label>
-              <textarea class="form-control" name="invite-message" id="invite-message" rows="20"></textarea>
-            </div>
-          </div>
           <div class="col-6">
-            <div class="form-group">
-              <label for="invite-email">New User Email:</label>
-              <input autocomplete="nope" type="text" class="form-control" 
-                     oninput="invite.allow_submission();"
-                     name="invite-email" id="invite-email" required>
-            </div>
-            <div class="form-group">
-              <label for="invite-handle">New User Handle:</label>
-              <input type="text" class="form-control" 
-                     oninput="invite.allow_submission();"
-                     name="invite-handle" id="invite-handle" required>
-            </div>
-            <div class="form-group">
-              <label for="password">New User Password:</label>
-              <input autocomplete="new-password" type="password" 
-                     oninput="invite.allow_submission();"
-                     class="form-control" name="invite-password" id="invite-password">
-              <div><b>Note:</b> You can leave the password blank, and the user can enter it in later.</div>
-            </div>
-            <div class="form-check">
-              <input type="checkbox" class="form-check-input" id="invite-send-email">
-              <label class="form-check-label" for="send-email">Send Email Invite</label>
-            </div>
-            <div class="pb-2">
-              <button onclick="invite.create_user();" 
-                      type="button" id="add-user" 
+            <form "form-inline" autocomplete="off" onsubmit="return false;">
+              <div class="form-group">
+                <label autocomplete="nope" for="settings-handle">Handle:</label>
+                <input type="text" class="form-control" 
+                       oninput="settings.allow_submission();"
+                       name="settings-handle" id="settings-handle" required>
+              </div>
+              <div class="form-group">
+                <label for="settings-email">Email:</label>
+                <input autocomplete="nope" type="text" class="form-control" 
+                       oninput="settings.allow_submission();"
+                       name="settings-email" id="settings-email" required>
+              </div>
+              <div class="form-group">
+                <label for="settings-password">Old Password (if set):</label>
+                <input autocomplete="new-password" type="password" class="form-control" 
+                       oninput="settings.allow_submission();"
+                       name="settings-old-password" id="settings-old-password" required>
+              </div>
+              <div class="form-group">
+                <label for="settings-password">New Password:</label>
+                <input autocomplete="new-password" type="password" class="form-control" 
+                       oninput="settings.allow_submission();"
+                       name="settings-new-password" id="settings-new-password" required>
+              </div>
+              <div class="form-group">
+                <label for="settings-about">About You:</label>
+                <textarea class="form-control" name="settings-about" id="settings-about" cols=60 rows="5"
+                       oninput="settings.allow_submission();"
+                       required></textarea>
+              </div>
+              <button onclick="settings.send_settings();" 
+                      type="button" id="change-settings" 
                       class="btn btn-success btn-lg" disabled>
-                Add User
+                Change Settings
               </button>
+            </form>
+          </div>
+          <div class="col-1">
+          </div>
+          <div class="col-4">
+            <form "form-inline" id="portrait-form" name="portrait-form" autocomplete="off" onsubmit="return false;">
+              <div class="form-group">
+                <img style="padding-top: 100px;" width="100%" id="portrait-image" src="/portraits/default.png"/>
+              </div>
+              <div class="form-group">
+                <input type="file" class="custom-file-label" 
+                       name="portrait-image" id="portrait-file" required>
+                <label for="settings-portrait">Filename</label>
+              </div>
+              <div class="form-group">
+                <button onclick="settings.send_portrait();" 
+                        type="button" id="change-portrait" 
+                        class="btn btn-success btn-lg">
+                  Change Portrait
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="row d-none" id="settings-result">
+          <div class="col-4"><h1>Settings Result:</h1></div>
+          <div class="col-6">
+            <div class="alert alert-danger" id="settings-result-status">
+              User Created Successfully
             </div>
           </div>
         </div>
-      </form>
+      </div>
+
+
+      <div class="container-fluid d-none" id="invite">
+        <form "form-inline" autocomplete="off" onsubmit="return false;">
+          <div class="row">
+            <div class="col">
+              <div class="form-group">
+                <label for="invite-message">Message:</label>
+                <textarea class="form-control" name="invite-message" id="invite-message" rows="20"></textarea>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="form-group">
+                <label for="invite-email">New User Email:</label>
+                <input autocomplete="nope" type="text" class="form-control" 
+                       oninput="invite.allow_submission();"
+                       name="invite-email" id="invite-email" required>
+              </div>
+              <div class="form-group">
+                <label for="invite-handle">New User Handle:</label>
+                <input type="text" class="form-control" 
+                       oninput="invite.allow_submission();"
+                       name="invite-handle" id="invite-handle" required>
+              </div>
+              <div class="form-group">
+                <label for="password">New User Password:</label>
+                <input autocomplete="new-password" type="password" 
+                       oninput="invite.allow_submission();"
+                       class="form-control" name="invite-password" id="invite-password">
+                <div><b>Note:</b> You can leave the password blank, and the user can enter it in later.</div>
+              </div>
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="invite-send-email">
+                <label class="form-check-label" for="send-email">Send Email Invite</label>
+              </div>
+              <div class="pb-2">
+                <button onclick="invite.create_user();" 
+                        type="button" id="add-user" 
+                        class="btn btn-success btn-lg" disabled>
+                  Add User
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+        <div class="container-fluid d-none" id="invite-result">
+          <div class="row">
+            <div class="col-4"><h1>Invite Result:</h1></div>
+            <div class="col-6"><div class="alert alert-danger" id="invite-result-status">User Created Successfully</div></div>
+          </div>
+          <div class="row " id="invite-result-message">
+            <div class="col-2">
+              Message:
+            </div>
+            <div class="col-7">
+              <div class="alert alert-dark" 
+                   role="alert" 
+                   id="invite-result-message-text">
+                message text
+              </div>
+            </div>
+          </div>
+          <div class="row " id="invite-result-url">
+            <div class="col-2">
+              Bare Url:
+            </div>
+            <div class="col-7">
+              <div class="alert alert-dark" 
+                   role="alert" 
+                   id="invite-result-url-text">
+                url text
+              </div>
+            </div>
+          </div>
+        </div>    
+      </div>
     </div>
-    <div class="container-fluid d-none" id="invite-result">
-      <div class="row">
-        <div class="col-4"><h1>Invite Result:</h1></div>
-        <div class="col-6"><div class="alert alert-danger" id="invite-result-status">User Created Successfully</div></div>
-      </div>
-      <div class="row " id="invite-result-message">
-        <div class="col-2">
-          Message:
-        </div>
-        <div class="col-7">
-          <div class="alert alert-dark" 
-               role="alert" 
-               id="invite-result-message-text">
-            message text
-          </div>
-        </div>
-      </div>
-      <div class="row " id="invite-result-url">
-        <div class="col-2">
-          Bare Url:
-        </div>
-        <div class="col-7">
-          <div class="alert alert-dark" 
-               role="alert" 
-               id="invite-result-url-text">
-            url text
-          </div>
-        </div>
-      </div>
-    </div>    
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.5/socket.io.min.js" 
             integrity="sha512-L9L4VhE0D58fCxtJiYDHbIzSVfNGY24rhQPWTZPschTVKLpucPsLeT0FSjfnylLYARalTQqgwXsjjhi+wUTwIw==" 

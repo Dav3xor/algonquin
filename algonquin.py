@@ -366,7 +366,10 @@ def handle_get_stuff(json):
     output = {}
     for key, table in stuff.items():
         if key in json and len(json[key])>0:
-            where = table['where'] % (user, ','.join(str(i) for i in json[key].keys()))
+            if key == 'users':
+                where = table['where'] % ','.join(str(i) for i in json[key].keys())
+            else:
+                where = table['where'] % (user, ','.join(str(i) for i in json[key].keys()))
             rows = stuff[key]['class'].raw_select(table['tables'], 
                                                   where, 
                                                   table['order_by'])
@@ -473,7 +476,8 @@ def handle_new_user(json):
     response = {'message': json['message'] + '\n\n' + url,
                 'url': url,
                 'status': status,
-                'status_msg': status_msg}
+                'status_msg': status_msg,
+                'users': {user.id:user.public_fields()}}
     #print(response)
     emit('invite-result', response, broadcast=False);
 
@@ -516,10 +520,15 @@ def handle_settings(json):
         send_user('user_change', user, True)
         user.save()
         user.commit()
-
-    emit('settings-result', { 'status_msg': status_msg, 
-                              'status_code': status_code },
-         broadcast=False)
+    if 'no-status' in json:
+        emit('password-set', 
+             { 'status_msg': 'password set' },
+             broadcast=False)
+    else:
+        emit('settings-result', 
+             { 'status_msg':  status_msg, 
+               'status_code': status_code },
+             broadcast=False)
 
         
 
