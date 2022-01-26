@@ -2,7 +2,8 @@ server {
     listen 80 default_server;
     listen [::]:80 default_server;
     server_name orgone.institute www.orgone.institute;
-
+    
+    client_max_body_size 2048M;
     listen 443 ssl;
 
     ssl_certificate /etc/letsencrypt/live/orgone.institute/fullchain.pem;

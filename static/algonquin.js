@@ -365,7 +365,7 @@ class Messages {
   }
 
   add_file(file) {
-    this.uploaded_files.push(file);
+    console.log('add_file');
     this.insert_at_cursor(`~file${file}~`);
   }
 
@@ -901,6 +901,18 @@ var settings  = new Settings();
 
 var markdown = new showdown.Converter({'emoji':true, 'simplifiedAutoLink':true, 'openLinksInNewWindow':true});
 
+function regulate_password(field1, field2, button) {
+  console.log('a');
+  console.log('a = ' + $(field1).val());
+  console.log('b = ' + $(field2).val());
+  if ( ($(field1).val().length > 0) && ($(field1).val() == $(field2).val()) ) {
+    console.log('b');
+    $(button).removeAttr('disabled');
+  } else {
+    console.log('c');
+    $(button).attr('disabled', true);
+  }
+}
 
 $('.dropdown-toggle').dropdown();
 
@@ -1080,6 +1092,9 @@ socket.on('login-result', data => {
     }
     if ('new-user' in data) {
       $('#new-user').modal('show');
+      $('#new-user-password').keyup(function () {regulate_password('#new-user-password', '#new-user-password2', '#new-user-ok')});
+      $('#new-user-password2').keyup(function () {regulate_password('#new-user-password', '#new-user-password2', '#new-user-ok')});
+
     } else {
       $('#contents').removeClass('d-none');
     }
@@ -1122,7 +1137,11 @@ socket.on('delete-file-result', data => {
   }
 });
 
-
+socket.on('password-set', data => {
+  console.log('writing sessionid')
+  cookie.write('sessionid', data.sessionid, 365);
+});
+  
 socket.on('settings-result', data => {
   $('#settings-result').removeClass('d-none');
   $('#settings-result-status').html(data.status_msg);

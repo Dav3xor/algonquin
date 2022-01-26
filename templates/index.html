@@ -87,19 +87,22 @@
               {{ config.site_name }} is a <i>small scale</i> and <i>personal</i> chat service for me and my friends.
             </p>
             <p>
-              You are more than welcome to use this site without a password on this computer for up to a year, 
-              but you'll probably want to enter a password below.
+              Welcome Friend.
             </p>
             <p>
-              You can enter a password at any other time under the settings tab.
+              Your account is already set up, just enter a password below to get started.
             </p>
             <form "form-inline" onsubmit="return false;">
               <div class="form-group">
                 <label for="new-password">Password:</label>
                 <input type="password" class="form-control" name="new-user-password" id="new-user-password" placeholder="Password" required>
               </div>
+              <div class="form-group">
+                <label for="new-password">Confirm Password:</label>
+                <input type="password" class="form-control" name="new-user-password2" id="new-user-password2" placeholder="Password" required>
+              </div>
               <div class="pb-2">
-                <button id="new-user-ok" type="button" class="btn btn-success btn-sm">Ok</button>
+                <button id="new-user-ok" type="button" class="btn btn-success btn-sm" disabled>Ok</button>
               </div>
             </form>
             <div class="modal-footer">

@@ -322,20 +322,14 @@ def handle_login_email(json):
 def handle_login_session(json):
     #print("session login: " + str(json))
     sessionid = json['sessionid']
-    send_sessionid = False
     session   = Session.get_where(sessionid=sessionid)
     if not session:
         # TODO: more bad sessionid handling?
         emit('login-result', {'authenticated': False}, broadcast=False)
     else:
         user = User.get(int(sessionid.split('-')[0]))
-        if '-token-' in sessionid:
-            send_sessionid = True
-            session.sessionid = make_sessionid(user)
-            session.save()
-            session.commit()
         
-        response = do_login(user, session, send_sessionid)
+        response = do_login(user, session)
 
         if '-token-' in sessionid:
             response['new-user'] = True
@@ -520,9 +514,16 @@ def handle_settings(json):
         send_user('user_change', user, True)
         user.save()
         user.commit()
+
+    # it's a new user who used a token link.
     if 'no-status' in json:
+        session = Session.raw_select("sessions",
+                                     "sessionid like '%d-token-%%' and user = %d" % (user.id, user.id))[0]
+        session.sessionid = make_sessionid(user)
+        session.save()
+        session.commit()
         emit('password-set', 
-             { 'status_msg': 'password set' },
+                { 'status_msg': 'password set', 'sessionid': session.sessionid},
              broadcast=False)
     else:
         emit('settings-result', 
