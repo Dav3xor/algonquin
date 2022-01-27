@@ -218,7 +218,7 @@ def upload_portrait():
         user.save()
         user.commit()
 
-        send_user('user_change', user, True)
+        send_user(user, True)
         
         return json.dumps({'status': 'ok', 'user': user.public_fields()})
 
@@ -246,8 +246,9 @@ def online_users():
     users = scoreboard.online_users()
     return {user:User.get(user).public_fields() for user in users }
 
-def send_user(label, user, broadcast=False):
-    socketio.emit(label, user.public_fields(), broadcast=broadcast)
+def send_user(user, broadcast=False):
+    send_stuff(broadcast, **{'users':{user.id:user.public_fields()} })
+    #socketio.emit(label, user.public_fields(), broadcast=broadcast)
 
 def memberships(user):
     rooms = Room.raw_select("rooms, memberships", 
@@ -286,7 +287,7 @@ def do_login(user, session, send_session_id=False):
     response['authenticated'] = True
     response['result'] = 'Login Ok'
 
-    send_user('user_info', user, True)
+    send_user(user, True)
 
     if send_session_id:
         response['sessionid'] = session.sessionid
@@ -353,6 +354,12 @@ stuff = {'users': {'class': User,
                       'where': 'messages.room = memberships.room and memberships.user = %s and messages.id in (%s)',
                       'order_by': 'rooms.id'}}
 
+def send_stuff (room, **kwargs):
+    if type(room) == bool: # broadcast
+        emit('stuff_list', kwargs, broadcast=room)
+    else:
+        emit('stuff_list', kwargs, room=room)
+
 @user_logged_in
 @socketio.on('get-stuff')
 def handle_get_stuff(json):
@@ -368,10 +375,7 @@ def handle_get_stuff(json):
                                                   where, 
                                                   table['order_by'])
             output[key] = { row.id:row.public_fields() for row in rows }
-    print("---")
-    print(output)
-    print("---")
-    emit('stuff_list', output, broadcast=False)
+    send_stuff(request, **output)
 
 
 @user_logged_in
@@ -511,7 +515,7 @@ def handle_settings(json):
             user.about = val
     if status_code == 1:
         #print("saving settings")
-        send_user('user_change', user, True)
+        send_user(user, True)
         user.save()
         user.commit()
 

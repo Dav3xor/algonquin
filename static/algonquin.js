@@ -16,8 +16,7 @@ class Tabs {
       $('#messages-nav').removeClass('d-none');
       $('#messages-nav').addClass('active');
       $('#new-message').focus();
-    }
-    if(this.cur_tab == 'messages') {
+    } else if(this.cur_tab == 'messages') {
       $('#messages-deselected-nav').removeClass('d-none');
       $('#messages-nav').addClass('d-none');
     }            
@@ -274,7 +273,6 @@ class Settings {
                 'upload-portrait', 
                 function(data) {
       // following is done when upload is finished...
-      console.log(data);
       data = JSON.parse(data);
       $('#portrait-image').attr('src', '/portraits/' + data.user.portrait);
       people.set_person(data);
@@ -365,7 +363,6 @@ class Messages {
   }
 
   add_file(file) {
-    console.log('add_file');
     this.insert_at_cursor(`~file${file}~`);
   }
 
@@ -444,7 +441,8 @@ class Messages {
                                   ${room.name}
                                 </a>`);
       } else {
-        $('#messages_label').html(this.rooms[this.cur_room].name);
+        console.log('xxx');
+        $('#messages_label').html(room.name);
       }
 
     }
@@ -573,6 +571,7 @@ class Getter {
     var update_messages = false;
     var update_files = false;
     var update_users = false;
+    var update_rooms = false;
 
     if ('users' in stuff) {
       for(var user in stuff['users']) {
@@ -588,7 +587,7 @@ class Getter {
         files.add_file(stuff['files'][file])
       }
       update_messages = true;
-      update_files = true;
+      update_files    = true;
     }
 
     if ('rooms' in stuff) {
@@ -596,6 +595,7 @@ class Getter {
         messages.add_room(stuff['rooms'][room]);
       }
       update_messages = true;
+      update_rooms    = true;
     }
 
     if ('messages' in stuff) {
@@ -614,6 +614,10 @@ class Getter {
     if(update_users) {
       people.render();
     }
+    if(update_rooms) {
+      messages.render_room_list();
+    }
+
   }
 
   reset() {
@@ -624,7 +628,6 @@ class Getter {
   }
 
   request() {
-    console.log(this.unknown);
     socket.emit('get-stuff', this.unknown);
     this.reset();
   }
@@ -902,14 +905,9 @@ var settings  = new Settings();
 var markdown = new showdown.Converter({'emoji':true, 'simplifiedAutoLink':true, 'openLinksInNewWindow':true});
 
 function regulate_password(field1, field2, button) {
-  console.log('a');
-  console.log('a = ' + $(field1).val());
-  console.log('b = ' + $(field2).val());
   if ( ($(field1).val().length > 0) && ($(field1).val() == $(field2).val()) ) {
-    console.log('b');
     $(button).removeAttr('disabled');
   } else {
-    console.log('c');
     $(button).attr('disabled', true);
   }
 }
@@ -1077,7 +1075,6 @@ socket.on('bell', data => {
 });
 
 socket.on('login-result', data => {
-  console.log(data);
   if(data.authenticated) {
     people.set_this_person(data.userid);
     if(url_parameters.has('token')) {
@@ -1132,13 +1129,10 @@ socket.on('delete-file-result', data => {
     files.delete_file(data.file_id);
     files.render();
     messages.render();
-  } else {
-      console.log(data);
   }
 });
 
 socket.on('password-set', data => {
-  console.log('writing sessionid')
   cookie.write('sessionid', data.sessionid, 365);
 });
   
@@ -1148,8 +1142,8 @@ socket.on('settings-result', data => {
 });
 
 socket.on('goto_chat', data => {
-  messages.add_room(data.room); 
-  messages.change_room(data.room.id);
+  //messages.add_room(data.room); 
+  //messages.change_room(data.room.id);
   tabs.show('messages');
 });
 
@@ -1157,13 +1151,3 @@ socket.on('stuff_list', data => {
   getter.handle_stuff(data);
 });
 
-socket.on('user_info', data => {
-  people.people[data.id] = data;
-});
-
-socket.on('user_change', data => {
-  people.people[data.id] = data;
-  messages.render();
-  files.render();
-});
-  
