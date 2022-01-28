@@ -230,7 +230,7 @@ class People {
                                    ${icons.chat_bubble}
                                  </button>
                                  <button class="btn btn-success btn-danger btn-sm ml-2" 
-                                         onclick="send_bell(${person.id});" 
+                                         onclick="send_bell_user(${person.id});" 
                                          id="start-chat-${person.id}" type="button">
                                    ${icons.bell}
                                  </button>
@@ -963,8 +963,12 @@ function start_chat(ids) {
   socket.emit('start-chat', {users:ids});
 }
 
-function send_bell(userid) {
-  socket.emit('send-bell', {user:userid});
+function send_bell_user(userid) {
+  socket.emit('send-bell-user', {user:userid});
+}
+
+function send_bell_room() {
+  socket.emit('send-bell-room', {room:messages.cur_room});
 }
 
 function send_message() {

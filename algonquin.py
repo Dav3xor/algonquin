@@ -399,11 +399,16 @@ def handle_delete_file(json):
 
 
 @user_logged_in
-@socketio.on('send-bell')
-def handle_send_bell(json):
+@socketio.on('send-bell-user')
+def handle_send_bell_user(json):
     userid = json['user']
     for sid in scoreboard.get_sids_from_user(userid):
         emit('bell', {}, room = sid)
+
+@user_logged_in
+@socketio.on('send-bell-room')
+def handle_send_bell_user(json):
+    emit('bell', {}, room = 'room-' +json['room'])
 
 @user_logged_in
 @socketio.on('start-chat')
