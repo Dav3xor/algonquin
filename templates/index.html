@@ -51,7 +51,8 @@
           </li>
         </ul>
         <form class="form-inline" id="logout">
-          <button class="btn btn-warning btn-sm" onclick="send_logout();" type="button">
+          <button class="btn btn-warning btn-sm" 
+                  onclick="send_logout();" type="button">
             Logout
           </button>
         </form>
@@ -60,20 +61,29 @@
 
     <div id="footer" class="navbar navbar-dark bg-dark fixed-bottom d-none">
       <form class="form-inline my-1" id="write_message">
-        <textarea style="resize:none;" class="form-control" name="new-message" id="new-message" cols="60" rows="1"></textarea>
+        <textarea style="resize:none;" class="form-control" 
+                  name="new-message" id="new-message" 
+                  oninput="lissajous.dec();"
+                  cols="60" rows="1"></textarea>
         <input type="file" style="display: none" id="footer-upload-file" multiple />
         <button class="btn btn-light btn-sm ml-2" id="message-expand-button" 
                 type="button" onclick="messages.resize_input();">
         </button>
-        <button class="btn btn-warning btn-sm ml-2" type="button" id="footer-new-file">
-        <button class="btn btn-success btn-sm ml-2" onclick="send_message();" id="send-message" type="button">
+        <button class="btn btn-warning btn-sm ml-2" 
+                type="button" id="footer-new-file">
+        <button class="btn btn-success btn-sm ml-2" 
+                onclick="send_message();" 
+                id="send-message" type="button">
           <span>Send</span>
         </button>
-        <button class="btn btn-danger btn-sm ml-2" onclick="send_bell_room();" id="ring-bell" type="button">
+        <button class="btn btn-danger btn-sm ml-2" 
+                onclick="send_bell_room();" 
+                id="ring-bell" type="button">
       </form>
     </div>
 
-    <div id="new-user" class="modal" data-keyboard="false" data-backdrop="static" tabindex="-1">
+    <div id="new-user" class="modal" data-keyboard="false" 
+         data-backdrop="static" tabindex="-1">
       <div class="modal-dialog modal-light">
         <div class="modal-content">
           <div class="modal-header">
@@ -159,7 +169,8 @@
 
     <div id="contents">
       <div ondrop="drop_handler(event)" 
-           ondragover="dragover_handler(event)" 
+           ondragover="dragover_handler(event)"
+           onclick="$('#new-message').focus()"
            class="messages container-fluid d-none" 
            id="messages">
       </div>

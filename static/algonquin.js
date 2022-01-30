@@ -16,9 +16,11 @@ class Tabs {
       $('#messages-nav').removeClass('d-none');
       $('#messages-nav').addClass('active');
       $('#new-message').focus();
+      $('#footer').removeClass('d-none');
     } else if(this.cur_tab == 'messages') {
       $('#messages-deselected-nav').removeClass('d-none');
       $('#messages-nav').addClass('d-none');
+      $('#footer').addClass('d-none');
     }            
     
     $('#'+this.cur_tab).addClass('d-none'); 
@@ -526,6 +528,12 @@ class Messages {
       this.rooms[message.room] = { messages:[] };
     }
     this.rooms[message.room].messages.push(message);
+    if ((this.rooms[message.room].hasOwnProperty('name')) &&
+        (this.rooms[message.room]['name'].startsWith("Chat With"))) {
+      return 2;
+    } else {
+      return 1;
+    }
   }
   
 
@@ -598,14 +606,20 @@ class Getter {
       update_rooms    = true;
     }
 
+    var message_types = 0;
     if ('messages' in stuff) {
       for(var message in stuff['messages']) {
-        messages.add(stuff['messages'][message])
+        message_types |= messages.add(stuff['messages'][message])
       }
       update_messages = true;
     }
 
     if(update_messages) {
+      if(update_messages & 1) {
+        lissajous.inca();
+      } else if (update_messages & 2) {
+        lissajous.incb();
+      }
       messages.render();
     }
     if(update_files) {
@@ -646,6 +660,20 @@ class Lissajous {
     this.bgoal   = 3;
     this.ctx     = canvas.getContext('2d');
     this.draw();
+  }
+  inca() {
+    this.agoal += 1;
+  }
+  incb() {
+    this.agoal += 1;
+  }
+  dec() {
+    if(this.agoal>1) {
+      this.agoal -= 1;
+    }
+    if(this.bgoal>1) {
+      this.bgoal -= 1;
+    }
   }
   seta(newval) {
     this.agoal=newval;
