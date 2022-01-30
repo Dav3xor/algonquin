@@ -358,7 +358,8 @@ def send_stuff (room, **kwargs):
     if type(room) == bool: # broadcast
         emit('stuff_list', kwargs, broadcast=room)
     else:
-        emit('stuff_list', kwargs, room=room)
+        # send only to initiating user...
+        emit('stuff_list', kwargs, to=room)
 
 @user_logged_in
 @socketio.on('get-stuff')
@@ -375,7 +376,7 @@ def handle_get_stuff(json):
                                                   where, 
                                                   table['order_by'])
             output[key] = { row.id:row.public_fields() for row in rows }
-    send_stuff(request, **output)
+    send_stuff(request.sid, **output)
 
 
 @user_logged_in
