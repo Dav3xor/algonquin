@@ -218,7 +218,7 @@ def upload_portrait():
         user.save()
         user.commit()
 
-        send_user(user, True)
+        send_user(user, True, namespace=None)
         
         return json.dumps({'status': 'ok', 'user': user.public_fields()})
 
@@ -246,7 +246,10 @@ def online_users():
     users = scoreboard.online_users()
     return {user:User.get(user).public_fields() for user in users }
 
-def send_user(user, broadcast=False):
+def send_user(user, broadcast=False, **kwargs):
+
+    if 'namespace' in kwargs:
+        namespace = kwargs['namespace']
     send_stuff(broadcast, **{'users':{user.id:user.public_fields()} })
     #socketio.emit(label, user.public_fields(), broadcast=broadcast)
 
@@ -356,10 +359,10 @@ stuff = {'users': {'class': User,
 
 def send_stuff (room, **kwargs):
     if type(room) == bool: # broadcast
-        emit('stuff_list', kwargs, broadcast=room)
+        emit('stuff_list', kwargs, broadcast=room, namespace='/')
     else:
         # send only to initiating user...
-        emit('stuff_list', kwargs, to=room)
+        emit('stuff_list', kwargs, to=room, namespace='/')
 
 @user_logged_in
 @socketio.on('get-stuff')
