@@ -420,19 +420,24 @@ def handle_start_chat(json):
     user         = scoreboard.get_user_from_sid(request.sid)
     room         = Room.get_or_set_chat(user, json['users'])
     online_users = scoreboard.online_users();
-
+    print("start chat")
     for member in json['users']:
+        sids = scoreboard.get_sids_from_user(member)
         if user == member:
-            join_room('room-'+str(room.id))
+            for sid in sids:
+                join_room('room-'+str(room.id),
+                          sid=sid)
             emit('goto_chat', 
                  {'room': room.public_fields()},
                  broadcast=False)
         elif member in online_users:
-            join_room('room-'+str(room.id), 
-                      sid=scoreboard.get_sid_from_user(member))
-            emit('add_room', 
-                 {'room': room.public_fields()}, 
-                 to=scoreboard.user_to_sid(member))
+            for sid in sids:
+                join_room('room-'+str(room.id), 
+                          sid=sid)
+                emit('add_room', 
+                     {'room': room.public_fields()}, 
+                     room=sid)
+    print("end chat")
 
 # user has uploaded a message
 @user_logged_in

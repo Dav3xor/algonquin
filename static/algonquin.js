@@ -452,9 +452,14 @@ class Messages {
   }
 
   render() {
-    if(this['rooms'].hasOwnProperty(this.cur_room)) {
+    this.side = 0; // left
+    this.cur_user = 0;
+    if(this.rooms.hasOwnProperty(this.cur_room)) {
+        if(this.rooms[this.cur_room].messages.length > 0) {
+          this.cur_user = this.rooms[this.cur_room].messages[0].user;
+        }
         $('#messages').html('');
-        for (let message of this['rooms'][this.cur_room]['messages']) {
+        for (let message of this.rooms[this.cur_room].messages) {
           this.render_message(message);
         }
     }
@@ -487,11 +492,13 @@ class Messages {
   }
 
   render_message(message) {
-    var user         = people.get_person(message.user);
-    var portrait     = "default.png";
-    var handle       = "loading...";
-    var inline_files = message.message.match(/~file(\d+)~/gm);
-    var msg          = message.message;
+    var user          = people.get_person(message.user);
+    var portrait      = "default.png";
+    var handle        = "loading...";
+    var inline_files  = message.message.match(/~file(\d+)~/gm);
+    var msg           = message.message;
+    var prev_msg      = null;
+    var switched_side = false;
 
     for (var tag in inline_files) {
       tag = inline_files[tag];
@@ -506,19 +513,61 @@ class Messages {
       handle   = user.handle;
     }
 
-    var contents = `<div class="col">
-                      <img class="mb-1" src="/portraits/${portrait}" width=40 />
-                      <b>${handle}</b>
-                    </div> 
-                    <div class="col-10">${markdown.makeHtml(msg)}</div>`;
-    if($(`#message-${message.id}`).length) {
-      $(`#message-${message.id}`).html(contents);
-    } else {
-      $('#messages').prepend(`<div class="row" id="message-${message.id}"> 
-                                ${contents}
-                              </div>`);
+    if (this.cur_user != message.user) {
+      this.side += 1;
+      this.cur_user = message.user;
+      switched_side = true;
+    } else if (this.prev_msg != null) {
+      console.log('yy');
+      $(`#msg-${message.room}-${this.prev_msg}`).removeClass('tri-right btm-right-in');
     }
 
+    var classes = "tri-right btm-left-in default-bubble";
+    var float = "";
+    if(!(this.side % 2)) {
+      float = " text-right";
+      classes = "tri-right btm-right-in default-bubble";
+    }
+
+    //<b>${handle}</b>
+    var user_info = `<div class="col-1" id="user-info-${message.id}">
+                      <img src="/portraits/${portrait}" width=40 />
+                    </div>`;
+
+    var empty    = `<div class="col-2"></div>`;
+    var contents = `<div class="col-9${float}">
+                      <span id="msg-${message.room}-${message.id}" 
+                            class="${classes}">
+                        ${markdown.makeHtml(msg)}
+                      </span>
+                    </div>`;
+
+    var output = "";
+    if(this.side % 2) {
+      output = user_info + contents + empty;
+      if(!(switched_side)) {
+        $(`#user-info-${this.prev_msg}`).remove();
+        $(`#msg-${message.room}-${this.prev_msg}`).parent().removeClass('col-9');
+        $(`#msg-${message.room}-${this.prev_msg}`).parent().addClass('col-10');
+      }
+    } else {
+      output = empty + contents + user_info;
+      if(!(switched_side)) {
+        $(`#user-info-${this.prev_msg}`).remove();
+        $(`#msg-${message.room}-${this.prev_msg}`).parent().removeClass('col-9');
+        $(`#msg-${message.room}-${this.prev_msg}`).parent().addClass('col-10');
+      }
+    }
+
+    if($(`#message-${message.id}`).length) {
+      $(`#message-${message.id}`).html(output);
+    } else {
+      $('#messages').prepend(`<div class="row mb-1" id="message-${message.id}"> 
+                                ${output}
+                              </div>`);
+    }
+    
+    this.prev_msg = message.id;
 
 
   }
@@ -620,6 +669,7 @@ class Getter {
       } else if (update_messages & 2) {
         lissajous.incb();
       }
+      $('#favicon').attr('href','/static/favicon2.svg');
       messages.render();
     }
     if(update_files) {
@@ -1174,8 +1224,8 @@ socket.on('settings-result', data => {
 });
 
 socket.on('goto_chat', data => {
-  //messages.add_room(data.room); 
-  //messages.change_room(data.room.id);
+  messages.add_room(data.room); 
+  messages.change_room(data.room.id);
   tabs.show('messages');
 });
 
