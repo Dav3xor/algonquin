@@ -324,11 +324,12 @@ class Message(DBTable):
 set_properties(Message, Message.attrs)
 
 class Membership(DBTable):
-    attrs = {'id':   {'type': 'INTEGER PRIMARY KEY'},
-             'user': {'type': 'INTEGER NOT NULL',
-                      'fkey': ['user', 'id', 'User', 'memberships']},
-             'room': {'type': 'INTEGER NOT NULL',
-                      'fkey': ['room', 'id', 'Room', 'members']}}
+    attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
+             'user':      {'type': 'INTEGER NOT NULL',
+                           'fkey': ['user', 'id', 'User', 'memberships']},
+             'last_seen': {'type': 'INTEGER DEFAULT 0'},
+             'room':      {'type': 'INTEGER NOT NULL',
+                           'fkey': ['room', 'id', 'Room', 'members']}}
     table_name = 'memberships'
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)

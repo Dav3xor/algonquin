@@ -100,6 +100,24 @@ def user_logged_in(f):
         else:
             pass
 
+# decorator for making sure the json argument for socketio handler functions
+# contains certain arguments
+def json_has_keys(*keys):
+    def Inner(func):
+        def wrapper(*args, **kwargs):
+            success = True
+            for key in keys:
+                if key not in args[0]:
+                    print ("missing json key: " + key)
+                    success = False
+            if success:
+                result = func(*args, **kwargs)
+            else:
+                result = False
+            return result
+        return wrapper
+    return Inner
+
 def admin_logged_in(f):
     def wrapper(*args, **kwargs):
         if request.sid in scoreboard.sid_to_user and scoreboard.sid_to_user == 1:
@@ -384,6 +402,7 @@ def handle_get_stuff(json):
 
 @user_logged_in
 @socketio.on('delete-file')
+@json_has_keys('file_id')
 def handle_delete_file(json):
     if 'file_id' not in json:
         emit('delete-file-result', {'error': 'invalid request'}, broadcast=False)
@@ -404,6 +423,7 @@ def handle_delete_file(json):
 
 @user_logged_in
 @socketio.on('send-bell-user')
+@json_has_keys('user')
 def handle_send_bell_user(json):
     userid = json['user']
     for sid in scoreboard.get_sids_from_user(userid):
@@ -411,11 +431,33 @@ def handle_send_bell_user(json):
 
 @user_logged_in
 @socketio.on('send-bell-room')
-def handle_send_bell_user(json):
+@json_has_keys('room')
+def handle_send_bell_room(json):
     emit('bell', {}, room = 'room-' +json['room'])
 
 @user_logged_in
+@socketio.on('have-read')
+@json_has_keys('room', 'last')
+def handle_have_read(json):
+    user = scoreboard.get_user_from_sid(request.sid)
+    membership = Membership.get(room = json['room'], user=user.id)
+    if membership:
+        membership.last_seen = json['last']
+        membership.save()
+        membership.commit()
+        for sid in scoreboard.get_sids_from_user(user):
+            emit('has-read',
+                 {'room': membership.room,
+                  'last': json['last']},
+                 room=sid)
+
+
+
+
+
+@user_logged_in
 @socketio.on('start-chat')
+@json_has_keys('users')
 def handle_start_chat(json):
     user         = scoreboard.get_user_from_sid(request.sid)
     room         = Room.get_or_set_chat(user, json['users'])
@@ -442,6 +484,7 @@ def handle_start_chat(json):
 # user has uploaded a message
 @user_logged_in
 @socketio.on('message')
+@json_has_keys('room', 'message')
 def handle_message(json):
     #print("message: sid="+str(request.sid))
     user = scoreboard.get_user_from_sid(request.sid)
@@ -456,6 +499,7 @@ def handle_message(json):
 
 @user_logged_in
 @socketio.on('invite-new-user')
+@json_has_keys('password', 'email', 'handle', 'message')
 def handle_new_user(json):
     #print(json)
     

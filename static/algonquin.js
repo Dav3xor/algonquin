@@ -390,26 +390,34 @@ class Messages {
 
   change_room(room) {
     this.cur_room = room;
+    this.rooms[this.cur_room].unread = 0;
     cookie.write('cur_room', room, '365');
     this.render();
     this.render_room_list();
   }
  
   add_room(room) {
-    if(!this.rooms.hasOwnProperty(room.id))
-      {
-        this.rooms[room.id] = room;
-        this.rooms[room.id].messages = [];
+    if(!this.rooms.hasOwnProperty(room.id)) {
+      this.rooms[room.id] = room;
+      this.rooms[room.id].messages = [];
+      this.rooms[room.id].unread = 0;
+      if(!(room.hasOwnProperty('last_seen'))) {
+        this.rooms[room.id].last_seen = 0;
       }
-  }
-
-  build_rooms(rooms) {
-    for (let room of rooms) {
-      this.add_room(room);
+    } else {
+      if(!(room.hasOwnProperty('placeholder'))) {
+        for (var key in room) {
+          this.rooms[room.id][key] = room[key];
+        }
+      }
+      if((room.hasOwnProperty('last_seen')) && (room.last_seen > this.rooms[room.id].last_seen)) {
+        this.rooms[room.id].last_seen = room.last_seen;
+      }
     }
   }
 
   render_room_list() {
+    var unread = false;
     $('#room_list').empty();
     for (var room in this.rooms) {
       var room = this.rooms[room];
@@ -437,18 +445,57 @@ class Messages {
         }       
       }
 
+      var contents = room.name;
+      if(room.unread > 0) {
+        unread = true;
+        contents += `<span class="ml-2 badge badge-info">${room.unread}</span>`;
+      }
+
       if ( room.id != this.cur_room ) {
         $('#room_list').append(`<a class="dropdown-item" href="#" 
-                                                         onclick="messages.change_room('${room.id}');">
-                                  ${room.name}
+                                                         onclick="messages.change_room('${room.id}'); 
+                                                                  messages.clear_unread();"> 
+                                  ${contents}
                                 </a>`);
       } else {
         console.log('xxx');
-        $('#messages_label').html(room.name);
+        $('#messages_label').html(contents);
       }
 
     }
+    if (unread) {
+      $('#favicon').attr('href','/static/favicon2.svg');
+    } else {
+      $('#favicon').attr('href','/static/favicon.svg');
+    }
+  }
 
+  render_inline_file(file) {
+    if (!file) {
+      return `<span class='btn btn-danger'> <b> loading... </b> </span>`;
+    } else {
+      switch(file.type) {
+        case 'image': 
+          return `<img height=200 src="/files/${file.localname}">`;
+          break;
+        case 'audio':
+          return `<button class="btn btn-light btn-sm" 
+                          onclick="play_sound('/files/${file.localname}');">
+                    ${icons.play}
+                  </button>
+                  <span class="btn btn-light-btn-sm">
+                    ${file.name}
+                  </span>`;
+        default:
+          return `<button class="btn btn-light btn-sm" 
+                          onclick="window.open('/files/${file.localname}','_blank');">
+                    ${icons.new_tab} ${file.name}
+                  </button>`;
+          //return `<span class="btn btn-warning">${file.name}</span>`;
+          break;
+      }
+
+    }
   }
 
   render() {
@@ -462,32 +509,6 @@ class Messages {
         for (let message of this.rooms[this.cur_room].messages) {
           this.render_message(message);
         }
-    }
-  }
-
-  render_inline_file(file) {
-    if (!file) {
-      return `<span class='btn btn-danger'> <b> loading... </b> </span>`;
-    } else {
-      switch(file.type) {
-        case 'image': 
-          return `<img height=200 src="/files/${file.localname}">`;
-          break;
-        case 'audio':
-          return `<button class="btn btn-light btn-sm" onclick="play_sound('/files/${file.localname}');">
-                    ${icons.play}
-                  </button>
-                  <span class="btn btn-light-btn-sm">
-                    ${file.name}
-                  </span>`;
-        default:
-          return `<button class="btn btn-light btn-sm" onclick="window.open('/files/${file.localname}','_blank');">
-                    ${icons.new_tab} ${file.name}
-                  </button>`;
-          //return `<span class="btn btn-warning">${file.name}</span>`;
-          break;
-      }
-
     }
   }
 
@@ -574,7 +595,10 @@ class Messages {
     
   add(message) {
     if (!this.rooms.hasOwnProperty(message.room)) {
-      this.rooms[message.room] = { messages:[] };
+      this.add_room({id:message.room, placeholder:true});
+    }
+    if(message.id > this.rooms[message.room].last_seen) {
+      this.rooms[message.room].unread += 1;
     }
     this.rooms[message.room].messages.push(message);
     if ((this.rooms[message.room].hasOwnProperty('name')) &&
@@ -584,8 +608,21 @@ class Messages {
       return 1;
     }
   }
-  
+ 
+  increment_unread() {
+    if(!(this.rooms[this.cur_room].hasOwnProperty('unread'))) {
+      this.rooms[this.cur_room].unread = 0;
+    }
+    this.rooms[this.cur_room].unread += 1;
+  }
 
+  clear_unread() {
+    if(!(this.rooms[this.cur_room].hasOwnProperty('unread'))) {
+      this.rooms[this.cur_room].unread = 0;
+    }
+    this.rooms[this.cur_room].unread = 0;
+  }
+      
 }
     
 var cookie = {
@@ -672,13 +709,16 @@ class Getter {
       $('#favicon').attr('href','/static/favicon2.svg');
       messages.render();
     }
+
     if(update_files) {
       files.render();
     }
+
     if(update_users) {
       people.render();
     }
-    if(update_rooms) {
+
+    if((update_rooms)||(update_messages)) {
       messages.render_room_list();
     }
 
@@ -1226,6 +1266,7 @@ socket.on('settings-result', data => {
 socket.on('goto_chat', data => {
   messages.add_room(data.room); 
   messages.change_room(data.room.id);
+  messages.clear_unread();
   tabs.show('messages');
 });
 
