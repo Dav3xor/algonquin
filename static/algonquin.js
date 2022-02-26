@@ -17,6 +17,7 @@ class Tabs {
       $('#messages-nav').addClass('active');
       $('#new-message').focus();
       $('#footer').removeClass('d-none');
+      messages.clear_unread();
     } else if(this.cur_tab == 'messages') {
       $('#messages-deselected-nav').removeClass('d-none');
       $('#messages-nav').addClass('d-none');
@@ -309,6 +310,7 @@ class Messages {
   constructor() {
     this.rooms = {};
     this.expanded_input = false;
+    this.label = "messages"
 
 
 
@@ -417,7 +419,7 @@ class Messages {
   }
 
   render_room_list() {
-    var unread = false;
+    var unread = 0;
     $('#room_list').empty();
     for (var room in this.rooms) {
       var room = this.rooms[room];
@@ -447,7 +449,7 @@ class Messages {
 
       var contents = room.name;
       if(room.unread > 0) {
-        unread = true;
+        unread += room.unread;
         contents += `<span class="ml-2 badge badge-info">${room.unread}</span>`;
       }
 
@@ -463,11 +465,16 @@ class Messages {
       }
 
     }
-    if (unread) {
+    var msg_label = "messages";
+    if (unread > 0) {
+      msg_label += `<span class="ml-2 badge badge-info">${unread}</span>`;
+      $('#messages_off_label').html(msg_label);
       $('#favicon').attr('href','/static/favicon2.svg');
     } else {
+      $('#messages_off_label').html(msg_label);
       $('#favicon').attr('href','/static/favicon.svg');
     }
+    this.label = msg_label;
   }
 
   render_inline_file(file) {
@@ -609,14 +616,14 @@ class Messages {
     }
   }
  
-  increment_unread() {
-    if(!(this.rooms[this.cur_room].hasOwnProperty('unread'))) {
-      this.rooms[this.cur_room].unread = 0;
-    }
-    this.rooms[this.cur_room].unread += 1;
-  }
 
   clear_unread() {
+    var last_seen = this.rooms[this.cur_room].messages.slice(-1)[0];
+
+    if(last_seen) {
+      socket.emit('have-read', { room: this.cur_room, last: last_seen.id });
+    }
+
     if(!(this.rooms[this.cur_room].hasOwnProperty('unread'))) {
       this.rooms[this.cur_room].unread = 0;
     }

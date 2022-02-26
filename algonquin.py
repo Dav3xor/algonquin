@@ -1,4 +1,4 @@
-from db import User, Session, Message, File, Room, Membership, build_tables
+from tables import User, Session, Message, File, Room, Membership
 from formats import formats
 from flask import Flask, render_template, send_from_directory, request
 from flask_socketio import SocketIO, emit, send, disconnect, join_room
@@ -273,14 +273,20 @@ def send_user(user, broadcast=False, **kwargs):
 
 def memberships(user):
     rooms = Room.raw_select("rooms, memberships", 
-                                  "rooms.id = memberships.room and memberships.user = %s" % user.id,
-                                  "rooms.id")
+                            "rooms.id = memberships.room and memberships.user = %s" % user.id,
+                            "rooms.id",
+                            ["last_seen"])
+    for room in rooms:
+        print(room.id)
+        print(room.public_fields())
     return { room.id:room.public_fields() for room in rooms }
 
 def messages(user):
     messages = Message.raw_select("messages, memberships", 
                                   "messages.room = memberships.room and memberships.user = %s" % user.id,
                                   "messages.id desc limit 100")
+    for message in messages:
+        print(message.public_fields())
     return { message.id:message.public_fields() for message in messages }
 
 def files(user):
@@ -393,6 +399,7 @@ def handle_get_stuff(json):
                 where = table['where'] % ','.join(str(i) for i in json[key].keys())
             else:
                 where = table['where'] % (user, ','.join(str(i) for i in json[key].keys()))
+            extra_columns = stuff[key]['extra_columns'] if 'extra_columns' in stuff[key] else []
             rows = stuff[key]['class'].raw_select(table['tables'], 
                                                   where, 
                                                   table['order_by'])
@@ -440,8 +447,9 @@ def handle_send_bell_room(json):
 @json_has_keys('room', 'last')
 def handle_have_read(json):
     user = scoreboard.get_user_from_sid(request.sid)
-    membership = Membership.get(room = json['room'], user=user.id)
+    membership = Membership.get_where(room = json['room'], user=user)
     if membership:
+        print(f"last seen: id:{membership.id} last:{json['last']}")
         membership.last_seen = json['last']
         membership.save()
         membership.commit()
