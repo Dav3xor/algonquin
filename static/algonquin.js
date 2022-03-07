@@ -394,6 +394,7 @@ class Messages {
     this.cur_room = room;
     this.rooms[this.cur_room].unread = 0;
     cookie.write('cur_room', room, '365');
+    this.clear_unread();
     this.render();
     this.render_room_list();
   }
@@ -404,8 +405,10 @@ class Messages {
       this.rooms[room.id].messages = [];
       this.rooms[room.id].unread = 0;
       if(!(room.hasOwnProperty('last_seen'))) {
+        console.log("no last seen: " + room.id);
         this.rooms[room.id].last_seen = 0;
       }
+      console.log("last_seen: " + room.id + " - " + room.last_seen);
     } else {
       if(!(room.hasOwnProperty('placeholder'))) {
         for (var key in room) {
@@ -455,12 +458,10 @@ class Messages {
 
       if ( room.id != this.cur_room ) {
         $('#room_list').append(`<a class="dropdown-item" href="#" 
-                                                         onclick="messages.change_room('${room.id}'); 
-                                                                  messages.clear_unread();"> 
+                                                         onclick="messages.change_room('${room.id}');"> 
                                   ${contents}
                                 </a>`);
       } else {
-        console.log('xxx');
         $('#messages_label').html(contents);
       }
 
@@ -546,7 +547,6 @@ class Messages {
       this.cur_user = message.user;
       switched_side = true;
     } else if (this.prev_msg != null) {
-      console.log('yy');
       $(`#msg-${message.room}-${this.prev_msg}`).removeClass('tri-right btm-right-in');
     }
 
@@ -1273,7 +1273,6 @@ socket.on('settings-result', data => {
 socket.on('goto_chat', data => {
   messages.add_room(data.room); 
   messages.change_room(data.room.id);
-  messages.clear_unread();
   tabs.show('messages');
 });
 

@@ -1,5 +1,5 @@
+from db import DBTable, build_tables
 from tables import User, Session, Message, File, Room, Membership
-from formats import formats
 from flask import Flask, render_template, send_from_directory, request
 from flask_socketio import SocketIO, emit, send, disconnect, join_room
 from urllib.parse import urlencode
@@ -9,12 +9,12 @@ import os
 import eventlet
 import json
 import time
-import hashlib
 import pprint
 
 pprint = pprint.PrettyPrinter()
 
-config = {'site_name':        'Orgone Accumulator',
+config = {'database':         'algonquin.db',
+          'site_name':        'Orgone Accumulator',
           'site_url':         'orgone.institute',
           'sysop_handle':     'sysop',
           'sysop_email':      'sysop@sysop.com',
@@ -23,6 +23,10 @@ config = {'site_name':        'Orgone Accumulator',
           'portrait_types':   ['png', 'jpg', 'jpeg', 'gif'],
           'default_portrait': 'default.png',
           'default_room':     '0 Day Warez'}
+
+DBTable.set_db(config['database'])
+
+build_tables([User, Session, Message, Room, File, Membership])
 
 app = Flask(__name__, static_url_path='')
 app.config['SECRET_KEY'] = 'a very very sekrit sekrit key'
@@ -62,23 +66,6 @@ class Scoreboard:
         return set(self.sid_to_user.values())
 
 scoreboard=Scoreboard()
-
-def hash_file(file):
-    BUF_SIZE = 65536
-    md5 = hashlib.md5()
-    while True:
-        data = file.read(BUF_SIZE)
-        if not data:
-            break
-        md5.update(data)
-
-    length = file.tell()
-
-    # seek back to the beginning
-    file.seek(0);
-
-    return md5.hexdigest(), length
-
 
 
 def valid_portrait(filename):
@@ -169,26 +156,20 @@ def upload_file():
     file, session, user, errors = file_upload_common(request)
 
     if not errors:
-        extension    = file.filename.split('.')[-1]
-        type         = "unknown"
-        hash, size   = hash_file(file)
-
-        if extension.lower() in formats:
-            type = formats[extension.lower()]
+        hash, size   = File.hash_file(file)
+        type, extension = File.file_type(file.filename)
 
         print ("hash = " + hash)
         print ("size = " + str(size))
 
         # check for duplicates
-        original_file = File.get_where(hash=hash, size=size)
+        
+        original_file = File.hash_exists(hash=hash, size=size)
         if original_file:
             print("duplicate file upload -- " + 
                   original_file.name + " - " + 
                   file.filename + " - " + 
                   original_file.localname)
-            # if the filename is different
-            # make a new file row, but point it at the
-            # already existing one
             filename = original_file.localname
         else:
             filename     = str(time.time()) + '.' + extension
@@ -271,29 +252,6 @@ def send_user(user, broadcast=False, **kwargs):
     send_stuff(broadcast, **{'users':{user.id:user.public_fields()} })
     #socketio.emit(label, user.public_fields(), broadcast=broadcast)
 
-def memberships(user):
-    rooms = Room.raw_select("rooms, memberships", 
-                            "rooms.id = memberships.room and memberships.user = %s" % user.id,
-                            "rooms.id",
-                            ["last_seen"])
-    for room in rooms:
-        print(room.id)
-        print(room.public_fields())
-    return { room.id:room.public_fields() for room in rooms }
-
-def messages(user):
-    messages = Message.raw_select("messages, memberships", 
-                                  "messages.room = memberships.room and memberships.user = %s" % user.id,
-                                  "messages.id desc limit 100")
-    for message in messages:
-        print(message.public_fields())
-    return { message.id:message.public_fields() for message in messages }
-
-def files(user):
-    files = File.raw_select("files, memberships", 
-                                  "files.room = memberships.room and memberships.user = %s" % user.id,
-                                  "files.id desc limit 100")
-    return { file.id:file.public_fields() for file in files }
 
 def do_login(user, session, send_session_id=False):
     response = {'authenticated': False}
@@ -307,9 +265,9 @@ def do_login(user, session, send_session_id=False):
         #print(membership.room)
 
     response['users']    = online_users()
-    response['rooms']    = memberships(user)
-    response['messages'] = messages(user)
-    response['files']    = files(user)
+    response['rooms']    = user.membership_list()
+    response['messages'] = user.message_list()
+    response['files']    = user.file_list()
     response['userid']   = user.id
     response['authenticated'] = True
     response['result'] = 'Login Ok'

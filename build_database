@@ -1,24 +1,24 @@
 #!/usr/bin/python3
 
-import db
+import tables
 from algonquin import make_token, make_token_url, config
 
-u = db.User(email  = config['sysop_email'],
-            handle = config['sysop_handle'],
-            portrait = config['default_portrait'])
+u = tables.User(email  = config['sysop_email'],
+                handle = config['sysop_handle'],
+                portrait = config['default_portrait'])
 u.save()
 
 token = make_token(u)
 url   = make_token_url(token)
 
-s = db.Session(user      = u.id,
-               sessionid = token)
+s = tables.Session(user      = u.id,
+                   sessionid = token)
 s.save()
 
 for room in config['public_rooms']:
-    r = db.Room(owner  = u.id,
-                public = True,
-                name   = room)
+    r = tables.Room(owner  = u.id,
+                    public = True,
+                    name   = room)
     r.save()
 
 u.join_public()

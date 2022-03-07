@@ -2,9 +2,6 @@ import sqlite3
 import pprint
 from pxfilter import XssHtml
 
-db = sqlite3.connect('algonquin.db', check_same_thread=False)
-cursor = db.cursor()
-
 pprint = pprint.PrettyPrinter()
 
 def set_properties(c, properties):
@@ -50,7 +47,7 @@ class DBChild:
     def __init__(self, table, key, related_column):
         print("-----------")
         self.table          = table
-        self.columns        = [key for key in table.attrs.keys() if 'related' not in table.attrs[key]]
+        self.columns        = [key for key in table.attrs.keys() if 'relative' not in table.attrs[key]]
         self.key            = key
         self.current        = 0
         self.related_column = related_column
@@ -82,20 +79,28 @@ class DBTable:
     create_stmt = "CREATE TABLE IF NOT EXISTS %s (%s)"
     delete_stmt = "DELETE FROM %s WHERE %s LIMIT %s"
     foreign_key = "FOREIGN KEY(%s) REFERENCES %s(%s)"
+    db          = None
+    cursor      = None
     tables      = {}
 
     def __init__(self, **kwargs):
         self.data = {}
         for name, value in kwargs.items():
-            if value:
+            if value or type(value) in (bool,int, float, str):
                 setattr(self, name, value)
    
     def add_table(table_class):
         DBTable.tables[table_class.__name__] = table_class
 
     @classmethod
+    def set_db(cls, database): 
+        print(f"connecting to database: {database}")
+        DBTable.db = sqlite3.connect(database, check_same_thread=False)
+        DBTable.cursor = DBTable.db.cursor()
+
+    @classmethod
     def commit(cls):
-        db.commit()
+        DBTable.db.commit()
     
     @classmethod
     def raw_select(cls, tables, where, order_by = None, extra_columns = None):
@@ -111,15 +116,15 @@ class DBTable:
         if order_by:
             stmt += " order by " + order_by
         print(stmt)
-        cursor.execute(stmt)
-        rows = cursor.fetchall()
+        DBTable.cursor.execute(stmt)
+        rows = DBTable.cursor.fetchall()
         return [ cls(**dict(zip(cls.attrs.keys(), values))) for values in rows ]
 
     def select(table, columns, where_clause):
         stmt = DBTable.select_stmt % (",".join(columns), table, where_clause)
         #print(stmt)
-        cursor.execute(stmt)
-        return cursor.fetchall()
+        DBTable.cursor.execute(stmt)
+        return DBTable.cursor.fetchall()
 
     def select_one(table, columns, **kwargs):
         where_columns = ""
@@ -132,8 +137,8 @@ class DBTable:
 
         stmt = DBTable.select_stmt % (",".join(columns), table, where_columns)
         
-        cursor.execute(stmt, where_values)
-        return cursor.fetchone()
+        DBTable.cursor.execute(stmt, where_values)
+        return DBTable.cursor.fetchone()
 
     @classmethod
     def is_public(cls, field):
@@ -165,7 +170,9 @@ class DBTable:
 
     @classmethod
     def get_public_where(cls, **kwargs):
-        columns = [i for i in cls.attrs if 'private' not in cls.attrs[i] or cls.attrs[i]['private'] == False]
+        columns = [i for i in cls.attrs if ('private' not in cls.attrs[i] or 
+                                           cls.attrs[i]['private'] == False) and 
+                                           'relative' not in cls.attrs[i] ]
         values = DBTable.select_one(cls.table_name, columns, **kwargs)
         if values:
             return cls(**dict(zip(columns, values)))
@@ -182,7 +189,7 @@ class DBTable:
             where_values.append(kwargs[key])
         stmt = DBTable.delete_stmt % (cls.table_name, where_columns, str(limit))
         #print(stmt+"-->"+str(where_values))
-        cursor.execute(stmt, where_values)
+        DBTable.cursor.execute(stmt, where_values)
 
     def insert(self):
         if self.id:
@@ -196,9 +203,9 @@ class DBTable:
         stmt = DBTable.insert_stmt % (self.table_name,
                                        columns,
                                        ("?,"*len(values))[:-1])
-        #print(stmt)
-        cursor.execute(stmt, values)
-        self.id = cursor.lastrowid
+        print(stmt)
+        DBTable.cursor.execute(stmt, values)
+        self.id = DBTable.cursor.lastrowid
 
     def update(self):
         if not self.id:
@@ -216,7 +223,24 @@ class DBTable:
                                       'id = ?')
         #print(stmt)
         #print(values)
-        cursor.execute(stmt, values)
+        DBTable.cursor.execute(stmt, values)
+
+    @classmethod
+    def count(cls, **kwargs):
+        where_columns = ""
+        where_values = []
+
+        for key in kwargs:
+            if len(where_columns) > 0:
+                where_columns += "and "
+            where_columns += key + "=? "
+            where_values.append(kwargs[key])
+        query = f"select count(*) from {cls.table_name}"
+        if len(where_columns) > 0:
+            query += " where " + where_columns + ";"
+        print("----- " + query + " ---- " + str(where_values))
+        DBTable.cursor.execute(query, where_values)
+        return DBTable.cursor.fetchone()[0]
 
     def save(self):
         if self.id:
@@ -233,5 +257,5 @@ def build_tables(tables):
             if 'fkey' in attrs[i]:
                 clauses += "," + DBTable.foreign_key % (i,attrs[i]['fkey'][0],attrs[i]['fkey'][1])
         db_stmt = DBTable.create_stmt % ( table_name, clauses )
-        cursor.execute(db_stmt)
+        DBTable.cursor.execute(db_stmt)
 
