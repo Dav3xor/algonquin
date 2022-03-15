@@ -308,13 +308,11 @@ class Settings {
 
 class Messages {
   constructor() {
-    this.rooms = {};
-    this.expanded_input = false;
-    this.label = "messages"
-
-
-
-    var cur_room = cookie.read('cur_room');
+    this.rooms           = {};
+    this.expanded_input  = false;
+    this.handling_unread = false;
+    this.label           = "messages"
+    var cur_room         = cookie.read('cur_room');
 
     if(cur_room != "") {
       this.cur_room = cur_room;
@@ -453,7 +451,7 @@ class Messages {
       var contents = room.name;
       if(room.unread > 0) {
         unread += room.unread;
-        contents += `<span class="ml-2 badge badge-info">${room.unread}</span>`;
+        contents += `<span class="ml-2 badge badge-info collapse" data-toggle="collapse">${room.unread}</span>`;
       }
 
       if ( room.id != this.cur_room ) {
@@ -468,7 +466,7 @@ class Messages {
     }
     var msg_label = "messages";
     if (unread > 0) {
-      msg_label += `<span class="ml-2 badge badge-info">${unread}</span>`;
+      msg_label += `<span class="ml-2 badge badge-info collapse" data-toggle="collapse">${unread}</span>`;
       $('#messages_off_label').html(msg_label);
       $('#favicon').attr('href','/static/favicon2.svg');
     } else {
@@ -599,13 +597,20 @@ class Messages {
 
 
   }
-    
+ 
   add(message) {
     if (!this.rooms.hasOwnProperty(message.room)) {
       this.add_room({id:message.room, placeholder:true});
     }
     if(message.id > this.rooms[message.room].last_seen) {
+      console.log(document.visibilityState);
+      console.log(message.room == this.cur_room);
       this.rooms[message.room].unread += 1;
+      if((document.visibilityState == 'visible') && 
+         (message.room == this.cur_room)){
+        this.rooms[message.room].last_seen = message.id;
+        console.log('sdassdfsdf');
+      } 
     }
     this.rooms[message.room].messages.push(message);
     if ((this.rooms[message.room].hasOwnProperty('name')) &&
@@ -616,6 +621,18 @@ class Messages {
     }
   }
  
+  handle_unread() {
+    if((this.handling_unread == false) && 
+       (this.rooms[this.cur_room].unread > 0)) {
+      this.handling_unread = true;
+      setTimeout(() => {
+        console.log("unread");
+        this.handling_unread = false;
+        this.clear_unread();
+        this.render_room_list();
+      }, 5000);
+    }
+  }
 
   clear_unread() {
     var last_seen = this.rooms[this.cur_room].messages.slice(-1)[0];
@@ -1052,8 +1069,16 @@ $( window ).resize(function () {
   var navbar_height = $('#navbar').css('height').slice(0,-2);
   var footer_height = $('#footer').css('height').slice(0,-2);
   resize_message_list(navbar_height, footer_height);
+  messages.handle_unread();
 });
 
+$(window).keyup(function(event) {
+  messages.handle_unread();
+});
+
+$(window).mousemove(function(event) {
+  messages.handle_unread();
+});
 
 $("#password").keyup(function(event) {
   if (event.keyCode === 13) {
@@ -1190,6 +1215,8 @@ $('#footer-new-file').on('click touchstart', function() {
 $('#footer-upload-file').on('change', function(evt) {
   ([...evt.target.files]).forEach(handle_file_upload);
 });
+
+
 
 window.addEventListener('DOMContentLoaded', () => {
   // Get the element by id
