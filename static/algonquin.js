@@ -107,12 +107,24 @@ class Files {
         if (icons.hasOwnProperty(file.type)) {
           file_icon = icons[file.type];
         }
+        var button_id = `files-play-sound-${file.id}`;
+        var play_button = "";
+        if (file.type in {'video':true, 'audio':true}){
+          play_button = `
+            <button class="btn btn-info btn-sm" id="${button_id}" 
+                    style="width:60px;"
+                    onclick="jukebox.play_pause('${button_id}', '/files/${file.localname}');">
+              ${icons.play}
+            </button>`;
+        } else {
+          play_button = `<button class="btn btn-dark btn-sm" style="width:60px;" disabled>
+                           ${icons.blank}
+                         </button>`;
+        }
 
-        $('#files').append(`<div class="row"> 
-                               <div class="col-2">
-                                 <button class="btn btn-info btn-sm">
-                                   ${icons.play}
-                                 </button>
+        $('#files').append(`<div class="row mt-1"> 
+                               <div class="col-3">
+                                 ${play_button}
                                  <a download class="btn btn-light btn-sm" href="/files/${file.localname}">
                                    ${icons.download}
                                  </a>
@@ -126,10 +138,10 @@ class Files {
                                    ${file.name}
                                  </button>
                                </div>
-                               <div class="col-3">
-                                 <span class="badge badge-dark btn-sm">
+                               <div class="col-2">
+                                 <div class="container-sm">
                                    <h5>${owner.handle}</h5>
-                                 </span>
+                                 </div>
                                </div> 
                                <div class="col-2">
                                  <button class="btn btn-success btn-sm ml-2" 
@@ -210,7 +222,7 @@ class People {
                     </a>`;
         }
 
-        $('#people').append(`<div class="row"> 
+        $('#people').append(`<div class="row mt-1"> 
                                <div class="col-1 ml-2">
                                  <img src="/portraits/${person.portrait}" height="36" />
                                </div>
@@ -451,7 +463,7 @@ class Messages {
       var contents = room.name;
       if(room.unread > 0) {
         unread += room.unread;
-        contents += `<span class="ml-2 badge badge-info collapse" data-toggle="collapse">${room.unread}</span>`;
+        contents += `<span class="ml-2 badge badge-info">${room.unread}</span>`;
       }
 
       if ( room.id != this.cur_room ) {
@@ -466,7 +478,7 @@ class Messages {
     }
     var msg_label = "messages";
     if (unread > 0) {
-      msg_label += `<span class="ml-2 badge badge-info collapse" data-toggle="collapse">${unread}</span>`;
+      msg_label += `<span class="ml-2 badge badge-info">${unread}</span>`;
       $('#messages_off_label').html(msg_label);
       $('#favicon').attr('href','/static/favicon2.svg');
     } else {
@@ -492,6 +504,14 @@ class Messages {
                   <span class="btn btn-light-btn-sm">
                     ${file.name}
                   </span>`;
+        case 'archive':
+          return `<button class="btn btn-light btn-sm" 
+                          onclick="window.open('/files/${file.localname}','_blank');">
+                    ${icons.archive} ${file.name}
+                  </button>`;
+          //return `<span class="btn btn-warning">${file.name}</span>`;
+          break;
+
         default:
           return `<button class="btn btn-light btn-sm" 
                           onclick="window.open('/files/${file.localname}','_blank');">
@@ -630,7 +650,7 @@ class Messages {
         this.handling_unread = false;
         this.clear_unread();
         this.render_room_list();
-      }, 5000);
+      }, 2000);
     }
   }
 
@@ -762,6 +782,41 @@ class Getter {
 
 };
 
+class Jukebox {
+  constructor() {
+    this.audio    = null;
+    this.cur_id = null;
+    this.playing  = false;
+  }
+  play_pause(id, file) { 
+    console.log(id);
+    if ((!this.playing) || (this.cur_id != id)) {
+      // play file...
+      if(this.audio) {
+        this.audio.pause();
+      }
+      this.playing = true;
+      if(this.cur_id != id) {
+        $('#'+this.cur_id).html(icons.play);
+        this.audio = new Audio(file);
+      }
+      $('#'+id).html(icons.pause);
+      this.audio.play();
+      this.cur_id = id;
+    } else {
+      // pause
+      this.audio.pause();
+      console.log(id);
+      $('#'+id).html(icons.play);
+      this.playing = false;
+    }
+  }
+}
+
+function play_sound(file) {
+  const playback = new Audio(file);
+  playback.play();
+}
 class Lissajous {
   constructor(canvas, width, height) {
     this.canvas  = canvas;
@@ -821,6 +876,11 @@ class Lissajous {
 }
 
 var icons = {
+    'blank': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                   fill="currentColor" class="bi bi-arrow-bar-up" viewBox="0 0 16 16">
+              </svg>`,
+
+
     'arrow_up': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                       fill="currentColor" class="bi bi-arrow-bar-up" viewBox="0 0 16 16">
                    <path fill-rule="evenodd" 
@@ -885,6 +945,12 @@ var icons = {
                    <path d="M6 12.796V3.204L11.481 8 6 12.796zm.659.753 5.48-4.796a1 
                             1 0 0 0 0-1.506L6.66 2.451C6.011 1.885 5 2.345 5 
                             3.204v9.592a1 1 0 0 0 1.659.753z"/>
+                 </svg>`,
+    'pause':   `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                     fill="currentColor" class="bi bi-pause-fill" viewBox="0 0 16 16">
+                  <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 
+                           1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 
+                           0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z"/>
                  </svg>`,
     'trash':    `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                        fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
@@ -1041,7 +1107,7 @@ var people    = new People();
 var files     = new Files();
 var invite    = new Invite();
 var settings  = new Settings();
-
+var jukebox   = new Jukebox();
 
 
 var markdown = new showdown.Converter({'emoji':true, 'simplifiedAutoLink':true, 'openLinksInNewWindow':true});
@@ -1195,7 +1261,6 @@ function dragstart_handler(ev) {
   //alert('hi!');
   ev.dataTransfer.setData("text/plain", ev.target.id);
 }
-
 
 
 $('#new-user-ok').click(function() {

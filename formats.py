@@ -7,6 +7,7 @@ formats = {
     'avif':    'image',
     'webp':    'image',
     'jxl':     'image',
+    'svg':     'image',
     # videos
     'nsv':     'video',
     'mxf':     'video',
