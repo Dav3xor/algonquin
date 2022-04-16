@@ -40,6 +40,9 @@
           <li class="nav-item" id="files-nav">
             <a class="nav-link" onclick="tabs.show('files');">files</a>
           </li>
+          <li class="nav-item" id="files-nav">
+            <a class="nav-link" onclick="tabs.show('cards');">cards</a>
+          </li>
           <li class="nav-item" id="search-nav">
             <a class="nav-link">search</a>
           </li>
@@ -64,7 +67,7 @@
 
     <div id="footer" class="navbar navbar-dark bg-dark fixed-bottom d-none">
       <form class="form-inline my-1" id="write_message">
-        <textarea style="resize:none;" class="form-control" 
+        <textarea style="resize:none;" class="form-control mb-1" 
                   name="new-message" id="new-message" 
                   oninput="lissajous.dec();"
                   cols="60" rows="1"></textarea>
@@ -76,6 +79,9 @@
         <input type="file" style="display: none" id="footer-upload-file" multiple />
         <button class="btn btn-light btn-sm ml-2" id="message-expand-button" 
                 type="button" onclick="messages.resize_input();">
+        </button>
+        <button class="btn btn-light btn-sm ml-2" id="message-new-card-button" 
+                type="button" onclick="cards.new();">
         </button>
         <button class="btn btn-warning btn-sm ml-2" 
                 type="button" id="footer-new-file">
@@ -131,7 +137,64 @@
       </div>
     </div>
 
-    <div id="login" class="modal" data-keyboard="false" data-backdrop="static" tabindex="-1">
+    <div id="display-card" class="modal  modal-lg"
+         data-keyboard="false" data-backdrop="static" tabindex="-1">
+      <div class="modal-body">
+        <div id="display-card-body"></div>
+        <form "form-inline" onsubmit="return false;">
+          <div class="pb-2">
+            <button id="hide-display-card" onclick="cards.hide_card();" 
+                    type="button" class="btn btn-success btn-sm">
+              Hide
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="new-card" class="modal modal-lg" 
+         data-keyboard="false" data-backdrop="static" tabindex="-1">
+      <div class="modal-dialog modal-light">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">New Card:</h5>
+          </div>
+          <div class="modal-body">
+            <form "form-inline" onsubmit="return false;">
+              <div class="form-group">
+                <label for="card-title">Title:</label>
+                <input type="text" class="form-control" name="card-title" 
+                       placeholder="Contents" id="card-title" required>
+              </div>
+              <div class="form-group">
+                <label for="card-content">Contents:</label>
+                <textarea class="form-control" name="card-content" id="card-content" cols=60 rows="5"
+                          required></textarea>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="card-private">
+                  <label class="form-check-label" for="card-private">
+                    Private to Current Room
+                  </label>
+              </div>
+              <div class="pb-2">
+                <button id="do-add-card" onclick="cards.send_card();" 
+                        type="button" class="btn btn-success btn-sm">
+                  Add Card
+                </button>
+                <button id="do-hide-card" onclick="cards.hide_new();" 
+                        type="button" class="btn btn-success btn-sm">
+                  Hide
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="login" class="modal" data-keyboard="false" 
+         data-backdrop="static" tabindex="-1">
       <div class="modal-dialog modal-light">
         <div class="modal-content">
           <div class="modal-header">
@@ -144,13 +207,21 @@
             <form "form-inline" onsubmit="return false;">
               <div class="form-group">
                 <label for="email">Email:</label>
-                <input type="text" class="form-control" name="email" placeholder="Email" id="email" required>
+                <input type="text" class="form-control" name="email" 
+                       placeholder="Email" id="email" required>
               </div>
               <div class="form-group">
                 <label for="password">Password:</label>
-                <input type="password" class="form-control" name="password" id="password" placeholder="Password" required>
+                <input type="password" class="form-control" 
+                       name="password" id="password" 
+                       placeholder="Password" required>
               </div>
-              <div class="pb-2"><button id="do-login" onclick="send_login_email();" type="button" class="btn btn-success btn-sm">Login</button></div>
+              <div class="pb-2">
+                <button id="do-login" onclick="send_login_email();" 
+                        type="button" class="btn btn-success btn-sm">
+                  Login
+                </button>
+              </div>
             </form>
             <div class="alert alert-danger d-none" id="login-result-status">
               Login Failed
@@ -184,6 +255,8 @@
       <div class="container-fluid d-none" id="files">
       </div>
 
+      <div class="container-fluid d-none" id="cards">
+      </div>
 
       <div class="container-fluid d-none" id="settings">
         <div class="row">

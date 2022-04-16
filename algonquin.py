@@ -1,5 +1,5 @@
 from db import DBTable, build_tables
-from tables import User, Session, Message, File, Room, Membership
+from tables import User, Session, Message, File, Folder, Room, Membership, Card, Card_Edit
 from flask import Flask, render_template, send_from_directory, request
 from flask_socketio import SocketIO, emit, send, disconnect, join_room
 from urllib.parse import urlencode
@@ -26,7 +26,7 @@ config = {'database':         'algonquin.db',
 
 DBTable.set_db(config['database'])
 
-build_tables([User, Session, Message, Room, File, Membership])
+build_tables([User, Session, Message, Room, File, Folder, Membership, Card, Card_Edit])
 
 app = Flask(__name__, static_url_path='')
 app.config['SECRET_KEY'] = 'a very very sekrit sekrit key'
@@ -268,6 +268,7 @@ def do_login(user, session, send_session_id=False):
     response['rooms']    = user.membership_list()
     response['messages'] = user.message_list()
     response['files']    = user.file_list()
+    response['cards']    = user.card_list()
     response['userid']   = user.id
     response['authenticated'] = True
     response['result'] = 'Login Ok'
@@ -330,6 +331,10 @@ stuff = {'users': {'class': User,
                    'tables': 'files, memberships',
                    'where': 'files.id = memberships.room and memberships.user = %s and files.id in (%s)',
                    'order_by': 'files.id'},
+         'cards': {'class': Card, 
+                   'tables': 'cards, memberships',
+                   'where': 'cards.id = memberships.room and memberships.user = %s and cards.id in (%s)',
+                   'order_by': 'cards.id'},
          'rooms': {'class': Room, 
                    'tables': 'rooms, memberships',
                    'where': 'rooms.id = memberships.room and memberships.user = %s and rooms.id in (%s)',
@@ -462,6 +467,29 @@ def handle_message(json):
     message.commit()
     emit('stuff_list', {'messages': { message.id:message.public_fields() }}, 
          room = 'room-'+str(room))
+
+# user has submitted a card
+@user_logged_in
+@socketio.on('new-card')
+@json_has_keys('title', 'content')
+def handle_new_card(json):
+    user = scoreboard.get_user_from_sid(request.sid)
+    card = Card(owner=user, 
+                contents=json['content'], 
+                title=json['title'])
+    room = None
+    if 'room' in json:
+        room = json['room']
+    card.save()
+    card.commit()
+    if room:
+        emit('stuff_list', {'cards': { card.id:card.public_fields() }}, 
+             room = 'room-'+str(room))
+    else:
+        emit('stuff_list', {'cards': { card.id:card.public_fields() }})
+             
+
+
 
 @user_logged_in
 @socketio.on('invite-new-user')

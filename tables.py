@@ -5,8 +5,8 @@ from formats import formats
 
 class User(DBTable):
     attrs = {'id':       {'type': 'INTEGER PRIMARY KEY'},
-            'email':    {'type': 'TEXT NOT NULL UNIQUE', 'xss-filter': True}, 
-            'handle':   {'type': 'TEXT NOT NULL', 'xss-filter': True},
+             'email':    {'type': 'TEXT NOT NULL UNIQUE', 'xss-filter': True}, 
+             'handle':   {'type': 'TEXT NOT NULL', 'xss-filter': True},
              'portrait': {'type': 'TEXT'},
              'about':    {'type': 'TEXT', 'xss-filter': True},
              'pwhash':   {'type': 'TEXT', 'private': True}}
@@ -46,9 +46,17 @@ class User(DBTable):
 
     def file_list(self):
         files = File.raw_select("files, memberships", 
-                                      "files.room = memberships.room and memberships.user = %s" % self.id,
+                                      """(files.room = memberships.room and memberships.user = %s) or
+                                         (files.room = NULL) or (files.owner = %s)""" % (self.id, self.id),
                                       "files.id desc limit 100")
         return { file.id:file.public_fields() for file in files }
+
+    def card_list(self):
+        cards = Card.raw_select("cards, memberships", 
+                                      """(cards.room = memberships.room and memberships.user = %s) or 
+                                         (cards.owner = NULL) or (cards.owner = %s)""" % (self.id,self.id),
+                                      "cards.id desc limit 100")
+        return { card.id:card.public_fields() for card in cards }
 
 set_properties(User, User.attrs)
 
@@ -91,11 +99,37 @@ class Card(DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'owner':     {'type': 'INTEGER NOT NULL',
                            'fkey': ['owner', 'id', 'User', 'cards']},
+             'room':      {'type': 'INTEGER',
+                           'fkey': ['room', 'id', 'Room', 'cards']},
+             'title':     {'type': 'TEXT'},
              'contents':  {'type': 'TEXT'}}
     table_name = 'cards'
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
 set_properties(Card, Card.attrs)
+
+class Card_Edit(DBTable):
+    attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
+             'editor':    {'type': 'INTEGER NOT NULL',
+                           'fkey': ['editor', 'id', 'User', 'card_edits']},
+             'diff':      {'type': 'TEXT'}}
+    table_name = 'card_edits'
+    def __init__(self, **kwargs):
+        DBTable.__init__(self, **kwargs)
+set_properties(Card_Edit, Card_Edit.attrs)
+
+class Folder(DBTable):
+    attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
+             'name':      {'type': 'TEXT'},
+             'parent':    {'type': 'INTEGER',
+                           'fkey': ['folder', 'id', 'Folder', 'child_folders']}}
+    table_name = 'folders'
+    def __init__(self, **kwargs):
+        DBTable.__init__(self, **kwargs)
+set_properties(Folder, Folder.attrs)
+             
+
+
 
 class File(DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
@@ -103,6 +137,8 @@ class File(DBTable):
                            'fkey': ['user', 'id', 'User', 'files']},
              'room':      {'type': 'INTEGER',
                            'fkey': ['room', 'id', 'Room', 'files']},
+             'folder':    {'type': 'INTEGER',
+                           'fkey': ['folder', 'id', 'Folder', 'files']},
              'name':      {'type': 'TEXT', 'xss-filter': True},
              'localname': {'type': 'TEXT'},
              'public':    {'type': 'BOOLEAN'},

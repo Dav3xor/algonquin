@@ -26,6 +26,23 @@ def test_user(setup):
     r3.save()
     r3.commit()
 
+    c1 = Card(owner=1, room=1, title='Title', contents='Contents...')
+    c1.save()
+    c1.commit()
+    
+    c2 = Card(owner=1, room=2, title='Title2', contents='Contents...2')
+    c2.save()
+    c2.commit()
+
+    c3 = Card(owner=2, room=1, title='Title3', contents='Contents...3')
+    c3.save()
+    c3.commit()
+    
+    # shouldn't see this one
+    c4 = Card(owner=2, room=2, title='Title4', contents='Contents...4')
+    c4.save()
+    c4.commit()
+
     assert u.verify_password("12345") == None
 
     u.set_password("12345")
@@ -65,6 +82,15 @@ def test_user(setup):
     flist = u.file_list()
     del flist[1]['uploaded']
     assert flist == {file.id: file.public_fields()}
+
+    clist = u.card_list()
+    print("-------")
+    print(clist)
+    print("-------")
+    assert len(clist) == 3
+    assert clist == {3: {'id': 3, 'owner': 2, 'room': 1, 'title': 'Title3', 'contents': 'Contents...3'}, 
+                     2: {'id': 2, 'owner': 1, 'room': 2, 'title': 'Title2', 'contents': 'Contents...2'}, 
+                     1: {'id': 1, 'owner': 1, 'room': 1, 'title': 'Title', 'contents': 'Contents...'}}
 
 def test_room(setup):
 

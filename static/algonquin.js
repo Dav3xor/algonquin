@@ -316,7 +316,105 @@ class Settings {
 }
 
 
+class Cards {
+  constructor() {
+    this.cards             = {};
+    this.form_fields       = ['title', 'content'];
+  }
 
+  new() {
+    console.log('show card');
+    $('#new-card').modal('show');
+  }
+
+  show(card_id) {
+    var card = this.get_card(card_id);
+    if(card) {
+      $('#display-card-body').empty();
+      this.render_card(card_id, '#display-card-body');
+    $('#display-card').modal('show');
+    }
+  }
+
+  add(card) {
+    this.cards[card.id] = card;
+  }
+
+  get_card(id) {
+    // sigh, javascript...
+    if(id==undefined) {
+      return null;
+    }
+
+    if (! this.cards.hasOwnProperty(id)) {
+      getter.add('cards', id);
+      return null;
+    } else {
+      return this.cards[id];
+    }
+  }
+
+  hide_new() {
+    $('#new-card').modal('hide');
+  }
+  hide_card() {
+    console.log("hide card");
+    $('#display-card').modal('hide');
+  }
+  send_card() {
+    var card = {};
+    for (var field in this.form_fields) {
+      field = this.form_fields[field];
+      var value = $('#card-'+field).val();
+      if (value) {
+        card[field] = value;
+      }
+    }
+    if($('#card-private').prop('checked')) {
+      card.room = Messages.cur_room;
+    }
+    socket.emit('new-card', card);
+  }
+
+  render_card(card_id, container) {
+    var card = this.get_card(card_id);
+    if(card) {
+      $(container).append(`<div class="card bg-light text-dark mt-4">
+                              <h5 class="card-header d-flex justify-content-between 
+                                         align-items-center">${card.title}
+                                <span>
+                                  <button> ${icons.chat_bubble_small} </button>
+                                  <button> ${icons.edit_small} </button>
+                                </span>
+                              </h5>
+                              <div class="card-body">
+                                ${markdown.makeHtml(messages.expand_tildes(card.contents))}
+                              </div>
+                           </div>`);
+    }
+  }
+
+
+  render() {
+    var counter=0;
+    $('#cards').empty();
+    $('#cards').append(`<div class="row mt-1">
+                          <div class="col-lg-4" id="cards-col-1"></div>
+                          <div class="col-lg-4" id="cards-col-2"></div>
+                          <div class="col-lg-4" id="cards-col-3"></div>
+                        </div>`);
+    for (var card in this.cards) {
+      var cur_column = ((counter % 3)+1).toString()
+      console.log(cur_column);
+      this.render_card(card,`#cards-col-${cur_column}`);
+      counter += 1;
+    }
+  }
+
+}
+
+
+    
 
 class Messages {
   constructor() {
@@ -357,6 +455,7 @@ class Messages {
   input_small() {
       $('#new-message').prop('rows', 1);
       $('#message-expand-button').html(icons.arrow_up);
+      $('#message-new-card-button').html(icons.card);
       this.expanded_input = false;
 
   }
@@ -488,20 +587,36 @@ class Messages {
     this.label = msg_label;
   }
 
+  render_inline_card(card) {
+    if (!card) {
+      return `<span class='btn btn-danger'> <b> loading... </b> </span>`;
+    } else {
+      return `<button class="btn btn-dark btn-sm" 
+                      onclick="cards.show(${card.id});">
+                ${icons.card}
+                ${card.title}
+              </button>`;
+    }
+  }
+
   render_inline_file(file) {
     if (!file) {
       return `<span class='btn btn-danger'> <b> loading... </b> </span>`;
     } else {
       switch(file.type) {
         case 'image': 
-          return `<img height=200 src="/files/${file.localname}">`;
+          return `<button class="btn btn-light btn-sm p-1 m-1">
+                    <img height=200 src="/files/${file.localname}"
+                         onclick="window.open('/files/${file.localname}','_blank');"/>
+                  </button>`;
           break;
         case 'audio':
-          return `<button class="btn btn-light btn-sm" 
-                          onclick="play_sound('/files/${file.localname}');">
-                    ${icons.play}
-                  </button>
-                  <span class="btn btn-light-btn-sm">
+          var button_id = `msg-play-${this.cur_room}-${file.id}`;
+          return `<span class="badge badge-dark">
+                    <button class="btn btn-info btn-sm" 
+                            onclick="jukebox.play_pause('${button_id}', '/files/${file.localname}');">
+                      ${icons.play}
+                    </button>
                     ${file.name}
                   </span>`;
         case 'archive':
@@ -538,22 +653,37 @@ class Messages {
     }
   }
 
-  render_message(message) {
-    var user          = people.get_person(message.user);
-    var portrait      = "default.png";
-    var handle        = "loading...";
-    var inline_files  = message.message.match(/~file(\d+)~/gm);
-    var msg           = message.message;
-    var prev_msg      = null;
-    var switched_side = false;
-
+  expand_tildes(text) {
+    var inline_files  = text.match(/~file(\d+)~/gm);
+    var inline_cards  = text.match(/~card(\d+)~/gm);
+    
     for (var tag in inline_files) {
       tag = inline_files[tag];
       var file_id = tag.slice(5,-1);
       var file = files.get_file(file_id);
-      msg = msg.replace(tag, this.render_inline_file(file));
+      text = text.replace(tag, this.render_inline_file(file));
     }
 
+    for (var tag in inline_cards) {
+      tag = inline_cards[tag];
+      var card_id = tag.slice(5,-1);
+      console.log("card id = " + card_id);
+      var card = cards.get_card(card_id);
+      text = text.replace(tag, this.render_inline_card(card));
+    }
+    return text;
+  }
+
+
+  render_message(message) {
+    var user          = people.get_person(message.user);
+    var portrait      = "default.png";
+    var handle        = "loading...";
+    var msg           = message.message;
+    var prev_msg      = null;
+    var switched_side = false;
+
+    msg = this.expand_tildes(msg);
 
     if(user) {
       portrait = user.portrait;
@@ -710,6 +840,7 @@ class Getter {
     var update_files = false;
     var update_users = false;
     var update_rooms = false;
+    var update_cards = false;
 
     if ('users' in stuff) {
       for(var user in stuff['users']) {
@@ -743,6 +874,13 @@ class Getter {
       }
       update_messages = true;
     }
+    
+    if ('cards' in stuff) {
+      for(var card in stuff['cards']) {
+        cards.add(stuff['cards'][card]);
+      }
+      update_cards = true;
+    }
 
     if(update_messages) {
       if(update_messages & 1) {
@@ -766,6 +904,10 @@ class Getter {
       messages.render_room_list();
     }
 
+    if(update_cards) {
+      console.log('cards');
+      cards.render();
+    }
   }
 
   reset() {
@@ -880,6 +1022,17 @@ var icons = {
                    fill="currentColor" class="bi bi-arrow-bar-up" viewBox="0 0 16 16">
               </svg>`,
 
+    'card': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                  fill="currentColor" class="bi bi-postcard" viewBox="0 0 16 16">
+               <path fill-rule="evenodd" d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 
+                     2 0 0 0 2-2V4a2 2 0 0 0-2-2H2ZM1 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 
+                     1v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4Zm7.5.5a.5.5 0 0 0-1 
+                     0v7a.5.5 0 0 0 1 0v-7ZM2 5.5a.5.5 0 0 1 .5-.5H6a.5.5 0 0 1 0 
+                     1H2.5a.5.5 0 0 1-.5-.5Zm0 2a.5.5 0 0 1 .5-.5H6a.5.5 0 0 1 0 
+                     1H2.5a.5.5 0 0 1-.5-.5Zm0 2a.5.5 0 0 1 .5-.5H6a.5.5 0 0 1 0 
+                     1H2.5a.5.5 0 0 1-.5-.5ZM10.5 5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 
+                     .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3ZM13 8h-2V6h2v2Z"/>
+             </svg>`,
 
     'arrow_up': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                       fill="currentColor" class="bi bi-arrow-bar-up" viewBox="0 0 16 16">
@@ -899,6 +1052,16 @@ var icons = {
                            .708-.708L7.5 12.293V6.5A.5.5 0 0 1 8 6z"/>
                    </svg>`,
 
+    'bell': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                    fill="currentColor" class="bi bi-bell" viewBox="0 0 16 16">
+                 <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.797.161A4.002 
+                          4.002 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 
+                          1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 
+                          8.197 12 6.628 12 6a4.002 4.002 0 0 0-3.203-3.92L8 1.917zM14.22 
+                          12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 
+                          6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 
+                          0A5.002 5.002 0 0 1 13 6c0 .88.32 4.2 1.22 6z"/>
+              </svg>`,
     'chat_bubble': `<svg width="1.92em" height="1.92em" viewBox="0 0 16 16" class="bi bi-chat-text" 
                          fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                       <path fill-rule="evenodd" 
@@ -916,6 +1079,68 @@ var icons = {
                                2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5z"/>
                     </svg>`,
 
+    'chat_bubble_small': `<svg width="1.00em" height="1.00em" viewBox="0 0 16 16" class="bi bi-chat-text" 
+                               fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" 
+                                  d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 
+                                     2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 
+                                     8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 
+                                     4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 
+                                     21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 
+                                     0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 
+                                     11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 
+                                     7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z"/>
+                            <path fill-rule="evenodd" 
+                                  d="M4 5.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zM4 
+                                     8a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7A.5.5 0 0 1 4 8zm0 
+                                     2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5z"/>
+                          </svg>`,
+    
+    'edit': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                  fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+               <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 
+                        .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 
+                        2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+               <path fill-rule="evenodd" 
+                     d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 
+                        0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 
+                        0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+            </svg>`,
+
+    'edit_small': `<svg xmlns="http://www.w3.org/2000/svg" width="1.00em" height="1.00em" 
+                        fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+                     <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 
+                              .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 
+                              2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                     <path fill-rule="evenodd" 
+                           d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 
+                              0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 
+                              0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+                  </svg>`,
+
+    'new_tab_small':   `<svg xmlns="http://www.w3.org/2000/svg" width="1.0em" height="1.0em" 
+                             fill="currentColor" class="bi bi-box-arrow-up-right" viewBox="0 0 16 16">
+                          <path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 
+                                           4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 
+                                           1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 
+                                           1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 
+                                           .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
+                          <path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 
+                                           1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 
+                                           1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
+                        </svg>`,
+
+    'new_tab':   `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                         fill="currentColor" class="bi bi-box-arrow-up-right" viewBox="0 0 16 16">
+                      <path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 
+                                       4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 
+                                       1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 
+                                       1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 
+                                       .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
+                      <path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 
+                                       1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 
+                                       1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
+                    </svg>`,
     'paperclip': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                            fill="currentColor" class="bi bi-paperclip" viewBox="0 0 16 16">
                         <path d="M4.5 3a2.5 2.5 0 0 1 5 0v9a1.5 1.5 0 0 1-3 
@@ -923,21 +1148,28 @@ var icons = {
                                  0-3 0v9a2.5 2.5 0 0 0 5 0V5a.5.5 0 0 1 1 0v7a3.5 3.5 0 1 1-7 0V3z"/>
                       </svg>`,
 
-    'bell': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
-                    fill="currentColor" class="bi bi-bell" viewBox="0 0 16 16">
-                 <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.797.161A4.002 
-                          4.002 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 
-                          1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 
-                          8.197 12 6.628 12 6a4.002 4.002 0 0 0-3.203-3.92L8 1.917zM14.22 
-                          12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 
-                          6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 
-                          0A5.002 5.002 0 0 1 13 6c0 .88.32 4.2 1.22 6z"/>
-              </svg>`,
-    'unknown': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
-                     fill="currentColor" class="bi bi-file" viewBox="0 0 16 16">
-                  <path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 
-                           2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 
-                           1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
+    'pdf':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                     fill="currentColor" class="bi bi-file-pdf" viewBox="0 0 16 16">
+                  <path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 
+                           0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 
+                           1 0 0 1 1-1z"/>
+                  <path d="M4.603 12.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 
+                           0 0 1 1.482-.645 19.701 19.701 0 0 0 1.062-2.227 7.269 7.269 0 0 
+                           1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 
+                           0 0 1 .477.365c.088.164.12.356.127.538.007.187-.012.395-.047.614-.084.51-.27 1.134-.52 
+                           1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 
+                           1.334.05c.364.065.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 
+                           0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.716 5.716 0 0 
+                           1-.911-.95 11.642 11.642 0 0 0-1.997.406 11.311 11.311 0 0 1-1.021 
+                           1.51c-.29.35-.608.655-.926.787a.793.793 0 0 
+                           1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361.01.022.02.036.026.044a.27.27 
+                           0 0 0 .035-.012c.137-.056.355-.235.635-.572a8.18 8.18 0 0 0 .45-.606zm1.64-1.33a12.647 
+                           12.647 0 0 1 1.01-.193 11.666 11.666 0 0 1-.51-.858 20.741 20.741 0 0 1-.5 
+                           1.05zm2.446.45c.15.162.296.3.435.41.24.19.407.253.498.256a.107.107 0 0 0 .07-.015.307.307 
+                           0 0 0 .094-.125.436.436 0 0 0 .059-.2.095.095 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a3.881 
+                           3.881 0 0 0-.612-.053zM8.078 5.8a6.7 6.7 0 0 0 .2-.828c.031-.188.043-.343.038-.465a.613.613 
+                           0 0 0-.032-.198.517.517 0 0 
+                           0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822.024.111.054.227.09.346z"/>
                 </svg>`,
 
     'play':    `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
@@ -964,40 +1196,11 @@ var icons = {
                                      1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
                   </svg>`,
 
-    'new_tab':   `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
-                         fill="currentColor" class="bi bi-box-arrow-up-right" viewBox="0 0 16 16">
-                      <path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 
-                                       4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 
-                                       1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 
-                                       1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 
-                                       .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
-                      <path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 
-                                       1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 
-                                       1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
-                    </svg>`,
-
-    'pdf':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
-                     fill="currentColor" class="bi bi-file-pdf" viewBox="0 0 16 16">
-                  <path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 
-                           0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 
-                           1 0 0 1 1-1z"/>
-                  <path d="M4.603 12.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.68 7.68 
-                           0 0 1 1.482-.645 19.701 19.701 0 0 0 1.062-2.227 7.269 7.269 0 0 
-                           1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 
-                           0 0 1 .477.365c.088.164.12.356.127.538.007.187-.012.395-.047.614-.084.51-.27 1.134-.52 
-                           1.794a10.954 10.954 0 0 0 .98 1.686 5.753 5.753 0 0 1 
-                           1.334.05c.364.065.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 
-                           0 0 1-.354.416.856.856 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.716 5.716 0 0 
-                           1-.911-.95 11.642 11.642 0 0 0-1.997.406 11.311 11.311 0 0 1-1.021 
-                           1.51c-.29.35-.608.655-.926.787a.793.793 0 0 
-                           1-.58.029zm1.379-1.901c-.166.076-.32.156-.459.238-.328.194-.541.383-.647.547-.094.145-.096.25-.04.361.01.022.02.036.026.044a.27.27 
-                           0 0 0 .035-.012c.137-.056.355-.235.635-.572a8.18 8.18 0 0 0 .45-.606zm1.64-1.33a12.647 
-                           12.647 0 0 1 1.01-.193 11.666 11.666 0 0 1-.51-.858 20.741 20.741 0 0 1-.5 
-                           1.05zm2.446.45c.15.162.296.3.435.41.24.19.407.253.498.256a.107.107 0 0 0 .07-.015.307.307 
-                           0 0 0 .094-.125.436.436 0 0 0 .059-.2.095.095 0 0 0-.026-.063c-.052-.062-.2-.152-.518-.209a3.881 
-                           3.881 0 0 0-.612-.053zM8.078 5.8a6.7 6.7 0 0 0 .2-.828c.031-.188.043-.343.038-.465a.613.613 
-                           0 0 0-.032-.198.517.517 0 0 
-                           0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822.024.111.054.227.09.346z"/>
+    'unknown': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                     fill="currentColor" class="bi bi-file" viewBox="0 0 16 16">
+                  <path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 
+                           2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 
+                           1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
                 </svg>`,
 
     'image':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
@@ -1103,6 +1306,7 @@ var lissajous = new Lissajous(canvas, 30, 30);
 var tabs      = new Tabs('messages');
 var getter    = new Getter();
 var messages  = new Messages();
+var cards     = new Cards();
 var people    = new People();
 var files     = new Files();
 var invite    = new Invite();
