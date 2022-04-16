@@ -319,13 +319,29 @@ class Settings {
 class Cards {
   constructor() {
     this.cards             = {};
+    this.cur_edit_card     = null;
     this.form_fields       = ['title', 'content'];
   }
 
   new() {
-    console.log('show card');
-    $('#new-card').modal('show');
+    console.log('edit card');
+    this.cur_edit_card = null;
+    $('#card-title').empty();
+    $('#card-content').empty();
+    $('#edit-card').modal('show');
   }
+
+  edit(card_id) {
+    console.log('edit card');
+    var card = this.get_card(card_id);
+    if(card) {
+      this.cur_edit_card = card.id;
+      $('#card-title').val(card.title);
+      $('#card-content').val(card.contents);
+      $('#edit-card').modal('show');
+    }
+  }
+
 
   show(card_id) {
     var card = this.get_card(card_id);
@@ -338,6 +354,7 @@ class Cards {
 
   add(card) {
     this.cards[card.id] = card;
+    $('#edit-card').modal('hide');
   }
 
   get_card(id) {
@@ -354,25 +371,33 @@ class Cards {
     }
   }
 
-  hide_new() {
-    $('#new-card').modal('hide');
+  hide_editor() {
+    $('#edit-card').modal('hide');
   }
-  hide_card() {
+
+  hide_display() {
     console.log("hide card");
     $('#display-card').modal('hide');
   }
+
   send_card() {
     var card = {};
+    if(this.cur_edit_card != null) {
+      card.id = this.cur_edit_card;
+      this.cur_edit_card = null;
+    }
     for (var field in this.form_fields) {
       field = this.form_fields[field];
       var value = $('#card-'+field).val();
       if (value) {
         card[field] = value;
       }
+      $('#card-'+field).val('');
     }
     if($('#card-private').prop('checked')) {
       card.room = Messages.cur_room;
     }
+    this.hide_editor();
     socket.emit('new-card', card);
   }
 
@@ -383,8 +408,12 @@ class Cards {
                               <h5 class="card-header d-flex justify-content-between 
                                          align-items-center">${card.title}
                                 <span>
-                                  <button> ${icons.chat_bubble_small} </button>
-                                  <button> ${icons.edit_small} </button>
+                                  <button onclick="messages.insert_at_cursor('~card${card.id}~');">
+                                    ${icons.chat_bubble_small} 
+                                  </button>
+                                  <button onclick="cards.edit(${card.id});"> 
+                                    ${icons.edit_small} 
+                                  </button>
                                 </span>
                               </h5>
                               <div class="card-body">

@@ -143,7 +143,7 @@
         <div id="display-card-body"></div>
         <form "form-inline" onsubmit="return false;">
           <div class="pb-2">
-            <button id="hide-display-card" onclick="cards.hide_card();" 
+            <button id="hide-display-card" onclick="cards.hide_display();" 
                     type="button" class="btn btn-success btn-sm">
               Hide
             </button>
@@ -152,12 +152,12 @@
       </div>
     </div>
 
-    <div id="new-card" class="modal modal-lg" 
+    <div id="edit-card" class="modal modal-lg" 
          data-keyboard="false" data-backdrop="static" tabindex="-1">
       <div class="modal-dialog modal-light">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">New Card:</h5>
+            <h5 class="modal-title">Edit Card:</h5>
           </div>
           <div class="modal-body">
             <form "form-inline" onsubmit="return false;">
@@ -182,7 +182,7 @@
                         type="button" class="btn btn-success btn-sm">
                   Add Card
                 </button>
-                <button id="do-hide-card" onclick="cards.hide_new();" 
+                <button id="do-hide-card" onclick="cards.hide_editor();" 
                         type="button" class="btn btn-success btn-sm">
                   Hide
                 </button>
