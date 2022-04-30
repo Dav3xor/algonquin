@@ -468,18 +468,51 @@ def handle_message(json):
     emit('stuff_list', {'messages': { message.id:message.public_fields() }}, 
          room = 'room-'+str(room))
 
+@user_logged_in
+@socketio.on('card-toggle-lock')
+@json_has_keys('card_id')
+def handle_card_toggle_lock(json):
+    print(json) 
+    user = User.get(scoreboard.get_user_from_sid(request.sid))
+    card = Card.get(json['card_id'])
+    state = json['state']
+    if card and user and (card.owner == user.id or user.id == 1):
+        print('card locking:')
+        if state == 'locked' and card.locked == True:
+            card.locked = False
+            card.save()
+            card.commit()
+            print('card unlocked')
+        elif state == 'unlocked' and card.locked == False:
+            card.locked = True
+            card.save()
+            card.commit()
+            print('card locked')
+        emit('stuff_list', {'cards': { card.id:card.public_fields() }})
+
+
+
 # user has submitted a card
 @user_logged_in
-@socketio.on('new-card')
-@json_has_keys('title', 'content')
-def handle_new_card(json):
+@socketio.on('edit-card')
+@json_has_keys('title', 'content', 'locked')
+def handle_edit_card(json):
     user = scoreboard.get_user_from_sid(request.sid)
-    card = Card(owner=user, 
-                contents=json['content'], 
-                title=json['title'])
+
+    if 'id' in json:
+        card          = Card.get(int(json['id']))
+        card.title    = json['title']
+        card.contents = json['content']
+        card.locked   = json['locked']
+    else:
+        card = Card(owner=user, 
+                    contents=json['content'], 
+                    title=json['title'])
+
     room = None
     if 'room' in json:
-        room = json['room']
+        card.room = int(json['room'])
+
     card.save()
     card.commit()
     if room:

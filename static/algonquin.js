@@ -203,6 +203,14 @@ class People {
     this.people[person.id] = person;
   }
 
+  this_person_is_admin() {
+    if((this.this_person) && (this.this_person==1)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   render() {
     $('#people').empty();
     for (var person in this.people) {
@@ -328,6 +336,8 @@ class Cards {
     this.cur_edit_card = null;
     $('#card-title').empty();
     $('#card-content').empty();
+    $('#card-id').val(null);
+    $('#do-edit-card').html('Add Card');
     $('#edit-card').modal('show');
   }
 
@@ -338,10 +348,16 @@ class Cards {
       this.cur_edit_card = card.id;
       $('#card-title').val(card.title);
       $('#card-content').val(card.contents);
+      $('#do-edit-card').html('Update Card');
       $('#edit-card').modal('show');
     }
   }
 
+  toggle_lock(card_id, state) {
+    console.log('toggle lock');
+    socket.emit('card-toggle-lock', {card_id: card_id, 
+                                     state: state});
+  }
 
   show(card_id) {
     var card = this.get_card(card_id);
@@ -382,10 +398,12 @@ class Cards {
 
   send_card() {
     var card = {};
+
     if(this.cur_edit_card != null) {
       card.id = this.cur_edit_card;
       this.cur_edit_card = null;
     }
+
     for (var field in this.form_fields) {
       field = this.form_fields[field];
       var value = $('#card-'+field).val();
@@ -394,16 +412,43 @@ class Cards {
       }
       $('#card-'+field).val('');
     }
+
     if($('#card-private').prop('checked')) {
       card.room = Messages.cur_room;
     }
+
+    if($('#card-locked').prop('checked')) {
+      card.locked = true;
+    } else {
+      card.locked = false;
+    }
+
     this.hide_editor();
-    socket.emit('new-card', card);
+    socket.emit('edit-card', card);
   }
 
   render_card(card_id, container) {
     var card = this.get_card(card_id);
     if(card) {
+      console.log(card.locked);
+      var edit_block = "";
+      if((card.owner == people.get_this_person().id)||
+         (people.this_person_is_admin())) {
+        var locked = 'unlocked';
+        if(card.locked) {
+          locked = 'locked';
+        }
+        edit_block += `<button class="mr-1" onclick="cards.toggle_lock(${card.id}, '${locked}')">
+                         ${icons[locked]}
+                       </button>`;
+      }
+      if((!card.locked)||
+         (card.owner == people.get_this_person().id)||
+         (people.this_person_is_admin())) {
+        edit_block += `<button onclick="cards.edit(${card.id});"> 
+                         ${icons.edit_small} 
+                       </button>`;
+      }
       $(container).append(`<div class="card bg-light text-dark mt-4">
                               <h5 class="card-header d-flex justify-content-between 
                                          align-items-center">${card.title}
@@ -411,9 +456,7 @@ class Cards {
                                   <button onclick="messages.insert_at_cursor('~card${card.id}~');">
                                     ${icons.chat_bubble_small} 
                                   </button>
-                                  <button onclick="cards.edit(${card.id});"> 
-                                    ${icons.edit_small} 
-                                  </button>
+                                  ${edit_block}
                                 </span>
                               </h5>
                               <div class="card-body">
@@ -1147,6 +1190,22 @@ var icons = {
                               0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
                   </svg>`,
 
+    'locked':         `<svg xmlns="http://www.w3.org/2000/svg" width="1.00em" height="1.00em" 
+                            fill="currentColor" class="bi bi-lock" viewBox="0 0 16 16">
+                         <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 
+                                  0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 
+                                  0-2-2zM5 8h6a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 
+                                  1 0 0 1 1-1z"/>
+                       </svg>`,
+
+    'unlocked':       `<svg xmlns="http://www.w3.org/2000/svg" width="1.00em" height="1.00em" 
+                            fill="currentColor" class="bi bi-unlock" viewBox="0 0 16 16">
+                         <path d="M11 1a2 2 0 0 0-2 2v4a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H3a2 2 0 0 
+                                  1-2-2V9a2 2 0 0 1 2-2h5V3a3 3 0 0 1 6 0v4a.5.5 0 0 1-1 0V3a2 
+                                  2 0 0 0-2-2zM3 8a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h6a1 1 0 0 0 
+                                  1-1V9a1 1 0 0 0-1-1H3z"/>
+                        </svg>`,
+  
     'new_tab_small':   `<svg xmlns="http://www.w3.org/2000/svg" width="1.0em" height="1.0em" 
                              fill="currentColor" class="bi bi-box-arrow-up-right" viewBox="0 0 16 16">
                           <path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 
@@ -1543,8 +1602,12 @@ socket.on('login-result', data => {
     }
     if ('new-user' in data) {
       $('#new-user').modal('show');
-      $('#new-user-password').keyup(function () {regulate_password('#new-user-password', '#new-user-password2', '#new-user-ok')});
-      $('#new-user-password2').keyup(function () {regulate_password('#new-user-password', '#new-user-password2', '#new-user-ok')});
+      $('#new-user-password').keyup(function () {
+        regulate_password('#new-user-password', '#new-user-password2', '#new-user-ok')
+      });
+      $('#new-user-password2').keyup(function () {
+        regulate_password('#new-user-password', '#new-user-password2', '#new-user-ok')
+      });
 
     } else {
       $('#contents').removeClass('d-none');

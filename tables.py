@@ -102,6 +102,7 @@ class Card(DBTable):
              'room':      {'type': 'INTEGER',
                            'fkey': ['room', 'id', 'Room', 'cards']},
              'title':     {'type': 'TEXT'},
+             'locked':    {'type': 'BOOLEAN'},
              'contents':  {'type': 'TEXT'}}
     table_name = 'cards'
     def __init__(self, **kwargs):

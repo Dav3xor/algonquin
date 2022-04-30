@@ -177,8 +177,14 @@
                     Private to Current Room
                   </label>
               </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="card-locked">
+                  <label class="form-check-label" for="card-private">
+                    Allow Others to Edit
+                  </label>
+              </div>
               <div class="pb-2">
-                <button id="do-add-card" onclick="cards.send_card();" 
+                <button id="do-edit-card" onclick="cards.send_card();" 
                         type="button" class="btn btn-success btn-sm">
                   Add Card
                 </button>

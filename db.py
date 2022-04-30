@@ -106,8 +106,8 @@ class DBTable:
     def raw_select(cls, tables, where, order_by = None, extra_columns = None):
         columns = [cls.table_name + '.' + key for key in cls.attrs.keys() 
                                               if 'relative' not in cls.attrs[key]]
-        print(columns)
-        print(extra_columns)
+        #print(columns)
+        #print(extra_columns)
         if extra_columns:
             columns = columns+[cls.attrs[column]['relative']+'.'+column for column in extra_columns]
         stmt = DBTable.select_stmt % (",".join(columns), 
@@ -115,7 +115,7 @@ class DBTable:
                                       where)
         if order_by:
             stmt += " order by " + order_by
-        print(stmt)
+        #print(stmt)
         DBTable.cursor.execute(stmt)
         rows = DBTable.cursor.fetchall()
         return [ cls(**dict(zip(cls.attrs.keys(), values))) for values in rows ]
@@ -203,7 +203,7 @@ class DBTable:
         stmt = DBTable.insert_stmt % (self.table_name,
                                        columns,
                                        ("?,"*len(values))[:-1])
-        print(stmt)
+        #print(stmt)
         DBTable.cursor.execute(stmt, values)
         self.id = DBTable.cursor.lastrowid
 
@@ -238,7 +238,7 @@ class DBTable:
         query = f"select count(*) from {cls.table_name}"
         if len(where_columns) > 0:
             query += " where " + where_columns + ";"
-        print("----- " + query + " ---- " + str(where_values))
+        #print("----- " + query + " ---- " + str(where_values))
         DBTable.cursor.execute(query, where_values)
         return DBTable.cursor.fetchone()[0]
 
