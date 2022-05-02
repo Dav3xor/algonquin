@@ -10,6 +10,7 @@ import eventlet
 import json
 import time
 import pprint
+import difflib
 
 pprint = pprint.PrettyPrinter()
 
@@ -32,6 +33,8 @@ app = Flask(__name__, static_url_path='')
 app.config['SECRET_KEY'] = 'a very very sekrit sekrit key'
 
 socketio = SocketIO(app)
+
+differ = difflib.Differ()
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0')
@@ -501,9 +504,17 @@ def handle_edit_card(json):
 
     if 'id' in json:
         card          = Card.get(int(json['id']))
-        card.title    = json['title']
-        card.contents = json['content']
-        card.locked   = json['locked']
+        if card:
+            if card.contents != json['content']:
+                diff = '\n'.join(differ.compare(json['content'].split('\n'),
+                                                card.contents.split('\n')))
+                
+                edit = Card_Edit(editor=user, diff=diff)
+                edit.save()
+                edit.commit()
+            card.title    = json['title']
+            card.contents = json['content']
+            card.locked   = json['locked']
     else:
         card = Card(owner=user, 
                     contents=json['content'], 
