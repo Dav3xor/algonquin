@@ -520,17 +520,18 @@ def handle_edit_card(json):
                     contents=json['content'], 
                     title=json['title'])
 
-    room = None
     if 'room' in json:
+        print("setting room to: " + str(json['room']))
         card.room = int(json['room'])
+        emit('stuff_list', {'cards': { card.id:card.public_fields() }}, 
+             room = 'room-'+str(json['room']))
+    else:
+        print("room set to None")
+        card.room = None
+        emit('stuff_list', {'cards': { card.id:card.public_fields() }})
 
     card.save()
     card.commit()
-    if room:
-        emit('stuff_list', {'cards': { card.id:card.public_fields() }}, 
-             room = 'room-'+str(room))
-    else:
-        emit('stuff_list', {'cards': { card.id:card.public_fields() }})
              
 
 

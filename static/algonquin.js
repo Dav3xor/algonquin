@@ -229,7 +229,6 @@ class People {
                       <h5>About...</h5>
                     </a>`;
         }
-
         $('#people').append(`<div class="row mt-1"> 
                                <div class="col-1 ml-2">
                                  <img src="/portraits/${person.portrait}" height="36" />
@@ -291,7 +290,7 @@ class Settings {
   }
 
   send_portrait() {
-    var file = document.getElementById('portrait-file').files[0];
+    var file = document.getElementById('portrait-upload-file').files[0];
     upload_file(file, 
                 'upload-portrait', 
                 function(data) {
@@ -309,7 +308,6 @@ class Settings {
   set_defaults() {
     var person = people.get_this_person();
     $('#portrait-image').attr('src', '/portraits/' + person.portrait);
-
     for (var setting in this.settings) {
       setting = this.settings[setting];
       if(setting in person) {
@@ -332,20 +330,45 @@ class Cards {
   }
 
   new() {
-    console.log('edit card');
     this.cur_edit_card = null;
+    this.set_room_list(messages);
     $('#card-title').empty();
     $('#card-content').empty();
     $('#card-id').val(null);
     $('#do-edit-card').html('Add Card');
     $('#edit-card').modal('show');
+    $('#card-private').prop('checked', false);
+    $('#card-rooms').prop('disabled', true);
+    $('#card-locked').prop('checked', false);
+  }
+
+  set_room_list(messages) {
+    var card = this.get_card(this.cur_edit_card);
+    $('#card-rooms').empty();
+    for (var room in messages.rooms) {
+      var selected = "";
+      room = messages.rooms[room];
+      if(room.id == card.room) {
+        selected = "selected";
+      }
+      $('#card-rooms').append(`<option value="${room.id}" ${selected}>${room.name}</option`);
+    }
   }
 
   edit(card_id) {
-    console.log('edit card');
     var card = this.get_card(card_id);
     if(card) {
       this.cur_edit_card = card.id;
+      this.set_room_list(messages);
+      if(card.room) {
+        $('#card-private').prop('checked', true);
+        $('#card-rooms').prop('disabled', false);
+      } else {
+        $('#card-private').prop('checked', false);
+        $('#card-rooms').prop('disabled', true);
+      }
+
+      $('#card-locked').prop('checked', card.locked);
       $('#card-title').val(card.title);
       $('#card-content').val(card.contents);
       $('#do-edit-card').html('Update Card');
@@ -354,7 +377,6 @@ class Cards {
   }
 
   toggle_lock(card_id, state) {
-    console.log('toggle lock');
     socket.emit('card-toggle-lock', {card_id: card_id, 
                                      state: state});
   }
@@ -392,7 +414,6 @@ class Cards {
   }
 
   hide_display() {
-    console.log("hide card");
     $('#display-card').modal('hide');
   }
 
@@ -414,7 +435,8 @@ class Cards {
     }
 
     if($('#card-private').prop('checked')) {
-      card.room = Messages.cur_room;
+      card.room = parseInt($('#card-rooms').val());
+      console.log(card.room);
     }
 
     if($('#card-locked').prop('checked')) {
@@ -430,7 +452,6 @@ class Cards {
   render_card(card_id, container) {
     var card = this.get_card(card_id);
     if(card) {
-      console.log(card.locked);
       var edit_block = "";
       if((card.owner == people.get_this_person().id)||
          (people.this_person_is_admin())) {
@@ -477,7 +498,6 @@ class Cards {
                         </div>`);
     for (var card in this.cards) {
       var cur_column = ((counter % 3)+1).toString()
-      console.log(cur_column);
       this.render_card(card,`#cards-col-${cur_column}`);
       counter += 1;
     }
@@ -586,10 +606,8 @@ class Messages {
       this.rooms[room.id].messages = [];
       this.rooms[room.id].unread = 0;
       if(!(room.hasOwnProperty('last_seen'))) {
-        console.log("no last seen: " + room.id);
         this.rooms[room.id].last_seen = 0;
       }
-      console.log("last_seen: " + room.id + " - " + room.last_seen);
     } else {
       if(!(room.hasOwnProperty('placeholder'))) {
         for (var key in room) {
@@ -739,7 +757,6 @@ class Messages {
     for (var tag in inline_cards) {
       tag = inline_cards[tag];
       var card_id = tag.slice(5,-1);
-      console.log("card id = " + card_id);
       var card = cards.get_card(card_id);
       text = text.replace(tag, this.render_inline_card(card));
     }
@@ -781,7 +798,6 @@ class Messages {
     var user_info = `<div class="col-1" id="user-info-${message.id}">
                       <img src="/portraits/${portrait}" width=40 />
                     </div>`;
-
     var empty    = `<div class="col-2"></div>`;
     var contents = `<div class="col-9${float}">
                       <span id="msg-${message.room}-${message.id}" 
@@ -825,13 +841,10 @@ class Messages {
       this.add_room({id:message.room, placeholder:true});
     }
     if(message.id > this.rooms[message.room].last_seen) {
-      console.log(document.visibilityState);
-      console.log(message.room == this.cur_room);
       this.rooms[message.room].unread += 1;
       if((document.visibilityState == 'visible') && 
          (message.room == this.cur_room)){
         this.rooms[message.room].last_seen = message.id;
-        console.log('sdassdfsdf');
       } 
     }
     this.rooms[message.room].messages.push(message);
@@ -848,7 +861,6 @@ class Messages {
        (this.rooms[this.cur_room].unread > 0)) {
       this.handling_unread = true;
       setTimeout(() => {
-        console.log("unread");
         this.handling_unread = false;
         this.clear_unread();
         this.render_room_list();
@@ -977,7 +989,7 @@ class Getter {
     }
 
     if(update_cards) {
-      console.log('cards');
+      console.log("updating cards");
       cards.render();
     }
   }
@@ -986,6 +998,7 @@ class Getter {
     this.unknown = {'users': {},
                     'files': {},
                     'messages': {},
+                    'cards': {},
                     'rooms': {} }
   }
 
@@ -1003,7 +1016,6 @@ class Jukebox {
     this.playing  = false;
   }
   play_pause(id, file) { 
-    console.log(id);
     if ((!this.playing) || (this.cur_id != id)) {
       // play file...
       if(this.audio) {
@@ -1020,7 +1032,6 @@ class Jukebox {
     } else {
       // pause
       this.audio.pause();
-      console.log(id);
       $('#'+id).html(icons.play);
       this.playing = false;
     }
@@ -1414,20 +1425,25 @@ function regulate_password(field1, field2, button) {
 
 $('.dropdown-toggle').dropdown();
 
-function resize_message_list(header, footer) {
+function resize_div(div, header, footer) {
   var new_height = window.innerHeight - header - footer - 5;
-  $('#messages').css('height',new_height.toString()+'px');
+  $(div).css('height',new_height.toString()+'px');
 }
-
-$( window ).ready(function () { 
-  resize_message_list(95,15);
-});
 
 $( window ).resize(function () { 
   var navbar_height = $('#navbar').css('height').slice(0,-2);
   var footer_height = $('#footer').css('height').slice(0,-2);
-  resize_message_list(navbar_height, footer_height);
+  resize_div('#messages', navbar_height, footer_height);
+  resize_div('#files', navbar_height, 0);
   messages.handle_unread();
+});
+
+$( window ).ready(function () { 
+  resize_div('#messages', 95, 15);
+  resize_div('#files', 95, 0);
+  window.setTimeout(function () {
+    console.log("resize");
+    $(window).trigger('resize');}, 1000);
 });
 
 $(window).keyup(function(event) {
@@ -1525,7 +1541,6 @@ function upload_file(file, url, success_fn) {
 // The following functions are for handling file drag/drop
 
 function dragover_handler(ev) {
- console.log('dragover');
  ev.preventDefault();
  ev.stopPropagation();
  ev.dataTransfer.dropEffect = "move";
@@ -1574,6 +1589,14 @@ $('#footer-upload-file').on('change', function(evt) {
 });
 
 
+$('#portrait-new-file').on('click touchstart', function() {
+  $(this).val('');
+  $('#portrait-upload-file').trigger('click');
+});
+
+$('#portrait-upload-file').on('change', function(evt) {
+  ([...evt.target.files]).forEach(settings.send_portrait);
+});
 
 window.addEventListener('DOMContentLoaded', () => {
   // Get the element by id
