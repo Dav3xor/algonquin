@@ -116,16 +116,6 @@ def admin_logged_in(f):
         else:
             pass
 
-def make_sessionid(user):
-    return str(user.id) + '-' + str(int.from_bytes(os.urandom(32),'big'))
-
-def make_token(user):
-    return '%s-token-%s' % (str(user.id), str(int.from_bytes(os.urandom(8),'big')))
-    #return str(user.id) + "-token-" + str(int.from_bytes(os.urandom(8),'big'))
-
-def make_token_url(token):
-    return 'https://%s/?%s' % (config['site_url'], urlencode({'token': token}))
-    #return 'https://' + config['site_url'] + '/?' + urlencode({'token': token})
 
 @app.route('/')
 def index():
@@ -300,7 +290,7 @@ def handle_login_email(json):
     user     = User.get_where(email=email)
     session = None
     if user and user.verify_password(password):
-        session = Session(sessionid=make_sessionid(user),
+        session = Session(sessionid=Session.make_sessionid(user),
                           user = user.id)
         session.save()
         session.commit()
@@ -557,8 +547,8 @@ def handle_new_user(json):
     try:
         user.save()
         user.join_public()
-        token      = make_token(user)
-        url        = make_token_url(token)
+        token      = Session.make_token(user)
+        url        = Session.make_token_url(token, config['site_url'])
         session    = Session(sessionid=token,
                              user = user.id)
         session.save()
@@ -566,8 +556,8 @@ def handle_new_user(json):
     except Exception as e:
         status = 0
         status_msg = str(e)
-        #print(type(e))
-
+        print(type(e))
+        print(status_msg)
     response = {'message': json['message'] + '\n\n' + url,
                 'url': url,
                 'status': status,
@@ -620,7 +610,7 @@ def handle_settings(json):
     if 'no-status' in json:
         session = Session.raw_select("sessions",
                                      "sessionid like '%d-token-%%' and user = %d" % (user.id, user.id))[0]
-        session.sessionid = make_sessionid(user)
+        session.sessionid = Session.make_sessionid(user)
         session.save()
         session.commit()
         emit('password-set', 

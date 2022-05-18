@@ -1,6 +1,8 @@
 from db import DBTable, set_properties, build_tables
 from passlib.hash import pbkdf2_sha256
+from urllib.parse import urlencode
 import hashlib
+import os
 from formats import formats
 
 class User(DBTable):
@@ -8,6 +10,7 @@ class User(DBTable):
              'email':    {'type': 'TEXT NOT NULL UNIQUE', 'xss-filter': True}, 
              'handle':   {'type': 'TEXT NOT NULL', 'xss-filter': True},
              'portrait': {'type': 'TEXT'},
+             'bot':      {'type': 'BOOLEAN DEFAULT FALSE'},
              'about':    {'type': 'TEXT', 'xss-filter': True},
              'pwhash':   {'type': 'TEXT', 'private': True}}
     table_name = 'users'
@@ -193,6 +196,21 @@ class Session(DBTable):
     table_name = 'sessions'
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
+
+    @classmethod
+    def make_sessionid(cls, user):
+        return str(user.id) + '-' + str(int.from_bytes(os.urandom(32),'big'))
+
+    @classmethod
+    def make_token(cls, user):
+        return '%s-token-%s' % (str(user.id), str(int.from_bytes(os.urandom(8),'big')))
+        #return str(user.id) + "-token-" + str(int.from_bytes(os.urandom(8),'big'))
+
+    @classmethod
+    def make_token_url(cls, token, site):
+        return 'https://%s/?%s' % (site, urlencode({'token': token}))
+        #return 'https://' + config['site_url'] + '/?' + urlencode({'token': token})
+        
 set_properties(Session, Session.attrs)
 
 class Message(DBTable):
