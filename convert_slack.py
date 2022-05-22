@@ -82,6 +82,7 @@ def handle_users(users):
 
 def handle_channels(channels):
     rooms = {}
+    slack_id_rooms = {}
     for channel in channels:
         name    = channel['name']
         owner   = channel['creator']
@@ -96,15 +97,26 @@ def handle_channels(channels):
             membership.save()
 
         rooms[name] = room
-
+        slack_id_rooms[slack_id] = room
         print ("room: " + name)
     
     room.commit()
-    return rooms
+    return rooms, slack_id_rooms
+
+
 
 mention_regex = re.compile(r"<@[0-9A-Z]+>")
-url_regex = re.compile(r"<(https?://[^\s]+)>")
-other = re.compile(r"<([^\s]+)>")
+mention3_regex = re.compile(r"<U[0-9A-Z]+>")
+mention2_regex = re.compile(r"<@[0-9A-Z]+\|[a-z0-9.-_]+>")
+room_mention_regex = re.compile(r"<\#([0-9A-Z]+\|[a-z0-9\-_]+)>")
+room2_mention_regex = re.compile(r"<\#([0-9A-Z]+)>")
+url_regex = re.compile(r"<([h|H]ttps?://[^\s]+)>")
+phone_regex = re.compile(r"<(tel:[0-9\|\-\(\)]+)>")
+email_regex = re.compile(r"<mailto:[0-9a-zA-Z_.@\-\|]+>")
+spotify_regex = re.compile(r"<spotify:([a-z]+):([0-9a-zA-Z]+)>")
+spotify2_regex = re.compile(r"<spotify:user:([a-zA-Z0-9]+):playlist:([a-zA-Z0-9]+)>")
+other_regex = re.compile(r"<([^\s]+)>")
+
 def convert_msg(message):
     mentions = re.findall(mention_regex, message)
     for mention in mentions:
@@ -112,14 +124,83 @@ def convert_msg(message):
         user = users[uid].id if uid in users else bots[uid].id
         user = f"~user{user}~"
         message = re.sub(mention,user,message)
+    
+    mentions = re.findall(mention3_regex, message)
+    for mention in mentions:
+        uid = "U"+mention[2:-1]
+        user = users[uid].id if uid in users else bots[uid].id
+        user = f"~user{user}~"
+        message = re.sub(mention,user,message)
+    
+    mentions = re.findall(mention2_regex, message)
+    for mention in mentions:
+        uid = mention[2:].split('|')[0]
+        user = users[uid].id if uid in users else bots[uid].id
+        user = f"~user{user}~"
+        #print(user)
+        message = re.sub(mention,user,message)
+
+    room_mentions = re.findall(room_mention_regex, message)
+    for mention in room_mentions:
+        #print(mention)
+        roomid = mention.split('|')[0]
+        room = slack_id_rooms[roomid].id
+        room = f"~room{room}~"
+        message = re.sub(f"<#{mention}>",room,message)
+
+    room_mentions = re.findall(room2_mention_regex, message)
+    for mention in room_mentions:
+        #print(mention)
+        room = slack_id_rooms[mention].id
+        room = f"~room{room}~"
+        message = re.sub(f"<#{mention}>",room,message)
+
     urls = re.findall(url_regex, message)
     for url in urls:
         message = message.replace(f"<{url}>", url)
-    others = re.findall(other, message)
-    if len(others):
-        print(others)
 
+    phones = re.findall(phone_regex, message)
+    for phone in phones:
+        #print(phone)
+        message = message.replace(f"<{phone}>", f"~tel:{phone}~")
+
+    spotifies = re.findall(spotify_regex, message)
+    for spotify in spotifies:
+        type = spotify[0]
+        id   = spotify[1]
+        message = message.replace(f"<spotify:{type}:{id}>", f"~spotify.{type}.{id}~")
+
+    spotifies = re.findall(spotify2_regex, message)
+    for spotify in spotifies:
+        user     = spotify[0]
+        playlist = spotify[1]
+        message  = message.replace(f"<spotify:user:{user}:playlist:{playlist}>", f"~spotify.{user}.{playlist}~")
+
+
+
+    emails = re.findall(email_regex, message)
+    for email in emails:
+        #print(email)
+        just_email = email.split(':')[1]
+        if '|' in just_email:
+            just_email = just_email.split('|')[0]
+        message = message.replace(email, f"~mailto:{just_email}~")
+
+
+
+
+
+
+    others = re.findall(other_regex, message)
+    if len(others):
+        print(f"unknown <...>: {others}")
+        for other in others:
+            # convert <> to [] so it doesn't get removed...
+            message = message.replace(f"<{other}>", f"[{other}]")
     return message
+
+
+
 
 def handle_files(channel, files):
     filelist = "\n\n"
@@ -190,17 +271,18 @@ print(users.keys())
 #then rooms...
 with open(history_path+'channels.json','r') as file:
     data = json.loads(file.read())
-    rooms = handle_channels(data)
+    rooms, slack_id_rooms = handle_channels(data)
 
 print(top_level)
 for path in paths:
-    print(" ---- path: " + str(path))
+    #print(" ---- path: " + str(path))
     if str(path) not in top_level:
         with open(path,'r') as file:
             data = json.loads(file.read())
             room = path.parts[0].split('/')[0]
             handle_messages(room, data)
-
+print(slack_id_rooms)
 print(types)
 print(subtypes)
+print(rooms)
     #json.loads(...)

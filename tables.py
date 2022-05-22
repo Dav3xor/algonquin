@@ -33,6 +33,16 @@ class User(DBTable):
             membership = Membership(user = self.id,
                                     room = room.id)
             membership.save()
+
+    def related_users(self):
+        query = f'''  users 
+                      join memberships m on users.id = m.user'''
+        where = f'''  m.room in (select m.room 
+                                 from memberships m 
+                                 where m.user = {self.id});'''
+        users = self.raw_select(query, where)
+        return { user.id:user.public_fields() for user in users } 
+
     def membership_list(self):
         rooms = Room.raw_select("rooms, memberships", 
                                 "rooms.id = memberships.room and memberships.user = %s" % self.id,

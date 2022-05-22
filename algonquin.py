@@ -238,6 +238,7 @@ def online_users():
     users = scoreboard.online_users()
     return {user:User.get(user).public_fields() for user in users }
 
+
 def send_user(user, broadcast=False, **kwargs):
 
     if 'namespace' in kwargs:
@@ -257,7 +258,7 @@ def do_login(user, session, send_session_id=False):
         join_room('room-'+str(membership.room))
         #print(membership.room)
 
-    response['users']    = online_users()
+    response['users']    = user.related_users()
     response['rooms']    = user.membership_list()
     response['messages'] = user.message_list()
     response['files']    = user.file_list()

@@ -75,6 +75,7 @@ class DBChild:
 class DBTable:
     insert_stmt = "INSERT INTO %s(%s) VALUES(%s)"
     select_stmt = "SELECT %s FROM %s WHERE %s"
+    select_distinct_stmt = "SELECT distinct %s FROM %s WHERE %s"
     update_stmt = "UPDATE %s SET %s WHERE %s"
     create_stmt = "CREATE TABLE IF NOT EXISTS %s (%s)"
     delete_stmt = "DELETE FROM %s WHERE %s LIMIT %s"
@@ -103,16 +104,25 @@ class DBTable:
         DBTable.db.commit()
     
     @classmethod
-    def raw_select(cls, tables, where, order_by = None, extra_columns = None):
+    def raw_select(cls, tables, where, 
+                   order_by = None, 
+                   extra_columns = None, 
+                   distinct = False):
         columns = [cls.table_name + '.' + key for key in cls.attrs.keys() 
                                               if 'relative' not in cls.attrs[key]]
         #print(columns)
         #print(extra_columns)
         if extra_columns:
             columns = columns+[cls.attrs[column]['relative']+'.'+column for column in extra_columns]
-        stmt = DBTable.select_stmt % (",".join(columns), 
-                                      tables, 
-                                      where)
+        if distinct:
+            stmt = DBTable.select_distinct_stmt % (",".join(columns), 
+                                                   tables, 
+                                                   where)
+        else:
+            stmt = DBTable.select_stmt % (",".join(columns), 
+                                          tables, 
+                                          where)
+
         if order_by:
             stmt += " order by " + order_by
         #print(stmt)
