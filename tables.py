@@ -51,10 +51,12 @@ class User(DBTable):
 
         return { room.id:room.public_fields() for room in rooms }
         
-    def message_list(self):
-        messages = Message.raw_select("messages, memberships", 
-                                      "messages.room = memberships.room and memberships.user = %s" % self.id,
-                                      "messages.id desc limit 100")
+    def message_list(self, rooms):
+        messages = []
+        for room in rooms: 
+            messages += Message.raw_select("messages", 
+                                           f"messages.room = {room}",
+                                           "messages.id desc limit 40")
         return { message.id:message.public_fields() for message in messages }
 
     def file_list(self):

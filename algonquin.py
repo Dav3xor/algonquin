@@ -260,7 +260,7 @@ def do_login(user, session, send_session_id=False):
 
     response['users']    = user.related_users()
     response['rooms']    = user.membership_list()
-    response['messages'] = user.message_list()
+    response['messages'] = user.message_list(response['rooms'].keys())
     response['files']    = user.file_list()
     response['cards']    = user.card_list()
     response['userid']   = user.id

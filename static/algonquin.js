@@ -796,7 +796,7 @@ class Messages {
 
     //<b>${handle}</b>
     var user_info = `<div class="col-1" id="user-info-${message.id}">
-                      <img src="/portraits/${portrait}" width=40 />
+                      <img src="/portraits/${portrait}" height=55px />
                     </div>`;
     var empty    = `<div class="col-2"></div>`;
     var contents = `<div class="col-9${float}">
@@ -805,12 +805,17 @@ class Messages {
                         ${markdown.makeHtml(msg)}
                       </span>
                     </div>`;
-
+    var footer = `<div class="row" id="msg-footer-${message.id}">
+                    <div class="col-12${float} small-font-size">
+                      <small><b>${user.handle}</b> ${message.written}</small>
+                    </div>
+                  </div>`;
     var output = "";
     if(this.side % 2) {
       output = user_info + contents + empty;
       if(!(switched_side)) {
         $(`#user-info-${this.prev_msg}`).remove();
+        $(`#msg-footer-${this.prev_msg}`).remove();
         $(`#msg-${message.room}-${this.prev_msg}`).parent().removeClass('col-9');
         $(`#msg-${message.room}-${this.prev_msg}`).parent().addClass('col-10');
       }
@@ -818,6 +823,7 @@ class Messages {
       output = empty + contents + user_info;
       if(!(switched_side)) {
         $(`#user-info-${this.prev_msg}`).remove();
+        $(`#msg-footer-${this.prev_msg}`).remove();
         $(`#msg-${message.room}-${this.prev_msg}`).parent().removeClass('col-9');
         $(`#msg-${message.room}-${this.prev_msg}`).parent().addClass('col-10');
       }
@@ -826,7 +832,8 @@ class Messages {
     if($(`#message-${message.id}`).length) {
       $(`#message-${message.id}`).html(output);
     } else {
-      $('#messages').prepend(`<div class="row mb-1" id="message-${message.id}"> 
+      $('#messages').prepend(`${footer}
+                              <div class="row mb-1" id="message-${message.id}"> 
                                 ${output}
                               </div>`);
     }
