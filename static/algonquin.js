@@ -805,9 +805,13 @@ class Messages {
                         ${markdown.makeHtml(msg)}
                       </span>
                     </div>`;
+    var username = this.side % 2 ? `<b class="text-white">${user.handle}</b> ${message.written}` :
+                                   `${message.written} <b class="text-white">${user.handle}</b>`;
     var footer = `<div class="row" id="msg-footer-${message.id}">
                     <div class="col-12${float} small-font-size">
-                      <small><b>${user.handle}</b> ${message.written}</small>
+                      <small>
+                        ${username}
+                      </small>
                     </div>
                   </div>`;
     var output = "";
