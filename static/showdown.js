@@ -4247,18 +4247,22 @@ showdown.subParser('paragraphs', function (text, options, globals) {
       end = grafs.length; // Wrap <p> tags
 
   for (var i = 0; i < end; i++) {
-    var str = grafs[i];
-    // if this is an HTML marker, copy it
-    if (str.search(/¨(K|G)(\d+)\1/g) >= 0) {
-      grafsOut.push(str);
+    if( i == end - 1) {
+      grafsOut.push(grafs[i]);
+    } else {
+      var str = grafs[i];
+      // if this is an HTML marker, copy it
+      if (str.search(/¨(K|G)(\d+)\1/g) >= 0) {
+        grafsOut.push(str);
 
-    // test for presence of characters to prevent empty lines being parsed
-    // as paragraphs (resulting in undesired extra empty paragraphs)
-    } else if (str.search(/\S/) >= 0) {
-      str = showdown.subParser('spanGamut')(str, options, globals);
-      str = str.replace(/^([ \t]*)/g, '<p>');
-      str += '</p>';
-      grafsOut.push(str);
+      // test for presence of characters to prevent empty lines being parsed
+      // as paragraphs (resulting in undesired extra empty paragraphs)
+      } else if (str.search(/\S/) >= 0) {
+        str = showdown.subParser('spanGamut')(str, options, globals);
+        str = str.replace(/^([ \t]*)/g, '<p>');
+        str += '</p>';
+        grafsOut.push(str);
+      }
     }
   }
 
