@@ -1,15 +1,15 @@
 #!/usr/bin/python3
 
 import tables
-from algonquin import make_token, make_token_url, config
+from algonquin import config
 
 u = tables.User(email  = config['sysop_email'],
                 handle = config['sysop_handle'],
                 portrait = config['default_portrait'])
 u.save()
 
-token = make_token(u)
-url   = make_token_url(token)
+token = tables.Session.make_token(u)
+url   = tables.Session.make_token_url(token, config['site_url'])
 
 s = tables.Session(user      = u.id,
                    sessionid = token)
