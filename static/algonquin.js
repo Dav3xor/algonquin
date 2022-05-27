@@ -796,10 +796,10 @@ class Messages {
 
     //<b>${handle}</b>
     var user_info = `<div class="col-1" id="user-info-${message.id}">
-                      <img src="/portraits/${portrait}" height=55px />
+                      <img src="/portraits/${portrait}" class="img-fluid portrait" />
                     </div>`;
-    var empty    = `<div class="col-2"></div>`;
-    var contents = `<div class="col-9${float}">
+    var empty    = `<div class="col-sm-1"></div>`;
+    var contents = `<div class="col-10${float}">
                       <span id="msg-${message.room}-${message.id}" 
                             class="${classes}">
                         ${markdown.makeHtml(msg)}
@@ -820,16 +820,16 @@ class Messages {
       if(!(switched_side)) {
         $(`#user-info-${this.prev_msg}`).remove();
         $(`#msg-footer-${this.prev_msg}`).remove();
-        $(`#msg-${message.room}-${this.prev_msg}`).parent().removeClass('col-9');
-        $(`#msg-${message.room}-${this.prev_msg}`).parent().addClass('col-10');
+        $(`#msg-${message.room}-${this.prev_msg}`).parent().removeClass('col-10');
+        $(`#msg-${message.room}-${this.prev_msg}`).parent().addClass('col-11');
       }
     } else {
       output = empty + contents + user_info;
       if(!(switched_side)) {
         $(`#user-info-${this.prev_msg}`).remove();
         $(`#msg-footer-${this.prev_msg}`).remove();
-        $(`#msg-${message.room}-${this.prev_msg}`).parent().removeClass('col-9');
-        $(`#msg-${message.room}-${this.prev_msg}`).parent().addClass('col-10');
+        $(`#msg-${message.room}-${this.prev_msg}`).parent().removeClass('col-10');
+        $(`#msg-${message.room}-${this.prev_msg}`).parent().addClass('col-11');
       }
     }
 

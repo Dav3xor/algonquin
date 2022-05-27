@@ -54,6 +54,11 @@ body {
   background-color: coral;
 }
 
+.portrait {
+  max-height: 80px;
+  min-width:  35px;
+  min-height: 35px;
+}
 
 .default-bubble {
   display: inline-block;
