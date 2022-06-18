@@ -482,6 +482,8 @@ def handle_message(json):
                       message = json['message'])
     message.save()
     message.commit()
+    message = Message.get(message.id)
+    print(message.public_fields())
     emit('stuff_list', {'messages': [ message.public_fields() ]}, 
          room = 'room-'+str(room))
 

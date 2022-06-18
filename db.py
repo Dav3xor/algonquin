@@ -45,7 +45,7 @@ def set_properties(c, properties):
 
 class DBChild:
     def __init__(self, table, key, related_column):
-        print("-----------")
+        #print("-----------")
         self.table          = table
         self.columns        = [key for key in table.attrs.keys() if 'relative' not in table.attrs[key]]
         self.key            = key
@@ -125,7 +125,7 @@ class DBTable:
 
         if order_by:
             stmt += " order by " + order_by
-        print(stmt)
+        #print(stmt)
         DBTable.cursor.execute(stmt)
         rows = DBTable.cursor.fetchall()
         return [ cls(**dict(zip(cls.attrs.keys(), values))) for values in rows ]
