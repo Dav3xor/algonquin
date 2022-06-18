@@ -510,7 +510,14 @@ class Cards {
 
 class Messages {
   constructor() {
+    this.top_side    = 0;
+    this.bottom_side = 0;
+    this.top_user    = 0;
+    this.bottom_user = 0;
+    this.top_id      = 0;
+    this.bottom_id   = 0;
     this.rooms           = {};
+    this.messages        = {};
     this.expanded_input  = false;
     this.handling_unread = false;
     this.label           = "messages"
@@ -526,6 +533,7 @@ class Messages {
       if (event.keyCode === 13) {
         if (!event.shiftKey) {
           $("#send-message").click();
+          // TODO: this seems dumb, fix
           messages.input_small();
         } else {
           messages.input_large();
@@ -536,6 +544,7 @@ class Messages {
     this.input_small();
     $('#send-message').append(icons.chat_bubble);
     $('#footer-new-file').append(icons.paperclip);
+    $('#goto-bottom').html(icons.goto_bottom);
 
   }
 
@@ -596,6 +605,7 @@ class Messages {
     this.rooms[this.cur_room].unread = 0;
     cookie.write('cur_room', room, '365');
     this.clear_unread();
+    $('#messages').empty();
     this.render();
     this.render_room_list();
   }
@@ -603,7 +613,7 @@ class Messages {
   add_room(room) {
     if(!this.rooms.hasOwnProperty(room.id)) {
       this.rooms[room.id] = room;
-      this.rooms[room.id].messages = [];
+      this.rooms[room.id].message_index = [];
       this.rooms[room.id].unread = 0;
       if(!(room.hasOwnProperty('last_seen'))) {
         this.rooms[room.id].last_seen = 0;
@@ -729,21 +739,8 @@ class Messages {
     }
   }
 
-  render() {
-    this.side = 0; // left
-    this.cur_user = 0;
-    if(this.rooms.hasOwnProperty(this.cur_room)) {
-        if(this.rooms[this.cur_room].messages.length > 0) {
-          this.cur_user = this.rooms[this.cur_room].messages[0].user;
-        }
-        $('#messages').html('');
-        for (let message of this.rooms[this.cur_room].messages) {
-          this.render_message(message);
-        }
-    }
-  }
-
   expand_tildes(text) {
+    // TODO: add handling for ~user1~, etc...
     var inline_files  = text.match(/~file(\d+)~/gm);
     var inline_cards  = text.match(/~card(\d+)~/gm);
     
@@ -763,14 +760,120 @@ class Messages {
     return text;
   }
 
+  min_id(messages, room) {
+    var min = 100000000;
+    messages.forEach(message => { if((message.room == room) &&
+                                     (message.id < min)) min=message.id });
+    return min;
+  }
+  
+  max_id(messages, room) {
+    console.log("xxx: "+messages);
+    var max = 0;
+    messages.forEach(message => { if((message.room == room) && 
+                                     (message.id > max)) max=message.id });
+    return max;
+  }
 
-  render_message(message) {
+
+  render(messages = null) {
+    var cur_room = null;
+    if(this.rooms.hasOwnProperty(this.cur_room)) {
+      cur_room = this.rooms[this.cur_room];
+    } else {
+      return;
+    }
+    console.log(messages);
+    if(!messages) {
+      // redraw everything
+      console.log("render mode: everything");
+      messages = cur_room.message_index;
+    } else if((cur_room.message_index.length > 0) && 
+              (this.max_id(messages, cur_room) < cur_room.message_index[0])) {
+      // backfill mode...
+      console.log("render mode: backfill");
+      //messages.reverse();
+    } else {
+      console.log("render mode: new message");
+      messages.reverse();
+      // new messages...
+    }
+
+    for (let message of messages) {
+      if(!message.hasOwnProperty('room')) {
+        message = this.messages[message];
+      }
+      if(message.room == cur_room.id) {
+        this.render_message(message);
+      }
+    }
+  }
+
+  render_msg_footer(message, user, float) {
+    var username = this.bottom_side % 2 ? `<b class="text-white">${user.handle}</b> ${message.written}` :
+                                   `${message.written} <b class="text-white">${user.handle}</b>`;
+    return `<div class="row" id="msg-footer-${message.id}">
+                    <div class="col-12${float} small-font-size">
+                      <small>
+                        ${username}
+                      </small>
+                    </div>
+                  </div>`;
+  }
+
+  render_msg_portrait(message, portrait) {
+    return `<div class="col-1" id="user-info-${message.id}">
+              <img src="/portraits/${portrait}" class="img-fluid portrait" />
+            </div>`;
+  }
+  render_msg_contents(message, contents, classes, float) {
+    return `<div class="col-10${float}">
+              <span id="msg-${message.room}-${message.id}" 
+                    class="${classes}">
+                ${markdown.makeHtml(contents)}
+              </span>
+            </div>`;
+  }
+
+  oldest_msg(room) {
+    if (!(room in this.rooms)) {
+      console.log("1");
+      return null;
+    } else if(!(this.rooms[room].hasOwnProperty('message_index'))) {
+      console.log("2");
+      return null;
+    } else if (this.rooms[room].message_index.length == 0) {
+      console.log("3");
+      return null;
+    } else {
+      console.log("4");
+      console.log(this.rooms[room].message_index);
+      return this.rooms[room].message_index[0];
+    }
+  }
+
+  newest_msg(room) {
+    if (!(room in this.rooms)) {
+      return null;
+    }
+    else if (this.rooms[room].message_index.length == 0) {
+      return null;
+    } else {
+      return this.rooms[room].message_index[0];
+    }
+  }
+
+  render_message(message, above) {
     var user          = people.get_person(message.user);
     var portrait      = "default.png";
     var handle        = "loading...";
     var msg           = message.message;
-    var prev_msg      = null;
     var switched_side = false;
+    var oldest        = this.oldest_msg(message.room);
+    console.log("oldest: " + oldest);
+    //var newest        = this.newest_msg(message.room);
+    var backfill      = false;
+    var side          = 0;
 
     msg = this.expand_tildes(msg);
 
@@ -779,45 +882,56 @@ class Messages {
       handle   = user.handle;
     }
 
-    if (this.cur_user != message.user) {
-      this.side += 1;
-      this.cur_user = message.user;
-      switched_side = true;
-    } else if (this.prev_msg != null) {
-      $(`#msg-${message.room}-${this.prev_msg}`).removeClass('tri-right btm-right-in');
+    if ((oldest) && (message.id < oldest)) {
+      // backfill
+      if (this.top_user != message.user) {
+        console.log('backfill mode: engaged');
+        if(this.top_side > 0) {
+          switched_side  = true;
+        }
+        this.top_side += 1;
+        this.top_user  = message.user;
+      }
+      backfill = true;
+      side     = this.top_side;
+    } else {
+      if (this.bottom_user != message.user) {
+        this.bottom_side   += 1;
+        this.bottom_user    = message.user;
+        switched_side       = true;
+      } else if (this.prev_msg != null) {
+        $(`#msg-${message.room}-${this.prev_msg}`).removeClass('tri-right btm-right-in');
+      }
+      side = this.bottom_side;
     }
 
-    var classes = "tri-right btm-left-in default-bubble";
-    var float = "";
-    if(!(this.side % 2)) {
-      float = " text-right";
-      classes = "tri-right btm-right-in default-bubble";
-    }
-
-    //<b>${handle}</b>
-    var user_info = `<div class="col-1" id="user-info-${message.id}">
-                      <img src="/portraits/${portrait}" class="img-fluid portrait" />
-                    </div>`;
     var empty    = `<div class="col-sm-1"></div>`;
-    var contents = `<div class="col-10${float}">
-                      <span id="msg-${message.room}-${message.id}" 
-                            class="${classes}">
-                        ${markdown.makeHtml(msg)}
-                      </span>
-                    </div>`;
-    var username = this.side % 2 ? `<b class="text-white">${user.handle}</b> ${message.written}` :
-                                   `${message.written} <b class="text-white">${user.handle}</b>`;
-    var footer = `<div class="row" id="msg-footer-${message.id}">
-                    <div class="col-12${float} small-font-size">
-                      <small>
-                        ${username}
-                      </small>
-                    </div>
-                  </div>`;
+    var classes   = "default-bubble";
+    var float     = "";
+    var user_info = "";
+    var footer = "";
+
+    if(!(side % 2)) {
+      float = " text-right";
+      if((!backfill) || ((backfill) && (switched_side))) {
+        classes += " tri-right btm-right-in";
+        user_info = this.render_msg_portrait(message, portrait);
+        footer = this.render_msg_footer(message, user, float); 
+      }
+    } else {
+      if((!backfill) || ((backfill) && (switched_side))) {
+        classes += " tri-right btm-left-in";
+        user_info = this.render_msg_portrait(message, portrait);
+        footer = this.render_msg_footer(message, user, float); 
+      }
+    }
+
+    var contents = this.render_msg_contents(message, msg, classes, float);
+
     var output = "";
-    if(this.side % 2) {
+    if(side % 2) {
       output = user_info + contents + empty;
-      if(!(switched_side)) {
+      if((!(switched_side))&&(!(backfill))) {
         $(`#user-info-${this.prev_msg}`).remove();
         $(`#msg-footer-${this.prev_msg}`).remove();
         $(`#msg-${message.room}-${this.prev_msg}`).parent().removeClass('col-10');
@@ -825,7 +939,7 @@ class Messages {
       }
     } else {
       output = empty + contents + user_info;
-      if(!(switched_side)) {
+      if((!(switched_side))&&(!(backfill))) {
         $(`#user-info-${this.prev_msg}`).remove();
         $(`#msg-footer-${this.prev_msg}`).remove();
         $(`#msg-${message.room}-${this.prev_msg}`).parent().removeClass('col-10');
@@ -836,37 +950,63 @@ class Messages {
     if($(`#message-${message.id}`).length) {
       $(`#message-${message.id}`).html(output);
     } else {
-      $('#messages').prepend(`${footer}
-                              <div class="row mb-1" id="message-${message.id}"> 
-                                ${output}
-                              </div>`);
+      if(backfill) {
+        console.log('a');
+        $('#messages').append(`${footer}
+                                <div class="row mb-1" id="message-${message.id}"> 
+                                  ${output}
+                                </div>`);
+      } else {
+        console.log('b');
+        $('#messages').prepend(`${footer}
+                                <div class="row mb-1" id="message-${message.id}"> 
+                                  ${output}
+                                </div>`);
+      }
     }
-    
-    this.prev_msg = message.id;
+   
+    if(!(backfill)) {
+      this.prev_msg = message.id;
+    }
 
 
   }
  
-  add(message) {
-    if (!this.rooms.hasOwnProperty(message.room)) {
-      this.add_room({id:message.room, placeholder:true});
+  add(new_messages) {
+    console.log(new_messages);
+    for (var message in new_messages) {
+      message = new_messages[message];
+
+      if (message.id in this.messages) {
+        // TODO: handle message editing/deletion...
+        console.log("duplicate message: " + message.id);
+      } else {
+        // add room to rooms list if it's not there.
+        if (!this.rooms.hasOwnProperty(message.room)) {
+          this.add_room({id:message.room, placeholder:true});
+        }
+
+        // handle last seen
+        if(message.id > this.rooms[message.room].last_seen) {
+          this.rooms[message.room].unread += 1;
+          if((document.visibilityState == 'visible') && 
+             (message.room == this.cur_room)){
+            this.rooms[message.room].last_seen = message.id;
+          } 
+        }
+        this.rooms[message.room].message_index.push(parseInt(message.id));
+        this.messages[message.id] = message;
+        this.rooms[message.room].message_index.sort(function(a, b){return -1*(b-a)});
+      }
     }
-    if(message.id > this.rooms[message.room].last_seen) {
-      this.rooms[message.room].unread += 1;
-      if((document.visibilityState == 'visible') && 
-         (message.room == this.cur_room)){
-        this.rooms[message.room].last_seen = message.id;
-      } 
-    }
-    this.rooms[message.room].messages.push(message);
-    if ((this.rooms[message.room].hasOwnProperty('name')) &&
-        (this.rooms[message.room]['name'].startsWith("Chat With"))) {
-      return 2;
-    } else {
-      return 1;
-    }
+    //console.log(this.rooms[message.room].message_index);
   }
- 
+
+  get_scrollback() { 
+    socket.emit('get-messages', {'room_id':   this.cur_room,
+                                 'before_id': this.rooms[this.cur_room].message_index[0],
+                                 'count':     100} );
+  }
   handle_unread() {
     if((this.handling_unread == false) && 
        (this.rooms[this.cur_room].unread > 0)) {
@@ -880,10 +1020,10 @@ class Messages {
   }
 
   clear_unread() {
-    var last_seen = this.rooms[this.cur_room].messages.slice(-1)[0];
+    var last_seen = this.rooms[this.cur_room].message_index.slice(-1)[0];
 
     if(last_seen) {
-      socket.emit('have-read', { room: this.cur_room, last: last_seen.id });
+      socket.emit('have-read', { room: this.cur_room, last: last_seen });
     }
 
     if(!(this.rooms[this.cur_room].hasOwnProperty('unread'))) {
@@ -962,11 +1102,7 @@ class Getter {
       update_rooms    = true;
     }
 
-    var message_types = 0;
     if ('messages' in stuff) {
-      for(var message in stuff['messages']) {
-        message_types |= messages.add(stuff['messages'][message])
-      }
       update_messages = true;
     }
     
@@ -984,7 +1120,12 @@ class Getter {
         lissajous.incb();
       }
       $('#favicon').attr('href','/static/favicon2.svg');
-      messages.render();
+      if('messages' in stuff) {
+        messages.render(stuff.messages);
+        messages.add(stuff.messages);
+      } else {
+        messages.render();
+      }
     }
 
     if(update_files) {
@@ -1112,22 +1253,6 @@ class Lissajous {
 }
 
 var icons = {
-    'blank': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
-                   fill="currentColor" class="bi bi-arrow-bar-up" viewBox="0 0 16 16">
-              </svg>`,
-
-    'card': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
-                  fill="currentColor" class="bi bi-postcard" viewBox="0 0 16 16">
-               <path fill-rule="evenodd" d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 
-                     2 0 0 0 2-2V4a2 2 0 0 0-2-2H2ZM1 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 
-                     1v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4Zm7.5.5a.5.5 0 0 0-1 
-                     0v7a.5.5 0 0 0 1 0v-7ZM2 5.5a.5.5 0 0 1 .5-.5H6a.5.5 0 0 1 0 
-                     1H2.5a.5.5 0 0 1-.5-.5Zm0 2a.5.5 0 0 1 .5-.5H6a.5.5 0 0 1 0 
-                     1H2.5a.5.5 0 0 1-.5-.5Zm0 2a.5.5 0 0 1 .5-.5H6a.5.5 0 0 1 0 
-                     1H2.5a.5.5 0 0 1-.5-.5ZM10.5 5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 
-                     .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3ZM13 8h-2V6h2v2Z"/>
-             </svg>`,
-
     'arrow_up': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                       fill="currentColor" class="bi bi-arrow-bar-up" viewBox="0 0 16 16">
                    <path fill-rule="evenodd" 
@@ -1145,6 +1270,47 @@ var icons = {
                            0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 
                            .708-.708L7.5 12.293V6.5A.5.5 0 0 1 8 6z"/>
                    </svg>`,
+    'audio':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                       fill="currentColor" class="bi bi-file-music" viewBox="0 0 16 16">
+                  <path d="M10.304 3.13a1 1 0 0 1 1.196.98v1.8l-2.5.5v5.09c0 
+                           .495-.301.883-.662 1.123C7.974 12.866 7.499 13 7 
+                           13c-.5 0-.974-.134-1.338-.377-.36-.24-.662-.628-.662-1.123s.301-.883.662-1.123C6.026 
+                           10.134 6.501 10 7 10c.356 0 .7.068 1 .196V4.41a1 1 0 0 1 .804-.98l1.5-.3z"/>
+                  <path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 
+                           2-2V2a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 
+                           1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
+                </svg>`,
+
+    'archive':        `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                            fill="currentColor" class="bi bi-file-zip" viewBox="0 0 16 16">
+                         <path d="M6.5 7.5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v.938l.4 1.599a1 1 0 0 
+                                  1-.416 1.074l-.93.62a1 1 0 0 1-1.109 0l-.93-.62a1 1 0 0 
+                                  1-.415-1.074l.4-1.599V7.5zm2 0h-1v.938a1 1 0 0 1-.03.243l-.4 
+                                  1.598.93.62.93-.62-.4-1.598a1 1 0 0 1-.03-.243V7.5z"/>
+                         <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 
+                                  1-2-2V2zm5.5-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 
+                                  1-1V2a1 1 0 0 0-1-1H9v1H8v1h1v1H8v1h1v1H7.5V5h-1V4h1V3h-1V2h1V1z"/>
+                       </svg>`,
+
+    'binoculars':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                            fill="currentColor" class="bi bi-binoculars" viewBox="0 0 16 16">
+                         <path d="M3 2.5A1.5 1.5 0 0 1 4.5 1h1A1.5 1.5 0 0 1 7 
+                                  2.5V5h2V2.5A1.5 1.5 0 0 1 10.5 1h1A1.5 1.5 0 0 1 13 
+                                  2.5v2.382a.5.5 0 0 0 .276.447l.895.447A1.5 1.5 0 0 1 15 
+                                  7.118V14.5a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 
+                                  14.5v-3a.5.5 0 0 1 .146-.354l.854-.853V9.5a.5.5 0 0 
+                                  0-.5-.5h-3a.5.5 0 0 0-.5.5v.793l.854.853A.5.5 0 0 1 7 
+                                  11.5v3A1.5 1.5 0 0 1 5.5 16h-3A1.5 1.5 0 0 1 1 
+                                  14.5V7.118a1.5 1.5 0 0 1 .83-1.342l.894-.447A.5.5 0 0 0 3 
+                                  4.882V2.5zM4.5 2a.5.5 0 0 0-.5.5V3h2v-.5a.5.5 0 0 
+                                  0-.5-.5h-1zM6 4H4v.882a1.5 1.5 0 0 1-.83 1.342l-.894.447A.5.5 0 0 0 2 
+                                  7.118V13h4v-1.293l-.854-.853A.5.5 0 0 1 5 10.5v-1A1.5 1.5 0 0 1 6.5 
+                                  8h3A1.5 1.5 0 0 1 11 9.5v1a.5.5 0 0 1-.146.354l-.854.853V13h4V7.118a.5.5 0 0 
+                                  0-.276-.447l-.895-.447A1.5 1.5 0 0 1 12 4.882V4h-2v1.5a.5.5 0 0 
+                                  1-.5.5h-3a.5.5 0 0 1-.5-.5V4zm4-1h2v-.5a.5.5 0 0 
+                                  0-.5-.5h-1a.5.5 0 0 0-.5.5V3zm4 11h-4v.5a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 
+                                  .5-.5V14zm-8 0H2v.5a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5V14z"/>
+                       </svg>`,
 
     'bell': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                     fill="currentColor" class="bi bi-bell" viewBox="0 0 16 16">
@@ -1190,6 +1356,36 @@ var icons = {
                                      2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5z"/>
                           </svg>`,
     
+    'blank': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                   fill="currentColor" class="bi bi-arrow-bar-up" viewBox="0 0 16 16">
+              </svg>`,
+
+    'card': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                  fill="currentColor" class="bi bi-postcard" viewBox="0 0 16 16">
+               <path fill-rule="evenodd" d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 
+                     2 0 0 0 2-2V4a2 2 0 0 0-2-2H2ZM1 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 
+                     1v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4Zm7.5.5a.5.5 0 0 0-1 
+                     0v7a.5.5 0 0 0 1 0v-7ZM2 5.5a.5.5 0 0 1 .5-.5H6a.5.5 0 0 1 0 
+                     1H2.5a.5.5 0 0 1-.5-.5Zm0 2a.5.5 0 0 1 .5-.5H6a.5.5 0 0 1 0 
+                     1H2.5a.5.5 0 0 1-.5-.5Zm0 2a.5.5 0 0 1 .5-.5H6a.5.5 0 0 1 0 
+                     1H2.5a.5.5 0 0 1-.5-.5ZM10.5 5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 
+                     .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3ZM13 8h-2V6h2v2Z"/>
+             </svg>`,
+
+    'download':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                          fill="currentColor" class="bi bi-cloud-download" viewBox="0 0 16 16">
+                       <path d="M4.406 1.342A5.53 5.53 0 0 1 8 0c2.69 0 4.923 2 5.166 
+                                4.579C14.758 4.804 16 6.137 16 7.773 16 9.569 14.502 11 
+                                12.687 11H10a.5.5 0 0 1 0-1h2.688C13.979 10 15 8.988 15 
+                                7.773c0-1.216-1.02-2.228-2.313-2.228h-.5v-.5C12.188 2.825 
+                                10.328 1 8 1a4.53 4.53 0 0 0-2.941 1.1c-.757.652-1.153 
+                                1.438-1.153 2.055v.448l-.445.049C2.064 4.805 1 5.952 1 
+                                7.318 1 8.785 2.23 10 3.781 10H6a.5.5 0 0 1 0 1H3.781C1.708 
+                                11 0 9.366 0 7.318c0-1.763 1.266-3.223 
+                                2.942-3.593.143-.863.698-1.723 1.464-2.383z"/>
+                       <path d="M7.646 15.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 
+                                14.293V5.5a.5.5 0 0 0-1 0v8.793l-2.146-2.147a.5.5 0 0 0-.708.708l3 3z"/>
+                     </svg>`,
     'edit': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                   fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
                <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 
@@ -1212,6 +1408,24 @@ var icons = {
                               0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
                   </svg>`,
 
+    'goto_bottom':  `<svg xmlns="http://www.w3.org/2000/svg" width="1.96em" height="1.96em" 
+                          fill="currentColor" class="bi bi-arrow-down-square" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" 
+                          d="M15 2a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 
+                             1-1V2zM0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 
+                             1-2-2V2zm8.5 2.5a.5.5 0 0 0-1 0v5.793L5.354 8.146a.5.5 0 1 
+                             0-.708.708l3 3a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V4.5z"/>
+                     </svg>`,
+
+    'image':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                       fill="currentColor" class="bi bi-file-image" viewBox="0 0 16 16">
+                    <path d="M8.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
+                    <path d="M12 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 
+                             2-2V2a2 2 0 0 0-2-2zM3 2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 
+                             1v8l-2.083-2.083a.5.5 0 0 0-.76.063L8 11 5.835 
+                             9.7a.5.5 0 0 0-.611.076L3 12V2z"/>
+                  </svg>`,
+
     'locked':         `<svg xmlns="http://www.w3.org/2000/svg" width="1.00em" height="1.00em" 
                             fill="currentColor" class="bi bi-lock" viewBox="0 0 16 16">
                          <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 
@@ -1220,14 +1434,22 @@ var icons = {
                                   1 0 0 1 1-1z"/>
                        </svg>`,
 
-    'unlocked':       `<svg xmlns="http://www.w3.org/2000/svg" width="1.00em" height="1.00em" 
-                            fill="currentColor" class="bi bi-unlock" viewBox="0 0 16 16">
-                         <path d="M11 1a2 2 0 0 0-2 2v4a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H3a2 2 0 0 
-                                  1-2-2V9a2 2 0 0 1 2-2h5V3a3 3 0 0 1 6 0v4a.5.5 0 0 1-1 0V3a2 
-                                  2 0 0 0-2-2zM3 8a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h6a1 1 0 0 0 
-                                  1-1V9a1 1 0 0 0-1-1H3z"/>
-                        </svg>`,
-  
+
+    'message':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                         fill="currentColor" class="bi bi-journal-arrow-up" viewBox="0 0 16 16">
+                      <path fill-rule="evenodd" 
+                            d="M8 11a.5.5 0 0 0 .5-.5V6.707l1.146 1.147a.5.5 0 0 0 
+                               .708-.708l-2-2a.5.5 0 0 0-.708 0l-2 2a.5.5 0 1 0 
+                               .708.708L7.5 6.707V10.5a.5.5 0 0 0 .5.5z"/>
+                      <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 
+                               1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 
+                               1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2z"/>
+                      <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 
+                               0-1H1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 
+                               1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 
+                               0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1z"/>
+                    </svg>`,
+
     'new_tab_small':   `<svg xmlns="http://www.w3.org/2000/svg" width="1.0em" height="1.0em" 
                              fill="currentColor" class="bi bi-box-arrow-up-right" viewBox="0 0 16 16">
                           <path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 
@@ -1251,6 +1473,7 @@ var icons = {
                                        1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 
                                        1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
                     </svg>`,
+
     'paperclip': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                            fill="currentColor" class="bi bi-paperclip" viewBox="0 0 16 16">
                         <path d="M4.5 3a2.5 2.5 0 0 1 5 0v9a1.5 1.5 0 0 1-3 
@@ -1306,6 +1529,14 @@ var icons = {
                                      1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
                   </svg>`,
 
+    'unlocked':       `<svg xmlns="http://www.w3.org/2000/svg" width="1.00em" height="1.00em" 
+                            fill="currentColor" class="bi bi-unlock" viewBox="0 0 16 16">
+                         <path d="M11 1a2 2 0 0 0-2 2v4a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H3a2 2 0 0 
+                                  1-2-2V9a2 2 0 0 1 2-2h5V3a3 3 0 0 1 6 0v4a.5.5 0 0 1-1 0V3a2 
+                                  2 0 0 0-2-2zM3 8a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h6a1 1 0 0 0 
+                                  1-1V9a1 1 0 0 0-1-1H3z"/>
+                        </svg>`,
+  
     'unknown': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                      fill="currentColor" class="bi bi-file" viewBox="0 0 16 16">
                   <path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 
@@ -1313,14 +1544,6 @@ var icons = {
                            1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
                 </svg>`,
 
-    'image':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
-                       fill="currentColor" class="bi bi-file-image" viewBox="0 0 16 16">
-                    <path d="M8.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
-                    <path d="M12 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 
-                             2-2V2a2 2 0 0 0-2-2zM3 2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 
-                             1v8l-2.083-2.083a.5.5 0 0 0-.76.063L8 11 5.835 
-                             9.7a.5.5 0 0 0-.611.076L3 12V2z"/>
-                  </svg>`,
 
     'video':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                        fill="currentColor" class="bi bi-camera-video" viewBox="0 0 16 16">
@@ -1330,77 +1553,7 @@ var icons = {
                                      1-2-2V5zm11.5 5.175 3.5 1.556V4.269l-3.5 1.556v4.35zM2 
                                      4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h7.5a1 1 0 0 0 1-1V5a1 
                                      1 0 0 0-1-1H2z"/>
-                  </svg>`,
-
-    'audio':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
-                       fill="currentColor" class="bi bi-file-music" viewBox="0 0 16 16">
-                  <path d="M10.304 3.13a1 1 0 0 1 1.196.98v1.8l-2.5.5v5.09c0 
-                           .495-.301.883-.662 1.123C7.974 12.866 7.499 13 7 
-                           13c-.5 0-.974-.134-1.338-.377-.36-.24-.662-.628-.662-1.123s.301-.883.662-1.123C6.026 
-                           10.134 6.501 10 7 10c.356 0 .7.068 1 .196V4.41a1 1 0 0 1 .804-.98l1.5-.3z"/>
-                  <path d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 
-                           2-2V2a2 2 0 0 0-2-2H4zm0 1h8a1 1 0 0 1 1 1v12a1 
-                           1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
-                </svg>`,
-
-    'archive':        `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
-                            fill="currentColor" class="bi bi-file-zip" viewBox="0 0 16 16">
-                         <path d="M6.5 7.5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v.938l.4 1.599a1 1 0 0 
-                                  1-.416 1.074l-.93.62a1 1 0 0 1-1.109 0l-.93-.62a1 1 0 0 
-                                  1-.415-1.074l.4-1.599V7.5zm2 0h-1v.938a1 1 0 0 1-.03.243l-.4 
-                                  1.598.93.62.93-.62-.4-1.598a1 1 0 0 1-.03-.243V7.5z"/>
-                         <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 
-                                  1-2-2V2zm5.5-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 
-                                  1-1V2a1 1 0 0 0-1-1H9v1H8v1h1v1H8v1h1v1H7.5V5h-1V4h1V3h-1V2h1V1z"/>
-                       </svg>`,
-
-    'binoculars':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
-                            fill="currentColor" class="bi bi-binoculars" viewBox="0 0 16 16">
-                         <path d="M3 2.5A1.5 1.5 0 0 1 4.5 1h1A1.5 1.5 0 0 1 7 
-                                  2.5V5h2V2.5A1.5 1.5 0 0 1 10.5 1h1A1.5 1.5 0 0 1 13 
-                                  2.5v2.382a.5.5 0 0 0 .276.447l.895.447A1.5 1.5 0 0 1 15 
-                                  7.118V14.5a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 
-                                  14.5v-3a.5.5 0 0 1 .146-.354l.854-.853V9.5a.5.5 0 0 
-                                  0-.5-.5h-3a.5.5 0 0 0-.5.5v.793l.854.853A.5.5 0 0 1 7 
-                                  11.5v3A1.5 1.5 0 0 1 5.5 16h-3A1.5 1.5 0 0 1 1 
-                                  14.5V7.118a1.5 1.5 0 0 1 .83-1.342l.894-.447A.5.5 0 0 0 3 
-                                  4.882V2.5zM4.5 2a.5.5 0 0 0-.5.5V3h2v-.5a.5.5 0 0 
-                                  0-.5-.5h-1zM6 4H4v.882a1.5 1.5 0 0 1-.83 1.342l-.894.447A.5.5 0 0 0 2 
-                                  7.118V13h4v-1.293l-.854-.853A.5.5 0 0 1 5 10.5v-1A1.5 1.5 0 0 1 6.5 
-                                  8h3A1.5 1.5 0 0 1 11 9.5v1a.5.5 0 0 1-.146.354l-.854.853V13h4V7.118a.5.5 0 0 
-                                  0-.276-.447l-.895-.447A1.5 1.5 0 0 1 12 4.882V4h-2v1.5a.5.5 0 0 
-                                  1-.5.5h-3a.5.5 0 0 1-.5-.5V4zm4-1h2v-.5a.5.5 0 0 
-                                  0-.5-.5h-1a.5.5 0 0 0-.5.5V3zm4 11h-4v.5a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 
-                                  .5-.5V14zm-8 0H2v.5a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5V14z"/>
-                       </svg>`,
-    'download':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
-                          fill="currentColor" class="bi bi-cloud-download" viewBox="0 0 16 16">
-                       <path d="M4.406 1.342A5.53 5.53 0 0 1 8 0c2.69 0 4.923 2 5.166 
-                                4.579C14.758 4.804 16 6.137 16 7.773 16 9.569 14.502 11 
-                                12.687 11H10a.5.5 0 0 1 0-1h2.688C13.979 10 15 8.988 15 
-                                7.773c0-1.216-1.02-2.228-2.313-2.228h-.5v-.5C12.188 2.825 
-                                10.328 1 8 1a4.53 4.53 0 0 0-2.941 1.1c-.757.652-1.153 
-                                1.438-1.153 2.055v.448l-.445.049C2.064 4.805 1 5.952 1 
-                                7.318 1 8.785 2.23 10 3.781 10H6a.5.5 0 0 1 0 1H3.781C1.708 
-                                11 0 9.366 0 7.318c0-1.763 1.266-3.223 
-                                2.942-3.593.143-.863.698-1.723 1.464-2.383z"/>
-                       <path d="M7.646 15.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 
-                                14.293V5.5a.5.5 0 0 0-1 0v8.793l-2.146-2.147a.5.5 0 0 0-.708.708l3 3z"/>
-                     </svg>`,
-    'message':     `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
-                         fill="currentColor" class="bi bi-journal-arrow-up" viewBox="0 0 16 16">
-                      <path fill-rule="evenodd" 
-                            d="M8 11a.5.5 0 0 0 .5-.5V6.707l1.146 1.147a.5.5 0 0 0 
-                               .708-.708l-2-2a.5.5 0 0 0-.708 0l-2 2a.5.5 0 1 0 
-                               .708.708L7.5 6.707V10.5a.5.5 0 0 0 .5.5z"/>
-                      <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 
-                               1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 
-                               1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2z"/>
-                      <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 
-                               0-1H1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 
-                               1h-2a.5.5 0 0 1 0-1H1zm0 3v-.5a.5.5 0 0 1 1 
-                               0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1H1z"/>
-                    </svg>`
+                  </svg>`
     };
 
 
@@ -1580,6 +1733,21 @@ function dragstart_handler(ev) {
   ev.dataTransfer.setData("text/plain", ev.target.id);
 }
 
+$('#messages').scroll(function() {
+  var location = $('#messages').scrollTop();
+  if(location == 1) {
+    // chromium made me do it.
+    $('#messages').scrollTop(0);
+  }
+
+  console.log(location);
+  if($('#messages').scrollTop() >= 0) {
+    $('#goto-bottom').addClass('d-none');
+  } else {
+    messages.get_scrollback();
+    $('#goto-bottom').removeClass('d-none');
+  }
+});
 
 $('#new-user-ok').click(function() {
   $('#new-user').modal('hide');

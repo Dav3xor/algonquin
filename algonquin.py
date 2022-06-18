@@ -363,6 +363,29 @@ def handle_get_stuff(json):
             output[key] = { row.id:row.public_fields() for row in rows }
     send_stuff(request.sid, **output)
 
+@user_logged_in
+@socketio.on('get-messages')
+@json_has_keys('room_id', 'before_id', 'count')
+def handle_get_messages(json):
+    print("1")
+    user = scoreboard.get_user_from_sid(request.sid)
+    output = {}
+    membership = Membership.get_where(room = json['room_id'],
+                                      user = user)
+    print("2")
+    if membership:
+        print("3")
+        before = int(json['before_id'])
+        count  = int(json['count'])
+        count  = count if count < 100 else count
+
+        messages = Message.raw_select("messages",
+                                      f"room = {membership.room} and id < {before}",
+                                      f"id desc limit {count}")
+        messages = [ row.public_fields() for row in messages ]
+        print(messages)
+        send_stuff(request.sid, messages=messages)
+        
 
 @user_logged_in
 @socketio.on('delete-file')
@@ -459,7 +482,7 @@ def handle_message(json):
                       message = json['message'])
     message.save()
     message.commit()
-    emit('stuff_list', {'messages': { message.id:message.public_fields() }}, 
+    emit('stuff_list', {'messages': [ message.public_fields() ]}, 
          room = 'room-'+str(room))
 
 @user_logged_in

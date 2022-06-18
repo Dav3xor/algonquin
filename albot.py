@@ -6,7 +6,7 @@ from os.path import exists
 
 settings_file = 'albot_sekrit'
 
-settings = { 'sessionid': '25-token-6201712647338647187',
+settings = { 'sessionid': '2-token-10747145167090777022',
              'password': 'ASFG#$TYsdfasg@#$BR#$!!&^1461',
              'domain': 'Orgone Institute'}
 
@@ -100,4 +100,4 @@ def password_set(data):
     with open(settings_file, 'w') as f:
         f.write(json.dumps(settings))
 
-sio.connect('http://localhost:8080')
+sio.connect('http://orgone.institute:8080')

@@ -5,10 +5,23 @@
 
 .messages {
   height: 500px;
-  overflow: visible;
   display: flex;
   font-size: 1.5rem;
+  overflow-y: scroll;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   flex-direction: column-reverse;
+}
+.messages::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.scrollable-element {
+  scrollbar-color: red yellow;
+}
+
+.scrollable-element {
+  scrollbar-color: red yellow;
 }
 
 .login-banner {
@@ -75,6 +88,7 @@ body {
   color: black; min-width:40px; 
 
 }
+
 /*Right triangle, placed bottom left side slightly in*/
 .tri-right.btm-left-in:before {
 	content: ' ';

@@ -125,7 +125,7 @@ class DBTable:
 
         if order_by:
             stmt += " order by " + order_by
-        #print(stmt)
+        print(stmt)
         DBTable.cursor.execute(stmt)
         rows = DBTable.cursor.fetchall()
         return [ cls(**dict(zip(cls.attrs.keys(), values))) for values in rows ]
