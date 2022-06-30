@@ -369,8 +369,9 @@ def handle_get_stuff(json):
 def handle_get_messages(json):
     print("1")
     user = scoreboard.get_user_from_sid(request.sid)
+    room = int(json['room_id'])
     output = {}
-    membership = Membership.get_where(room = json['room_id'],
+    membership = Membership.get_where(room = room,
                                       user = user)
     print("2")
     if membership:
@@ -383,8 +384,17 @@ def handle_get_messages(json):
                                       f"room = {membership.room} and id < {before}",
                                       f"id desc limit {count}")
         messages = [ row.public_fields() for row in messages ]
-        print(messages)
-        send_stuff(request.sid, messages=messages)
+        
+        at_end = False
+        if len(messages) < count:
+            # reached the end of messages, warn the client
+            at_end = True 
+        #print(messages)
+        #time.sleep(5)
+        send_stuff(request.sid, 
+                   at_end=at_end, 
+                   room_id=room, 
+                   messages=messages)
         
 
 @user_logged_in

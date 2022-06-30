@@ -57,6 +57,16 @@
       src: nginx/default
       dest: /etc/nginx/sites-available/default
 
+  - name: write the gunicorn service file
+    template:
+      src: nginx/gunicorn.service
+      dest: /etc/systemd/system/gunicorn.service
+
+  - name: write the gunicorn socket file
+    template:
+      src: nginx/gunicorn.socket
+      dest: /etc/systemd/system/gunicorn.socket
+
 # - name: symlink for certbot on path
 #   file:
 #     src: /snap/bin/certbot
@@ -90,3 +100,9 @@
       state: restarted
       daemon_reload: yes
       name: nginx
+
+  - name: restart gunicorn
+    systemd:
+      state: restarted
+      daemon_reload: yes
+      name: gunicorn
