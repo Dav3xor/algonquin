@@ -62,14 +62,15 @@ class User(DBTable):
     def file_list(self):
         files = File.raw_select("files, memberships", 
                                       """(files.room = memberships.room and memberships.user = %s) or
-                                         (files.room = NULL) or (files.owner = %s)""" % (self.id, self.id),
+                                         (files.room is NULL) or (files.owner = %s)""" % (self.id, self.id),
                                       "files.id desc limit 100")
         return { file.id:file.public_fields() for file in files }
 
     def card_list(self):
         cards = Card.raw_select("cards, memberships", 
                                       """(cards.room = memberships.room and memberships.user = %s) or 
-                                         (cards.owner = NULL) or (cards.owner = %s)""" % (self.id,self.id),
+                                         (cards.owner is NULL) or (cards.owner = %s) or
+                                         (cards.room is NULL)""" % (self.id,self.id),
                                       "cards.id desc limit 100")
         return { card.id:card.public_fields() for card in cards }
 
