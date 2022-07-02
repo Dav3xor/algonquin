@@ -527,7 +527,7 @@ def handle_card_toggle_lock(json):
 @json_has_keys('title', 'content', 'locked')
 def handle_edit_card(json):
     user = scoreboard.get_user_from_sid(request.sid)
-
+    print(json)
     if 'id' in json:
         card          = Card.get(int(json['id']))
         if card:
@@ -542,23 +542,25 @@ def handle_edit_card(json):
             card.contents = json['content']
             card.locked   = json['locked']
     else:
-        card = Card(owner=user, 
-                    contents=json['content'], 
-                    title=json['title'])
+        card = Card(owner     = user, 
+                    contents  = json['content'],
+                    locked    = json['locked'],
+                    title     = json['title'])
 
     if 'room' in json:
         print("setting room to: " + str(json['room']))
         card.room = int(json['room'])
+        card.save()
+        card.commit()
         emit('stuff_list', {'cards': { card.id:card.public_fields() }}, 
              room = 'room-'+str(json['room']))
     else:
         print("room set to None")
         card.room = None
+        card.save()
+        card.commit()
         emit('stuff_list', {'cards': { card.id:card.public_fields() }})
 
-    card.save()
-    card.commit()
-             
 
 
 
