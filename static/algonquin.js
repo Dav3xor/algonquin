@@ -263,7 +263,29 @@ class People {
     }
   }
 }
+class Search {
+  constructor() {
+  }
 
+  send_query(query) {
+    socket.emit('search-query', {'query': query})
+  }
+
+  render(results) {
+    var contents = "";
+    for(var result in results) {
+      result = results[result];
+      contents += `<div class='row'>
+                     <div class='col-2'>${result.ftable}</div>
+                     <div class='col-2'>${result.row}</div>
+                     <div class='col-2'>${result.row_id}</div>
+                     <div class='col-6'>${markdown.makeHtml(result.contents)}</div>
+                   </div>`;
+    }
+    console.log(contents);
+    $('#search-results').html(contents);
+  }
+}
 class Settings {
   constructor() {
     this.settings = ['handle',
@@ -1875,7 +1897,7 @@ var files     = new Files();
 var invite    = new Invite();
 var settings  = new Settings();
 var jukebox   = new Jukebox();
-
+var search    = new Search();
 
 var markdown = new showdown.Converter({'emoji':true, 'simplifiedAutoLink':true, 'openLinksInNewWindow':true});
 
@@ -2153,6 +2175,10 @@ socket.on('delete-file-result', data => {
     files.render();
     messages.render();
   }
+});
+
+socket.on('search-result', data => {
+  search.render(data);
 });
 
 socket.on('password-set', data => {

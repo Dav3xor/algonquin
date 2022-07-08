@@ -7,11 +7,17 @@ from formats import formats
 
 class User(DBTable):
     attrs = {'id':       {'type': 'INTEGER PRIMARY KEY'},
-             'email':    {'type': 'TEXT NOT NULL UNIQUE', 'xss-filter': True}, 
-             'handle':   {'type': 'TEXT NOT NULL', 'xss-filter': True},
+             'email':    {'type': 'TEXT NOT NULL UNIQUE', 
+                          'xss-filter': True, 
+                          'searchable': True}, 
+             'handle':   {'type': 'TEXT NOT NULL', 
+                          'xss-filter': True,
+                          'searchable': True},
              'portrait': {'type': 'TEXT'},
              'bot':      {'type': 'BOOLEAN DEFAULT FALSE'},
-             'about':    {'type': 'TEXT', 'xss-filter': True},
+             'about':    {'type': 'TEXT', 
+                          'xss-filter': True,
+                          'searchable': True},
              'pwhash':   {'type': 'TEXT', 'private': True}}
     table_name = 'users'
 
@@ -117,9 +123,11 @@ class Card(DBTable):
                            'fkey': ['owner', 'id', 'User', 'cards']},
              'room':      {'type': 'INTEGER',
                            'fkey': ['room', 'id', 'Room', 'cards']},
-             'title':     {'type': 'TEXT'},
+             'title':     {'type': 'TEXT',
+                           'searchable': True},
              'locked':    {'type': 'BOOLEAN'},
-             'contents':  {'type': 'TEXT'}}
+             'contents':  {'type': 'TEXT',
+                           'searchable': True}}
     table_name = 'cards'
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
@@ -156,7 +164,9 @@ class File(DBTable):
                            'fkey': ['room', 'id', 'Room', 'files']},
              'folder':    {'type': 'INTEGER',
                            'fkey': ['folder', 'id', 'Folder', 'files']},
-             'name':      {'type': 'TEXT', 'xss-filter': True},
+             'name':      {'type': 'TEXT', 
+                           'searchable': True,
+                           'xss-filter': True},
              'localname': {'type': 'TEXT'},
              'public':    {'type': 'BOOLEAN'},
              'type':      {'type': 'TEXT'},
@@ -233,7 +243,9 @@ class Message(DBTable):
              'room':      {'type': 'INTEGER NOT NULL',
                            'fkey': ['room', 'id', 'Room', 'messages']},
              'written':   {'type': "TIMESTAMP DATETIME DEFAULT (datetime('now', 'localtime'))"},
-             'message':   {'type': 'TEXT', 'xss-filter': True}}
+             'message':   {'type': 'TEXT', 
+                           'searchable': True,
+                           'xss-filter': True}}
     table_name = 'messages'
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)

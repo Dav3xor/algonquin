@@ -1,4 +1,4 @@
-from db import DBTable, build_tables
+from db import DBTable, DBSearch, build_tables
 from tables import User, Session, Message, File, Folder, Room, Membership, Card, Card_Edit
 from flask import Flask, render_template, send_from_directory, request
 from flask_socketio import SocketIO, emit, send, disconnect, join_room
@@ -603,6 +603,16 @@ def handle_new_user(json):
                 'users': {user.id:user.public_fields()}}
     #print(response)
     emit('invite-result', response, broadcast=False);
+
+@user_logged_in
+@socketio.on('search-query')
+@json_has_keys('query')
+def handle_search(json):
+    query = json['query']
+    print(f"search... ({query})")
+    results = [ result.public_fields() for result in DBSearch.search(query) ]
+    print(results)
+    emit('search-result', results)
 
 @user_logged_in
 @socketio.on('settings')

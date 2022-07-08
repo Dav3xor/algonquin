@@ -44,7 +44,7 @@
             <a class="nav-link" onclick="tabs.show('cards');">cards</a>
           </li>
           <li class="nav-item" id="search-nav">
-            <a class="nav-link">search</a>
+            <a class="nav-link" onclick="tabs.show('search');">search</a>
           </li>
           <li class="nav-item" id="about-nav">
             <a class="nav-link">about</a>
@@ -274,6 +274,27 @@
       </div>
 
       <div class="container-fluid d-none" id="cards">
+      </div>
+
+      <div class="container-fluid d-none" id="search">
+        <div class="row">
+          <div class="col-sm-6">
+            <form "form-inline" autocomplete="off" onsubmit="return false;">
+              <div class="form-group">
+                <label autocomplete="nope" for="search-query">Query:</label>
+                <input type="text" class="form-control" 
+                       oninput="$('#send_query').prop('disabled', false);"
+                       name="search-query" id="search-query" required>
+              </div>
+              <button onclick="search.send_query($('#search-query').val());" 
+                      type="button" id="send_query" 
+                      class="btn btn-success btn-lg" disabled>
+                Search
+              </button>
+            </form>
+          </div>
+        </div>
+        <div id="search-results"></div>
       </div>
 
       <div class="container-fluid d-none" id="settings">

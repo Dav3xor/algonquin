@@ -73,16 +73,22 @@ class DBChild:
             raise StopIteration
 
 class DBTable:
-    insert_stmt = "INSERT INTO %s(%s) VALUES(%s)"
-    select_stmt = "SELECT %s FROM %s WHERE %s"
+    insert_stmt          = "INSERT INTO %s(%s) VALUES(%s)"
+    select_stmt          = "SELECT %s FROM %s WHERE %s"
     select_distinct_stmt = "SELECT distinct %s FROM %s WHERE %s"
-    update_stmt = "UPDATE %s SET %s WHERE %s"
-    create_stmt = "CREATE TABLE IF NOT EXISTS %s (%s)"
-    delete_stmt = "DELETE FROM %s WHERE %s LIMIT %s"
-    foreign_key = "FOREIGN KEY(%s) REFERENCES %s(%s)"
-    db          = None
-    cursor      = None
-    tables      = {}
+    update_stmt          = "UPDATE %s SET %s WHERE %s"
+    create_stmt          = "CREATE TABLE IF NOT EXISTS %s (%s)"
+    create_fts_stmt      = "CREATE VIRTUAL TABLE IF NOT EXISTS %s USING fts5(id, %s)"
+    create_trigger_stmt  = """CREATE TRIGGER IF NOT EXISTS %s AFTER %s ON %s
+                                BEGIN
+                                    %s
+                                END;"""
+    delete_stmt          = "DELETE FROM %s WHERE %s LIMIT %s"
+    delete_stmt2         = "DELETE FROM %s WHERE %s"
+    foreign_key          = "FOREIGN KEY(%s) REFERENCES %s(%s)"
+    db                   = None
+    cursor               = None
+    tables               = {}
 
     def __init__(self, **kwargs):
         self.data = {}
@@ -258,14 +264,98 @@ class DBTable:
         else:
             self.insert()
 
+class DBSearch(DBTable):
+    attrs = { 'ftable':         {'type': ''},
+              'row':            {'type': ''},
+              'row_id':         {'type': ''},
+              'contents':       {'type': ''} }
+    table_name = 'db_table_search'
+
+    @classmethod
+    def search(cls, query):
+        return cls.raw_select(cls.table_name,
+                               f"{cls.table_name} match '{query}'",
+                               "rank")
+    def __init__(self, **kwargs):
+        DBTable.__init__(self, **kwargs)
+
+set_properties(DBSearch, DBSearch.attrs)
+
 def build_tables(tables):
+    # build the full text search table
+
+    search_rows = 'ftable, row, row_id, contents'
+
+    def insert_term(search_table, table, row):
+        return DBTable.insert_stmt % (search_table, 
+                                      search_rows, 
+                                      f"'{table}', '{row}', new.id, new.{row}") + ";\n"
+    def delete_term(search_table, table, row):
+        return DBTable.delete_stmt2 % (search_table, 
+                                      f"ftable='{table}' and row='{row}' and row_id=old.id and contents=old.{row}") + ";\n"
+    
+    db_stmt = DBTable.create_fts_stmt % ('db_table_search', search_rows)
+    DBTable.cursor.execute(db_stmt)
+
     for table in tables:
-        attrs = table.attrs
+        attrs      = table.attrs
+        searchable = []
         table_name = table.table_name
-        clauses = ','.join([i + ' ' + attrs[i]['type'] for i in attrs if 'relative' not in attrs[i]])
+        clauses    = ','.join([i + ' ' + attrs[i]['type'] for i in attrs if 'relative' not in attrs[i]])
+
         for i in attrs:
             if 'fkey' in attrs[i]:
                 clauses += "," + DBTable.foreign_key % (i,attrs[i]['fkey'][0],attrs[i]['fkey'][1])
+            if 'searchable' in attrs[i] and attrs[i]['searchable'] == True:
+                searchable.append(i)
+
         db_stmt = DBTable.create_stmt % ( table_name, clauses )
         DBTable.cursor.execute(db_stmt)
+
+        # handle fields that go into the full text search table...
+        if searchable:
+            # on insert...
+            terms = ""
+            for term in searchable:
+                terms += insert_term('db_table_search', 
+                                     table_name, 
+                                     term)
+            trigger = DBTable.create_trigger_stmt % (f"{table_name}_search_insert",
+                                                     "INSERT",
+                                                     table_name,
+                                                     terms)
+            # print(trigger)
+            DBTable.cursor.execute(trigger)
+
+            # on delete...
+            terms = ""
+            for term in searchable:
+                terms += delete_term('db_table_search',
+                                     table_name,
+                                     term)
+                        
+            trigger = DBTable.create_trigger_stmt % (f"{table_name}_search_delete",
+                                                     "DELETE",
+                                                     table_name,
+                                                     terms)
+            print(trigger)
+            DBTable.cursor.execute(trigger)
+
+            # on update...
+            terms = ""
+            for term in searchable:
+                terms += delete_term('db_table_search',
+                                     table_name,
+                                     term)
+                terms += insert_term('db_table_search',
+                                     table_name,
+                                     term)
+                        
+            trigger = DBTable.create_trigger_stmt % (f"{table_name}_search_update",
+                                                     "UPDATE",
+                                                     table_name,
+                                                     terms)
+            # print(trigger)
+            DBTable.cursor.execute(trigger)
+
 

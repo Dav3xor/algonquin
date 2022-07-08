@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import json,sys,re
 from datetime import datetime
 from pathlib import Path, PurePath
@@ -280,6 +282,7 @@ for path in paths:
         with open(path,'r') as file:
             data = json.loads(file.read())
             room = path.parts[0].split('/')[0]
+            print(f"room = {room} path = {path} parts = {path.parts}")
             handle_messages(room, data)
 print(slack_id_rooms)
 print(types)
