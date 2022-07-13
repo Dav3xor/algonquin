@@ -1,4 +1,7 @@
 
+iteration         = 1
+protocol_version  = 1
+
 function qsv(selector) {
   return document.querySelector(selector).value;
 }
@@ -270,13 +273,38 @@ class Search {
   send_query(query) {
     socket.emit('search-query', {'query': query})
   }
+  
+
+  result_icons = {'users': 'person',
+                        'messages': 'chat_bubble',
+                        'cards': 'card' }
+  file_icons = { 'audio': 'audio',
+                       'image': 'image',
+                       'archive': 'archive',
+                       'pdf': 'pdf',
+                       'video': 'video' }
+  file_icon(result) {
+    if (result.ftable in this.result_icons) {
+      console.log("1");
+      return icons[this.result_icons[result.ftable]];
+    // TODO: add support for file icons (add join to db query, etc...)
+    } else {
+      console.log("2");
+      return null;
+    }
+  }
 
   render(results) {
     var contents = "";
     for(var result in results) {
       result = results[result];
       contents += `<div class='row'>
-                     <div class='col-2'>${result.ftable}</div>
+                     <div class='col-2'>
+                       <button onclick='messages.goto(${result.row_id});' 
+                               class='btn btn-success btn-sm' type='button'>
+                         ${this.file_icon(result)}
+                       </button>
+                     </div>
                      <div class='col-2'>${result.row}</div>
                      <div class='col-2'>${result.row_id}</div>
                      <div class='col-6'>${markdown.makeHtml(result.contents)}</div>
@@ -286,6 +314,7 @@ class Search {
     $('#search-results').html(contents);
   }
 }
+
 class Settings {
   constructor() {
     this.settings = ['handle',
@@ -604,6 +633,11 @@ class Messages {
       this.input_small();
     }
 
+  }
+  goto(id) {
+    var msg_id = `#message-${id}`;
+    tabs.show('messages');
+    $('#messages').animate({ scrollTop: ($(msg_id).offset().top -200) }, 200);
   }
 
   add_file(file) {
@@ -1826,6 +1860,15 @@ var icons = {
                            0 0 0-.032-.198.517.517 0 0 
                            0-.145.04c-.087.035-.158.106-.196.283-.04.192-.03.469.046.822.024.111.054.227.09.346z"/>
                 </svg>`,
+
+    'person':    `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                       fill="currentColor" class="bi bi-person" viewBox="0 0 16 16">
+                    <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 
+                             0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 
+                             4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 
+                             10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 
+                             1.418-.832 1.664h10z"/>
+                  </svg>`,
 
     'play':    `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                       fill="currentColor" class="bi bi-caret-right" viewBox="0 0 16 16">

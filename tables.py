@@ -137,7 +137,8 @@ class Card_Edit(DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'editor':    {'type': 'INTEGER NOT NULL',
                            'fkey': ['editor', 'id', 'User', 'card_edits']},
-             'diff':      {'type': 'TEXT'}}
+             'diff':      {'type': 'TEXT',
+                           'searchable': True}}
     table_name = 'card_edits'
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
