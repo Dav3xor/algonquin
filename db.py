@@ -109,17 +109,16 @@ class DBTable:
     def commit(cls):
         DBTable.db.commit()
     
-    @classmethod
-    def raw_select(cls, tables, where, 
-                   order_by = None, 
-                   extra_columns = None, 
-                   distinct = False):
+    @classmethod 
+    def expand_select(cls, tables, where, args,
+                               order_by = None,
+                               extra_columns = None,
+                               distinct = False):
         columns = [cls.table_name + '.' + key for key in cls.attrs.keys() 
                                               if 'relative' not in cls.attrs[key]]
-        #print(columns)
-        #print(extra_columns)
         if extra_columns:
             columns = columns+[cls.attrs[column]['relative']+'.'+column for column in extra_columns]
+        
         if distinct:
             stmt = DBTable.select_distinct_stmt % (",".join(columns), 
                                                    tables, 
@@ -128,11 +127,33 @@ class DBTable:
             stmt = DBTable.select_stmt % (",".join(columns), 
                                           tables, 
                                           where)
-
+        
         if order_by:
             stmt += " order by " + order_by
-        #print(stmt)
-        DBTable.cursor.execute(stmt)
+        
+        if distinct:
+            stmt = DBTable.select_distinct_stmt % (",".join(columns), 
+                                                   tables, 
+                                                   where)
+        else:
+            stmt = DBTable.select_stmt % (",".join(columns), 
+                                          tables, 
+                                          where)
+        
+        if order_by:
+            stmt += " order by " + order_by
+        return stmt
+
+    @classmethod
+    def raw_select(cls, tables, where, args, 
+                   order_by = None, 
+                   extra_columns = None, 
+                   distinct = False):
+        print("raw select2:")
+        stmt = cls.expand_select(tables, where, args,
+                             order_by, extra_columns)
+        print(stmt)
+        DBTable.cursor.execute(stmt, args)
         rows = DBTable.cursor.fetchall()
         return [ cls(**dict(zip(cls.attrs.keys(), values))) for values in rows ]
 
@@ -274,8 +295,9 @@ class DBSearch(DBTable):
     @classmethod
     def search(cls, query):
         return cls.raw_select(cls.table_name,
-                               f"{cls.table_name} match '{query}'",
-                               "rank")
+                              ":table match ':query'",
+                              {'table': cls.table_name, 'query': query},
+                              "rank")
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
 

@@ -73,11 +73,12 @@ def test_user(setup):
     assert mlist == {1: {'id': 1, 'name': 'room', 'owner': 1, 'public': 1, 'last_seen': 0},
                      3: {'id': 3, 'name': 'room 3', 'owner': 1, 'public': 1, 'last_seen': 0}}
 
-    mlist2 = u.message_list()
-    del mlist2[1]['written']
-    print({msg.id: msg.public_fields()})
+    mlist2 = u.message_list([1,3])
+    print(mlist2)
+    del mlist2[0]['written']
+    print(msg.public_fields())
 
-    assert mlist2 == {msg.id: msg.public_fields()}
+    assert mlist2 == [msg.public_fields()]
 
     flist = u.file_list()
     del flist[1]['uploaded']

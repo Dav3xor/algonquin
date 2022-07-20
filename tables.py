@@ -34,7 +34,7 @@ class User(DBTable):
             return None
 
     def join_public(self):
-        public_rooms = Room.raw_select("rooms", "public = 1")
+        public_rooms = Room.raw_select("rooms", "public = :public", {'public': 1})
         for room in public_rooms:
             membership = Membership(user = self.id,
                                     room = room.id)
@@ -45,13 +45,14 @@ class User(DBTable):
                       join memberships m on users.id = m.user'''
         where = f'''  m.room in (select m.room 
                                  from memberships m 
-                                 where m.user = {self.id});'''
-        users = self.raw_select(query, where)
+                                 where m.user = :self_id);'''
+        users = self.raw_select(query, where, {'self_id': self.id},)
         return { user.id:user.public_fields() for user in users } 
 
     def membership_list(self):
         rooms = Room.raw_select("rooms, memberships", 
-                                "rooms.id = memberships.room and memberships.user = %s" % self.id,
+                                "rooms.id = memberships.room and memberships.user = :self_id",
+                                {'self_id': self.id},
                                 "rooms.id",
                                 ["last_seen"])
 
@@ -61,23 +62,26 @@ class User(DBTable):
         messages = []
         for room in rooms: 
             messages += Message.raw_select("messages", 
-                                           f"messages.room = {room}",
+                                           "messages.room = :room",
+                                           {'room': room},
                                            "messages.id desc limit 40")
         return [ message.public_fields() for message in messages ]
 
     def file_list(self):
         files = File.raw_select("files, memberships", 
-                                      """(files.room = memberships.room and memberships.user = %s) or
-                                         (files.room is NULL) or (files.owner = %s)""" % (self.id, self.id),
-                                      "files.id desc limit 100")
+                                """(files.room = memberships.room and memberships.user = :self_id) or
+                                   (files.room is NULL) or (files.owner = :self_id)""",
+                                {'self_id': self.id},
+                                "files.id desc limit 100")
         return { file.id:file.public_fields() for file in files }
 
     def card_list(self):
         cards = Card.raw_select("cards, memberships", 
-                                      """(cards.room = memberships.room and memberships.user = %s) or 
-                                         (cards.owner is NULL) or (cards.owner = %s) or
-                                         (cards.room is NULL)""" % (self.id,self.id),
-                                      "cards.id desc limit 100")
+                                 """(cards.room = memberships.room and memberships.user = :self_id) or 
+                                    (cards.owner is NULL) or (cards.owner = :self_id) or
+                                    (cards.room is NULL)""",
+                                 {'self_id': self.id},
+                                 "cards.id desc limit 100")
         return { card.id:card.public_fields() for card in cards }
 
 set_properties(User, User.attrs)

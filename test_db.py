@@ -46,7 +46,8 @@ def test_smoke_test(setup):
 
 def test_raw_select(setup):
     p1 = Person.raw_select('people',
-                           'people.id = 1')
+                           'people.id = ?',
+                           [1])
 
     assert p1 == []
 
@@ -55,7 +56,8 @@ def test_raw_select(setup):
     p1.commit()
 
     people = Person.raw_select('people',
-                               'people.id = 1')
+                               'people.id = ?',
+                               [1])
     print (people)
     assert people[0].name == "Bob"
     assert people[0].id   == 1
@@ -66,7 +68,8 @@ def test_raw_select(setup):
     p2.commit()
 
     people = Person.raw_select('people',
-                               'people.id > 0',
+                               'people.id > ?',
+                               [0],
                                'people.id')
     assert len(people) == 2
     people[0].id = 1 
@@ -76,7 +79,8 @@ def test_raw_select(setup):
     organ.commit()
 
     o1 = Organ.raw_select("organs, people",
-                          "organs.owner = people.id and people.id = 1",
+                          "organs.owner = people.id and people.id = ?",
+                          [1],
                           "organs.id",
                           ["age"])
     assert o1[0].age == 2

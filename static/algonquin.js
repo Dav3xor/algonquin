@@ -351,6 +351,7 @@ class Settings {
       people.set_person(data);
       people.render();
       files.render()
+      console.log("portrait render");
       messages.render(); });
   }
 
@@ -568,13 +569,17 @@ const Scrollback_States = {
 }
 
 class Messages {
-  constructor() {
+  reset() {
     this.top_side    = 0;
     this.bottom_side = 0;
     this.top_user    = 0;
-    this.bottom_user = 0;
+    this.bottom_user = -1;
     this.top_id      = 0;
     this.bottom_id   = 0;
+  }
+
+  constructor() {
+    this.reset();
     this.rooms            = {};
     this.messages         = {};
     this.expanded_input   = false;
@@ -634,6 +639,16 @@ class Messages {
     }
 
   }
+  pageup() {
+    var cur_location = parseInt($('#messages').scrollTop());
+    $('#messages').animate({ scrollTop: cur_location-1000}, 50);
+  }
+  pagedown() {
+    var cur_location = parseInt($('#messages').scrollTop());
+    $('#messages').animate({ scrollTop: cur_location+1000}, 50);
+  }
+
+    //$('#messages').height()) - parseInt($('#messages').scrollTop()
   goto(id) {
     var msg_id = `#message-${id}`;
     tabs.show('messages');
@@ -843,6 +858,7 @@ class Messages {
 
 
   render(messages = null) {
+    console.log("render");
     var cur_room = null;
     if(this.rooms.hasOwnProperty(this.cur_room)) {
       cur_room = this.rooms[this.cur_room];
@@ -853,6 +869,7 @@ class Messages {
     if(!messages) {
       // redraw everything
       //console.log("render mode: everything");
+      this.reset();
       messages = cur_room.message_index;
     } else if((cur_room.message_index.length > 0) && 
               (this.max_id(messages, cur_room) < cur_room.message_index[0])) {
@@ -964,7 +981,6 @@ class Messages {
     } else {
       if (this.bottom_user != message.user) {
         this.bottom_side   += 1;
-        this.bottom_user    = message.user;
         switched_side       = true;
       } else if (this.prev_msg != null) {
         $(`#msg-${message.room}-${this.prev_msg}`).removeClass('tri-right btm-right-in');
@@ -998,20 +1014,15 @@ class Messages {
     var output = "";
     if(side % 2) {
       output = user_info + contents + empty;
-      if((!(switched_side))&&(!(backfill))) {
-        $(`#user-info-${this.prev_msg}`).remove();
-        $(`#msg-footer-${this.prev_msg}`).remove();
-        $(`#msg-${message.room}-${this.prev_msg}`).parent().removeClass('col-10');
-        $(`#msg-${message.room}-${this.prev_msg}`).parent().addClass('col-11');
-      }
     } else {
       output = empty + contents + user_info;
-      if((!(switched_side))&&(!(backfill))) {
-        $(`#user-info-${this.prev_msg}`).remove();
-        $(`#msg-footer-${this.prev_msg}`).remove();
-        $(`#msg-${message.room}-${this.prev_msg}`).parent().removeClass('col-10');
-        $(`#msg-${message.room}-${this.prev_msg}`).parent().addClass('col-11');
-      }
+    }
+    
+    if((!(switched_side))&&(!(backfill))&&(this.bottom_user != -1)) {
+      $(`#user-info-${this.prev_msg}`).remove();
+      $(`#msg-footer-${this.prev_msg}`).remove();
+      $(`#msg-${message.room}-${this.prev_msg}`).parent().removeClass('col-10');
+      $(`#msg-${message.room}-${this.prev_msg}`).parent().addClass('col-11');
     }
 
     if($(`#message-${message.id}`).length) {
@@ -1033,7 +1044,8 @@ class Messages {
     }
    
     if(!(backfill)) {
-      this.prev_msg = message.id;
+      this.prev_msg    = message.id;
+      this.bottom_user = message.user;
     }
 
 
@@ -1157,6 +1169,7 @@ class Getter {
   }
 
   handle_stuff(stuff) {
+    console.log(stuff);
     var update_messages = false;
     var update_files = false;
     var update_users = false;
@@ -1211,12 +1224,14 @@ class Getter {
       }
       $('#favicon').attr('href','/static/favicon2.svg');
       if('messages' in stuff) {
+        console.log("new messages render");
         messages.render(stuff.messages);
         messages.add(stuff.messages);
         if(('at_end' in stuff) && (stuff.at_end == true)) {
           messages.render_dragon();
         }
       } else {
+        console.log("reset render");
         messages.render();
       }
     }
@@ -1971,10 +1986,17 @@ $( window ).ready(function () {
   resize_div('#messages', 95, 15);
   resize_div('#files', 95, 0);
   window.setTimeout(function () {
-    $(window).trigger('resize');}, 1000);
+    $(window).trigger('resize');}, 2000);
 });
 
 $(window).keyup(function(event) {
+  console.log(event.keyCode);
+  if(event.keyCode === 33) {
+    messages.pageup();
+  } else if (event.keyCode === 34) {
+    messages.pagedown();
+  }
+
   messages.handle_unread();
 });
 
@@ -2216,6 +2238,7 @@ socket.on('delete-file-result', data => {
   if(data.status == 'ok') {
     files.delete_file(data.file_id);
     files.render();
+    console.log("file delete render");
     messages.render();
   }
 });

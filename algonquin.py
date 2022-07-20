@@ -323,19 +323,19 @@ stuff = {'users': {'class': User,
                    'order_by': 'users.id'},
          'files': {'class': File, 
                    'tables': 'files, memberships',
-                   'where': 'files.id = memberships.room and memberships.user = %s and files.id in (%s)',
+                   'where': 'files.id = memberships.room and memberships.user = ? and files.id in (%s)',
                    'order_by': 'files.id'},
          'cards': {'class': Card, 
                    'tables': 'cards, memberships',
-                   'where': 'cards.id = memberships.room and memberships.user = %s and cards.id in (%s)',
+                   'where': 'cards.id = memberships.room and memberships.user = ? and cards.id in (%s)',
                    'order_by': 'cards.id'},
          'rooms': {'class': Room, 
                    'tables': 'rooms, memberships',
-                   'where': 'rooms.id = memberships.room and memberships.user = %s and rooms.id in (%s)',
+                   'where': 'rooms.id = memberships.room and memberships.user = ? and rooms.id in (%s)',
                    'order_by': 'rooms.id'},
          'messages': {'class': Message, 
                       'tables': 'messages, memberships',
-                      'where': 'messages.room = memberships.room and memberships.user = %s and messages.id in (%s)',
+                      'where': 'messages.room = memberships.room and memberships.user = ? and messages.id in (%s)',
                       'order_by': 'rooms.id'}}
 
 def send_stuff (room, **kwargs):
@@ -350,15 +350,17 @@ def send_stuff (room, **kwargs):
 def handle_get_stuff(json):
     user = scoreboard.get_user_from_sid(request.sid)
     output = {}
+    print (json)
     for key, table in stuff.items():
         if key in json and len(json[key])>0:
             if key == 'users':
-                where = table['where'] % ','.join(str(i) for i in json[key].keys())
+                where = table['where'] % ','.join(['?' for i in json[key].keys()])
             else:
-                where = table['where'] % (user, ','.join(str(i) for i in json[key].keys()))
+                where = table['where'] % ','.join(['?' for i in json[key].keys()])
             extra_columns = stuff[key]['extra_columns'] if 'extra_columns' in stuff[key] else []
             rows = stuff[key]['class'].raw_select(table['tables'], 
                                                   where, 
+                                                  [user] + [*json[key].keys()], 
                                                   table['order_by'])
             output[key] = { row.id:row.public_fields() for row in rows }
     send_stuff(request.sid, **output)
@@ -376,13 +378,14 @@ def handle_get_messages(json):
     print("2")
     if membership:
         print("3")
-        before = int(json['before_id'])
+        date   = int(json['before_id'])
         count  = int(json['count'])
         count  = count if count < 100 else count
 
         messages = Message.raw_select("messages",
-                                      f"room = {membership.room} and id < {before}",
-                                      f"id desc limit {count}")
+                                      "room = :room and id < :date",
+                                      {'room': membership.room, 'date': date, 'count': count},
+                                      "id desc limit :count")
         messages = [ row.public_fields() for row in messages ]
         
         at_end = False
@@ -657,7 +660,8 @@ def handle_settings(json):
     # it's a new user who used a token link.
     if 'no-status' in json:
         session = Session.raw_select("sessions",
-                                     "sessionid like '%d-token-%%' and user = %d" % (user.id, user.id))[0]
+                                     "sessionid like ':user_id-token-%%' and user = :user_id",
+                                     {'user_id': user.id})[0]
         session.sessionid = Session.make_sessionid(user)
         session.save()
         session.commit()
