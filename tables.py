@@ -42,10 +42,13 @@ class User(DBTable):
 
     def related_users(self):
         query = f'''  users 
-                      join memberships m on users.id = m.user'''
-        where = f'''  m.room in (select m.room 
-                                 from memberships m 
-                                 where m.user = :self_id);'''
+                      join memberships on users.id = memberships.user'''
+        #where = f'''  m.room in (select m.room 
+        #                         from memberships m 
+        #                         where m.user = :self_id);'''
+        where = Membership.subquery_in('room', 'memberships.user = :self_id')
+        print("------- related_users -------")
+        print(where)
         users = self.raw_select(query, where, {'self_id': self.id},)
         return { user.id:user.public_fields() for user in users } 
 
@@ -54,7 +57,7 @@ class User(DBTable):
                                 "rooms.id = memberships.room and memberships.user = :self_id",
                                 {'self_id': self.id},
                                 "rooms.id",
-                                ["last_seen"])
+                                extra_columns=["last_seen"])
 
         return { room.id:room.public_fields() for room in rooms }
         

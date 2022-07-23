@@ -110,12 +110,16 @@ class DBTable:
         DBTable.db.commit()
     
     @classmethod 
-    def expand_select(cls, tables, where, args,
-                               order_by = None,
-                               extra_columns = None,
-                               distinct = False):
-        columns = [cls.table_name + '.' + key for key in cls.attrs.keys() 
-                                              if 'relative' not in cls.attrs[key]]
+    def expand_select(cls, tables, where, 
+                      order_by = None,
+                      result_columns = None,
+                      extra_columns = None,
+                      distinct = False):
+        if result_columns:
+            columns = [cls.table_name + '.' + column for column in result_columns]
+        else:
+            columns = [cls.table_name + '.' + key for key in cls.attrs.keys() 
+                                                  if 'relative' not in cls.attrs[key]]
         if extra_columns:
             columns = columns+[cls.attrs[column]['relative']+'.'+column for column in extra_columns]
         
@@ -144,14 +148,20 @@ class DBTable:
             stmt += " order by " + order_by
         return stmt
 
+
+    @classmethod
+    def subquery_in(cls, output, where):
+        query = cls.expand_select(cls.table_name, where, result_columns=[output])
+        return f'{cls.table_name}.{output} in ({query})'
     @classmethod
     def raw_select(cls, tables, where, args, 
                    order_by = None, 
                    extra_columns = None, 
                    distinct = False):
         print("raw select2:")
-        stmt = cls.expand_select(tables, where, args,
-                             order_by, extra_columns)
+        stmt = cls.expand_select(tables, where, 
+                                 order_by=order_by, 
+                                 extra_columns=extra_columns)
         print(stmt)
         DBTable.cursor.execute(stmt, args)
         rows = DBTable.cursor.fetchall()
@@ -295,8 +305,8 @@ class DBSearch(DBTable):
     @classmethod
     def search(cls, query):
         return cls.raw_select(cls.table_name,
-                              ":table match ':query'",
-                              {'table': cls.table_name, 'query': query},
+                              f"{cls.table_name} match :query",
+                              {'query': query},
                               "rank")
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
