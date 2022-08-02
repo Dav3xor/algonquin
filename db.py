@@ -47,7 +47,7 @@ class DBChild:
     def __init__(self, table, key, related_column):
         #print("-----------")
         self.table          = table
-        self.columns        = [key for key in table.attrs.keys() if 'relative' not in table.attrs[key]]
+        #self.columns        = [key for key in table.attrs.keys() if 'relative' not in table.attrs[key]]
         self.key            = key
         self.current        = 0
         self.related_column = related_column
@@ -59,16 +59,18 @@ class DBChild:
         new_row.save()
 
     def __iter__(self):
-        self.child_rows = self.table.select(self.table.table_name, 
-                                            self.columns, 
-                                            self.related_column+'='+str(self.key))
+        #print(f"iter: {self.table.table_name}")
+        self.child_rows = self.table.raw_select(self.table.table_name, 
+                                                f"{self.related_column} = :key",
+                                                {'key': self.key})
+                                                
         return self
 
     def __next__(self):
+        #print(f"next: {self.table.table_name}")
         if self.current < len(self.child_rows):
             self.current += 1
-            values = self.child_rows[self.current-1]
-            return self.table(**dict(zip(self.columns, values)))
+            return self.child_rows[self.current-1]
         else:
             raise StopIteration
 
@@ -158,33 +160,31 @@ class DBTable:
                    order_by = None, 
                    extra_columns = None, 
                    distinct = False):
-        print("raw select2:")
+        #print("raw select2:")
         stmt = cls.expand_select(tables, where, 
                                  order_by=order_by, 
                                  extra_columns=extra_columns)
-        print(stmt)
+        #print(stmt)
         DBTable.cursor.execute(stmt, args)
         rows = DBTable.cursor.fetchall()
         return [ cls(**dict(zip(cls.attrs.keys(), values))) for values in rows ]
 
     def select(table, columns, where_clause):
         stmt = DBTable.select_stmt % (",".join(columns), table, where_clause)
-        #print(stmt)
+        print("select:")
+        print(stmt)
         DBTable.cursor.execute(stmt)
         return DBTable.cursor.fetchall()
 
-    def select_one(table, columns, **kwargs):
-        where_columns = ""
-        where_values = []
-        for key in kwargs:
-            if len(where_columns) > 0:
-                where_columns += "and "
-            where_columns += key + "=? "
-            where_values.append(kwargs[key])
+    @classmethod
+    def where_and(cls, terms):
+        output = " and ".join([f"{key} = :{key}" for key in terms.keys()])
+        return output
 
-        stmt = DBTable.select_stmt % (",".join(columns), table, where_columns)
+    def select_one(table, columns, **kwargs):
+        stmt = DBTable.select_stmt % (",".join(columns), table, DBTable.where_and(kwargs))
         
-        DBTable.cursor.execute(stmt, where_values)
+        DBTable.cursor.execute(stmt, kwargs)
         return DBTable.cursor.fetchone()
 
     @classmethod
@@ -229,14 +229,9 @@ class DBTable:
 
     @classmethod
     def delete_where(cls, limit=1, **kwargs):
-        where_columns = ""
-        where_values = []
-        for key in kwargs:
-            where_columns += key + "=? "
-            where_values.append(kwargs[key])
-        stmt = DBTable.delete_stmt % (cls.table_name, where_columns, str(limit))
+        stmt = DBTable.delete_stmt % (cls.table_name, DBTable.where_and(kwargs), str(limit))
         #print(stmt+"-->"+str(where_values))
-        DBTable.cursor.execute(stmt, where_values)
+        DBTable.cursor.execute(stmt, kwargs)
 
     def insert(self):
         if self.id:
@@ -274,19 +269,11 @@ class DBTable:
 
     @classmethod
     def count(cls, **kwargs):
-        where_columns = ""
-        where_values = []
-
-        for key in kwargs:
-            if len(where_columns) > 0:
-                where_columns += "and "
-            where_columns += key + "=? "
-            where_values.append(kwargs[key])
         query = f"select count(*) from {cls.table_name}"
-        if len(where_columns) > 0:
-            query += " where " + where_columns + ";"
+        if len(kwargs) > 0:
+            query += f" where {DBTable.where_and(kwargs)};"
         #print("----- " + query + " ---- " + str(where_values))
-        DBTable.cursor.execute(query, where_values)
+        DBTable.cursor.execute(query, kwargs)
         return DBTable.cursor.fetchone()[0]
 
     def save(self):
