@@ -268,12 +268,31 @@ class People {
 }
 class Search {
   constructor() {
+    $('#send-query').html(icons.search);
+
+    $('#search-query').keyup(() =>  {
+      console.log(event.keyCode);
+      if (event.keyCode === 13) {
+        $("#send-query").click();
+      } else {
+        this.handle_query_change();
+      }
+    });
   }
 
   send_query(query) {
-    socket.emit('search-query', {'query': query})
+    socket.emit('search-query', {'query': query});
+    tabs.show('search');
   }
-  
+ 
+  handle_query_change() {
+    var query = $('#search-query').val();
+    if(query.length > 0) {
+      $('#send-query').prop('disabled', false);
+    } else {
+      $('#send-query').prop('disabled', true);
+    }
+  }
 
   result_icons = {'users': 'person',
                         'messages': 'chat_bubble',
@@ -307,7 +326,7 @@ class Search {
                      </div>
                      <div class='col-2'>${result.row}</div>
                      <div class='col-2'>${result.row_id}</div>
-                     <div class='col-6'>${markdown.makeHtml(result.contents)}</div>
+                     <div class='col-6'>${markdown.makeHtml(messages.expand_tildes(result.contents))}</div>
                    </div>`;
     }
     console.log(contents);
@@ -688,7 +707,15 @@ class Messages {
     this.render();
     this.render_room_list();
   }
- 
+
+  get_room(room) {
+    return this.rooms[room];
+  }
+
+  cur_room() {
+    return this.get_room(this.cur_room);
+  }
+
   add_room(room) {
     if(!this.rooms.hasOwnProperty(room.id)) {
       this.rooms[room.id] = room;
@@ -779,6 +806,38 @@ class Messages {
               </button>`;
     }
   }
+  render_inline_person(person) {
+    if (!person) {
+      return `<span class='btn btn-danger'> <b> loading... </b> </span>`;
+    } else {
+      return `<button class="btn btn-dark btn-sm">
+                ${icons.person}
+                ${person.handle}
+              </button>`;
+    }
+  }
+ 
+  render_inline_room(room) {
+    if (!room) {
+      return `<span class='btn btn-danger'> <b> loading... </b> </span>`;
+    } else {
+      return `<button class="btn btn-dark btn-sm">
+                ${icons.flower}
+                ${room.name}
+              </button>`;
+    }
+  }
+
+  render_inline_phone(phone) {
+    var number1 = "5035352342";
+    var number2 = "(503) 535-2342";
+    console.log(phone);
+    return `<button class="btn btn-dark btn-sm">
+              ${icons.telephone}
+              <a href="tel:${number1}">${number2}</a>
+            </button>`;
+    
+  }
 
   render_inline_file(file) {
     if (!file) {
@@ -822,8 +881,11 @@ class Messages {
 
   expand_tildes(text) {
     // TODO: add handling for ~user1~, etc...
-    var inline_files  = text.match(/~file(\d+)~/gm);
-    var inline_cards  = text.match(/~card(\d+)~/gm);
+    var inline_files    = text.match(/~file(\d+)~/gm);
+    var inline_cards    = text.match(/~card(\d+)~/gm);
+    var inline_persons  = text.match(/~person(\d+)~/gm);
+    var inline_rooms    = text.match(/~room(\d+)~/gm);
+    var inline_phones   = text.match(/~tel:([0-9\|\-\(\)\+]+)~/gm);
     
     for (var tag in inline_files) {
       tag = inline_files[tag];
@@ -837,6 +899,22 @@ class Messages {
       var card_id = tag.slice(5,-1);
       var card = cards.get_card(card_id);
       text = text.replace(tag, this.render_inline_card(card));
+    }
+    for (var tag in inline_persons) {
+      tag = inline_persons[tag];
+      var person_id = tag.slice(7,-1);
+      var person = people.get_person(person_id);
+      text = text.replace(tag, this.render_inline_person(person));
+    }
+    for (var tag in inline_rooms) {
+      tag = inline_rooms[tag];
+      var room_id = tag.slice(5,-1);
+      var room = messages.get_room(room_id);
+      text = text.replace(tag, this.render_inline_room(room));
+    }
+    for (var tag in inline_phones) {
+      tag = inline_phones[tag];
+      text = text.replace(tag, this.render_inline_phone(tag));
     }
     return text;
   }
@@ -1897,6 +1975,32 @@ var icons = {
                            1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 
                            0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z"/>
                  </svg>`,
+
+    'telephone': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                       fill="currentColor" class="bi bi-telephone-outbound" viewBox="0 0 16 16">
+                    <path d="M3.654 1.328a.678.678 0 0 0-1.015-.063L1.605 2.3c-.483.484-.661 
+                             1.169-.45 1.77a17.568 17.568 0 0 0 4.168 6.608 17.569 17.569 0 0 0 
+                             6.608 4.168c.601.211 1.286.033 1.77-.45l1.034-1.034a.678.678 0 0 
+                             0-.063-1.015l-2.307-1.794a.678.678 0 0 0-.58-.122l-2.19.547a1.745 
+                             1.745 0 0 1-1.657-.459L5.482 8.062a1.745 1.745 0 0 
+                             1-.46-1.657l.548-2.19a.678.678 0 0 0-.122-.58L3.654 1.328zM1.884.511a1.745 
+                             1.745 0 0 1 2.612.163L6.29 2.98c.329.423.445.974.315 1.494l-.547 
+                             2.19a.678.678 0 0 0 .178.643l2.457 2.457a.678.678 0 0 0 
+                             .644.178l2.189-.547a1.745 1.745 0 0 1 1.494.315l2.306 1.794c.829.645.905 
+                             1.87.163 2.611l-1.034 1.034c-.74.74-1.846 1.065-2.877.702a18.634 18.634 
+                             0 0 1-7.01-4.42 18.634 18.634 0 0 
+                             1-4.42-7.009c-.362-1.03-.037-2.137.703-2.877L1.885.511zM11 .5a.5.5 0 0 1 
+                             .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V1.707l-4.146 4.147a.5.5 0 0 
+                             1-.708-.708L14.293 1H11.5a.5.5 0 0 1-.5-.5z"/>
+                  </svg>`,
+
+     'search':  `<svg xmlns="http://www.w3.org/2000/svg" width="1.5em" height="1.5em" 
+                      fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                   <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 
+                            3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 
+                            5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                 </svg>`,
+
     'trash':    `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                        fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
                     <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 

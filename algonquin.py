@@ -12,9 +12,15 @@ import time
 import pprint
 import difflib
 
+__version__    = "v0.80"
+__protocol__   = 1
+
+
 pprint = pprint.PrettyPrinter()
 
 config = {'database':         'algonquin.db',
+          'protocol':         __protocol__,
+          'version':          __version__,
           'site_name':        'Orgone Accumulator',
           'site_url':         'orgone.institute',
           'sysop_handle':     'sysop',

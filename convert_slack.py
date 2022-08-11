@@ -113,7 +113,7 @@ mention2_regex = re.compile(r"<@[0-9A-Z]+\|[a-z0-9.-_]+>")
 room_mention_regex = re.compile(r"<\#([0-9A-Z]+\|[a-z0-9\-_]+)>")
 room2_mention_regex = re.compile(r"<\#([0-9A-Z]+)>")
 url_regex = re.compile(r"<([h|H]ttps?://[^\s]+)>")
-phone_regex = re.compile(r"<(tel:[0-9\|\-\(\)]+)>")
+phone_regex = re.compile(r"<tel:([0-9\|\-\(\)\+]+)>")
 email_regex = re.compile(r"<mailto:[0-9a-zA-Z_.@\-\|]+>")
 spotify_regex = re.compile(r"<spotify:([a-z]+):([0-9a-zA-Z]+)>")
 spotify2_regex = re.compile(r"<spotify:user:([a-zA-Z0-9]+):playlist:([a-zA-Z0-9]+)>")
@@ -124,23 +124,36 @@ def convert_msg(message):
     for mention in mentions:
         uid = mention[2:-1]
         user = users[uid].id if uid in users else bots[uid].id
-        user = f"~user{user}~"
+        user = f"~person{user}~"
         message = re.sub(mention,user,message)
     
     mentions = re.findall(mention3_regex, message)
     for mention in mentions:
         uid = "U"+mention[2:-1]
         user = users[uid].id if uid in users else bots[uid].id
-        user = f"~user{user}~"
+        user = f"~person{user}~"
         message = re.sub(mention,user,message)
-    
+   
+
+
+
+
     mentions = re.findall(mention2_regex, message)
     for mention in mentions:
         uid = mention[2:].split('|')[0]
         user = users[uid].id if uid in users else bots[uid].id
-        user = f"~user{user}~"
-        #print(user)
-        message = re.sub(mention,user,message)
+        user = f"~person{user}~"
+        print('-------')
+        print(mention)
+        print(user)
+        print(message)
+        message = message.replace(mention, user) #re.sub(mention,user,message)
+        print(message)
+        print('-------')
+
+
+
+
 
     room_mentions = re.findall(room_mention_regex, message)
     for mention in room_mentions:
@@ -163,8 +176,9 @@ def convert_msg(message):
 
     phones = re.findall(phone_regex, message)
     for phone in phones:
-        #print(phone)
-        message = message.replace(f"<{phone}>", f"~tel:{phone}~")
+        print("------")
+        print(phone)
+        message = message.replace(f"<tel:{phone}>", f"~tel:{phone}~")
 
     spotifies = re.findall(spotify_regex, message)
     for spotify in spotifies:

@@ -160,11 +160,11 @@ class DBTable:
                    order_by = None, 
                    extra_columns = None, 
                    distinct = False):
-        #print("raw select2:")
+        print("raw select2:")
         stmt = cls.expand_select(tables, where, 
                                  order_by=order_by, 
                                  extra_columns=extra_columns)
-        #print(stmt)
+        print(stmt)
         DBTable.cursor.execute(stmt, args)
         rows = DBTable.cursor.fetchall()
         return [ cls(**dict(zip(cls.attrs.keys(), values))) for values in rows ]
@@ -294,7 +294,7 @@ class DBSearch(DBTable):
         return cls.raw_select(cls.table_name,
                               f"{cls.table_name} match :query",
                               {'query': query},
-                              "rank")
+                              "rank limit 1000")
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
 
