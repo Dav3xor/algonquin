@@ -359,14 +359,17 @@ def handle_get_stuff(json):
     print (json)
     for key, table in stuff.items():
         if key in json and len(json[key])>0:
+            keys = []
             if key == 'users':
                 where = table['where'] % ','.join(['?' for i in json[key].keys()])
             else:
+                keys.append(user)
                 where = table['where'] % ','.join(['?' for i in json[key].keys()])
             extra_columns = stuff[key]['extra_columns'] if 'extra_columns' in stuff[key] else []
+            keys += [*json[key].keys()] 
             rows = stuff[key]['class'].raw_select(table['tables'], 
                                                   where, 
-                                                  [user] + [*json[key].keys()], 
+                                                  keys, 
                                                   table['order_by'])
             output[key] = { row.id:row.public_fields() for row in rows }
     send_stuff(request.sid, **output)
