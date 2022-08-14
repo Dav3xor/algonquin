@@ -249,8 +249,7 @@ def send_user(user, broadcast=False, **kwargs):
 
     if 'namespace' in kwargs:
         namespace = kwargs['namespace']
-    send_stuff(broadcast, **{'users':{user.id:user.public_fields()} })
-    #socketio.emit(label, user.public_fields(), broadcast=broadcast)
+    send_stuff(broadcast, users={user.id:user.public_fields()} )
 
 
 def do_login(user, session, send_session_id=False):
@@ -264,15 +263,15 @@ def do_login(user, session, send_session_id=False):
         join_room('room-'+str(membership.room))
         #print(membership.room)
 
-    response['users']    = user.related_users()
-    response['rooms']    = user.membership_list()
-    response['messages'] = user.message_list(response['rooms'].keys())
-    response['files']    = user.file_list()
-    response['cards']    = user.card_list()
-    response['userid']   = user.id
+    response['users']         = user.related_users()
+    response['rooms']         = user.membership_list()
+    response['messages']      = user.message_list(response['rooms'].keys())
+    response['files']         = user.file_list()
+    response['cards']         = user.card_list()
+    response['userid']        = user.id
     response['authenticated'] = True
-    response['result'] = 'Login Ok'
-
+    response['result']        = 'Login Ok'
+    response['__protocol']    = __protocol__
     send_user(user, True)
 
     if send_session_id:
@@ -345,6 +344,7 @@ stuff = {'users': {'class': User,
                       'order_by': 'rooms.id'}}
 
 def send_stuff (room, **kwargs):
+    kwargs['__protocol__'] = __protocol__
     if type(room) == bool: # broadcast
         emit('stuff_list', kwargs, broadcast=room, namespace='/')
     else:

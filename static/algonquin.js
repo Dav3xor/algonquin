@@ -1,7 +1,4 @@
 
-iteration         = 1
-protocol_version  = 1
-
 function qsv(selector) {
   return document.querySelector(selector).value;
 }
@@ -296,7 +293,7 @@ class Search {
 
   result_icons = {'users': 'person',
                         'messages': 'chat_bubble',
-                        'cards': 'card' }
+                        'cards': 'card' } 
   file_icons = { 'audio': 'audio',
                        'image': 'image',
                        'archive': 'archive',
@@ -810,7 +807,7 @@ class Messages {
     } else {
       return `<button class="btn btn-dark btn-sm">
                 ${icons.person}
-                ${person.handle}
+                @${person.handle}
               </button>`;
     }
   }
@@ -822,7 +819,7 @@ class Messages {
       return `<button class="btn btn-dark btn-sm"
                       onclick="messages.change_room('${room.id}');">
                 ${icons.flower}
-                ${room.name}
+                #${room.name}
               </button>`;
     }
   }
@@ -1237,7 +1234,9 @@ var cookie = {
 };
 
 class Getter {
-  constructor() {
+  constructor(protocol) {
+    console.log(`getter protocol: ${protocol}`);
+    this.protocol = protocol
     this.reset();
     this.requested = false;
   }
@@ -1257,6 +1256,13 @@ class Getter {
     var update_users = false;
     var update_rooms = false;
     var update_cards = false;
+
+    if(stuff.__version__ > this.version) {
+      console.log(`version mismatch -- cur: ${this.protocol} new: ${stuff.__protocol__}`);
+    } else {
+      console.log(`version -- cur: ${this.protocol} new: ${stuff.__protocol__}`);
+    }
+
 
     if ('users' in stuff) {
       for(var user in stuff['users']) {
@@ -1860,7 +1866,7 @@ var icons = {
                               0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
                   </svg>`,
 
-    'flower': `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" 
+    'flower': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                     fill="currentColor" class="bi bi-flower1" viewBox="0 0 16 16">
                  <path d="M6.174 1.184a2 2 0 0 1 3.652 0A2 2 0 0 1 12.99 3.01a2 2 0 0 1 1.826 3.164 2 2 0 0 1 0 
                           3.652 2 2 0 0 1-1.826 3.164 2 2 0 0 1-3.164 1.826 2 2 0 0 1-3.652 0A2 2 0 0 1 3.01 
@@ -1965,6 +1971,18 @@ var icons = {
                                        1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
                     </svg>`,
 
+    'outlet':    `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                       fill="currentColor" class="bi bi-outlet" viewBox="0 0 16 16">
+                    <path d="M3.34 2.994c.275-.338.68-.494 1.074-.494h7.172c.393 0 .798.156 1.074.494.578.708 
+                             1.84 2.534 1.84 5.006 0 2.472-1.262 4.297-1.84 5.006-.276.338-.68.494-1.074.494H4.414c-.394 
+                             0-.799-.156-1.074-.494C2.762 12.297 1.5 10.472 1.5 8c0-2.472 1.262-4.297 
+                             1.84-5.006zm1.074.506a.376.376 0 0 0-.299.126C3.599 4.259 2.5 5.863 2.5 8c0 2.137 
+                             1.099 3.74 1.615 4.374.06.073.163.126.3.126h7.17c.137 0 .24-.053.3-.126.516-.633 
+                             1.615-2.237 1.615-4.374 0-2.137-1.099-3.74-1.615-4.374a.376.376 0 0 0-.3-.126h-7.17z"/>
+                    <path d="M6 5.5a.5.5 0 0 1 .5.5v1.5a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm4 0a.5.5 0 0 1 .5.5v1.5a.5.5 
+                             0 0 1-1 0V6a.5.5 0 0 1 .5-.5zM7 10v1h2v-1a1 1 0 0 0-2 0z"/>
+                  </svg>`,
+
     'paperclip': `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                            fill="currentColor" class="bi bi-paperclip" viewBox="0 0 16 16">
                         <path d="M4.5 3a2.5 2.5 0 0 1 5 0v9a1.5 1.5 0 0 1-3 
@@ -2011,6 +2029,17 @@ var icons = {
                             1 0 0 0 0-1.506L6.66 2.451C6.011 1.885 5 2.345 5 
                             3.204v9.592a1 1 0 0 0 1.659.753z"/>
                  </svg>`,
+    'plug':    `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
+                     fill="currentColor" class="bi bi-plug" viewBox="0 0 16 16">
+                  <path d="M6 0a.5.5 0 0 1 .5.5V3h3V.5a.5.5 0 0 1 1 0V3h1a.5.5 0 0 1 .5.5v3A3.5 
+                           3.5 0 0 1 8.5 10c-.002.434-.01.845-.04 1.22-.041.514-.126 1.003-.317 
+                           1.424a2.083 2.083 0 0 1-.97 1.028C6.725 13.9 6.169 14 5.5 14c-.998 
+                           0-1.61.33-1.974.718A1.922 1.922 0 0 0 3 16H2c0-.616.232-1.367.797-1.968C3.374 
+                           13.42 4.261 13 5.5 13c.581 0 
+                           .962-.088 1.218-.219.241-.123.4-.3.514-.55.121-.266.193-.621.23-1.09.027-.34.035-.718.037-1.141A3.5 
+                           3.5 0 0 1 4 6.5v-3a.5.5 0 0 1 .5-.5h1V.5A.5.5 0 0 1 6 0zM5 4v2.5A2.5 2.5 
+                           0 0 0 7.5 9h1A2.5 2.5 0 0 0 11 6.5V4H5z"/>
+                </svg>`,
     'pause':   `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                      fill="currentColor" class="bi bi-pause-fill" viewBox="0 0 16 16">
                   <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 
@@ -2093,7 +2122,7 @@ ctx.strokeStyle = 'rgb(50,200,100)';
 ctx.lineWidth = 2;
 var lissajous = new Lissajous(canvas, 30, 30);
 var tabs      = new Tabs('messages');
-var getter    = new Getter();
+var getter    = new Getter(__protocol__);
 var messages  = new Messages();
 var cards     = new Cards();
 var people    = new People();
@@ -2157,6 +2186,7 @@ $("#password").keyup(function(event) {
 });
 
 socket.on('connect', function() {
+  $('#status-indicator').addClass('d-none');
   var sessionid = cookie.read('sessionid');
   if (sessionid != '') {
     socket.emit('login-session', {sessionid: sessionid});
@@ -2396,7 +2426,13 @@ socket.on('search-result', data => {
 socket.on('password-set', data => {
   cookie.write('sessionid', data.sessionid, 365);
 });
-  
+
+socket.on('disconnect', data => {
+  var status = `<div class="badge badge-danger">${icons.outlet} ${icons.plug}</div> Network Disconnect`;
+  $('#status-indicator').html(status);
+  $('#status-indicator').removeClass('d-none');
+});
+
 socket.on('settings-result', data => {
   $('#settings-result').removeClass('d-none');
   $('#settings-result-status').html(data.status_msg);

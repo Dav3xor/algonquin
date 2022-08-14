@@ -12,7 +12,9 @@
   </head>
 
   <body>
-
+    <script>
+      var __protocol__ = {{ config.protocol }};
+    </script>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark d-none fixed-top" id="navbar">
       <a class="navbar-brand" href="#">
         <span><canvas id="lissajous" width=30 height=30></canvas></span>
@@ -272,6 +274,11 @@
               class="btn btn-warning btn-sm d-none" 
               style="position:absolute; left: 10px; top: 70px;">
       </button>
+      <span class="badge badge-info d-none" id="status-indicator"
+            style="position:absolute; left: 80px; top: 70px;">
+        Status Indicator
+      </span> 
+      </button>
 
       <div class="container-fluid d-none" id="people">
       </div>
@@ -346,7 +353,7 @@
                        name="settings-email" id="settings-email" required>
               </div>
               <div class="form-group">
-                <label for="settings-password">Old Password (if set):</label>
+                <label for="settings-password">Old Password:</label>
                 <input autocomplete="new-password" type="password" class="form-control" 
                        oninput="settings.allow_submission();"
                        name="settings-old-password" id="settings-old-password" required>
