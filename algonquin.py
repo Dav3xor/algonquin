@@ -13,7 +13,7 @@ import pprint
 import difflib
 
 __version__    = "v0.80"
-__protocol__   = 1
+__protocol__   = 2
 
 
 pprint = pprint.PrettyPrinter()
@@ -271,7 +271,7 @@ def do_login(user, session, send_session_id=False):
     response['userid']        = user.id
     response['authenticated'] = True
     response['result']        = 'Login Ok'
-    response['__protocol']    = __protocol__
+    response['__protocol__']    = __protocol__
     send_user(user, True)
 
     if send_session_id:
