@@ -13,7 +13,7 @@ import pprint
 import difflib
 
 __version__    = "v0.80"
-__protocol__   = 2
+__protocol__   = 1
 
 
 pprint = pprint.PrettyPrinter()
