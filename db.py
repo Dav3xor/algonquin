@@ -160,19 +160,19 @@ class DBTable:
                    order_by = None, 
                    extra_columns = None, 
                    distinct = False):
-        print("raw select2:")
+        #print("raw select2:")
         stmt = cls.expand_select(tables, where, 
                                  order_by=order_by, 
                                  extra_columns=extra_columns)
-        print(stmt)
+        #print(stmt)
         DBTable.cursor.execute(stmt, args)
         rows = DBTable.cursor.fetchall()
         return [ cls(**dict(zip(cls.attrs.keys(), values))) for values in rows ]
 
     def select(table, columns, where_clause):
         stmt = DBTable.select_stmt % (",".join(columns), table, where_clause)
-        print("select:")
-        print(stmt)
+        #print("select:")
+        #print(stmt)
         DBTable.cursor.execute(stmt)
         return DBTable.cursor.fetchall()
 
@@ -242,12 +242,12 @@ class DBTable:
             columns.append(col)
             values.append(val)
         columns = ','.join(columns)
-        print(columns)
-        print(values)
+        #print(columns)
+        #print(values)
         stmt = DBTable.insert_stmt % (self.table_name,
                                        columns,
                                        ("?,"*len(values))[:-1])
-        print(stmt)
+        #print(stmt)
         DBTable.cursor.execute(stmt, values)
         self.id = DBTable.cursor.lastrowid
 
@@ -359,7 +359,7 @@ def build_tables(tables):
                                                      "DELETE",
                                                      table_name,
                                                      terms)
-            print(trigger)
+            #print(trigger)
             DBTable.cursor.execute(trigger)
 
             # on update...
