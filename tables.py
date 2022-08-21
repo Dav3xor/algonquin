@@ -93,6 +93,7 @@ class Room(DBTable):
     attrs = {'id':     {'type': 'INTEGER PRIMARY KEY'},
              'owner':  {'type': 'INTEGER NOT NULL',
                        'fkey': ['user', 'id', 'User','rooms']},
+             'topic':  {'type': 'TEXT'},
              'public': {'type': 'BOOLEAN'},
              'name':   {'type': 'TEXT NOT NULL', 'xss-filter': True},
              'last_seen': {'relative': 'memberships'}}

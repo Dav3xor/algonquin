@@ -374,6 +374,7 @@ class Settings {
       // following is done when upload is finished...
       data = JSON.parse(data);
       $('#portrait-image').attr('src', '/portraits/' + data.user.portrait);
+      $('#you-image').attr('src', '/portraits/' + data.user.portrait);
       people.set_person(data);
       people.render();
       files.render()
@@ -386,6 +387,7 @@ class Settings {
   set_defaults() {
     var person = people.get_this_person();
     $('#portrait-image').attr('src', '/portraits/' + person.portrait);
+    $('#you-image').attr('src', '/portraits/' + person.portrait);
     for (var setting in this.settings) {
       setting = this.settings[setting];
       if(setting in person) {
