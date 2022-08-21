@@ -242,10 +242,12 @@ class DBTable:
             columns.append(col)
             values.append(val)
         columns = ','.join(columns)
+        print(columns)
+        print(values)
         stmt = DBTable.insert_stmt % (self.table_name,
                                        columns,
                                        ("?,"*len(values))[:-1])
-        #print(stmt)
+        print(stmt)
         DBTable.cursor.execute(stmt, values)
         self.id = DBTable.cursor.lastrowid
 

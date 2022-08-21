@@ -28,7 +28,7 @@ def handle_users(u):
         users[int(user)] = u[user]
 
 def handle_messages(m):
-    for id,msg in m.items():
+    for msg in m:
         #print(msg)
         #print(users)
         print(rooms)
@@ -100,4 +100,4 @@ def password_set(data):
     with open(settings_file, 'w') as f:
         f.write(json.dumps(settings))
 
-sio.connect('http://orgone.institute:8080')
+sio.connect('https://orgone.institute')

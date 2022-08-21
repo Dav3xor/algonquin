@@ -22,6 +22,7 @@ class Tabs {
       $('#messages-deselected-nav').removeClass('d-none');
       $('#messages-nav').addClass('d-none');
       $('#footer').addClass('d-none');
+      $('#goto-bottom').addClass('d-none');
     }            
     
     $('#'+this.cur_tab).addClass('d-none'); 
@@ -29,7 +30,12 @@ class Tabs {
 
     $('#'+this.cur_tab+"-nav").removeClass("active");
     $('#'+tab+"-nav").addClass("active");
-
+    if(tab == 'messages') {
+      console.log(`scrolltop = ${$('#messages').scrollTop()}`);
+      if($('#messages').scrollTop() < 0) {
+        $('#goto-bottom').removeClass('d-none');
+      }
+    }
     this.cur_tab = tab;
   }
 }
@@ -109,11 +115,13 @@ class Files {
         }
         var button_id = `files-play-sound-${file.id}`;
         var play_button = "";
-        if (file.type in {'video':true, 'audio':true}){
+        var deleted = file.deleted ? 'disabled' : '';
+
+        if ((!file.deleted)&&(file.type in {'video':true, 'audio':true})){
           play_button = `
             <button class="btn btn-info btn-sm" id="${button_id}" 
                     style="width:60px;"
-                    onclick="jukebox.play_pause('${button_id}', '/files/${file.localname}');">
+                    onclick="jukebox.play_pause('${button_id}', '/files/${file.localname}'); ${deleted}">
               ${icons.play}
             </button>`;
         } else {
@@ -121,19 +129,20 @@ class Files {
                            ${icons.blank}
                          </button>`;
         }
-
+        console.log(file);
         $('#files').append(`<div class="row mt-1"> 
                                <div class="col-3">
                                  ${play_button}
-                                 <a download class="btn btn-light btn-sm" href="/files/${file.localname}">
+                                 <a download class="btn btn-light btn-sm ${deleted}" href="/files/${file.localname}" ${deleted}>
                                    ${icons.download}
                                  </a>
-                                 <button class="btn btn-light btn-sm" onclick="window.open('/files/${file.localname}','_blank');">
+                                 <button class="btn btn-light btn-sm" 
+                                         onclick="window.open('/files/${file.localname}','_blank');" ${deleted}>
                                    ${icons.new_tab}
                                  </button>
                               </div>
                               <div class="col-5">
-                                 <button class="btn btn-secondary btn-sm btn-block text-left">
+                                 <button class="btn btn-secondary btn-sm btn-block text-left" ${deleted}>
                                    ${file_icon}
                                    ${file.name}
                                  </button>
@@ -146,15 +155,16 @@ class Files {
                                <div class="col-2">
                                  <button class="btn btn-success btn-sm ml-2" 
                                          onclick="start_chat([${owner.id},people.get_this_person().id]);" 
-                                         id="start-chat-${owner.id}" type="button">
+                                         id="start-chat-${owner.id}" type="button" ${deleted}>
                                    ${icons.chat_bubble}
                                  </button>
-                                 <button class="btn btn-warning btn-sm" onclick="send_delete_file(${file.id});">
+                                 <button class="btn btn-warning btn-sm" onclick="send_delete_file(${file.id});" ${deleted}>
                                    ${icons.trash}
                                  </button>
                                </div>
 
                              </div>`);
+
       }
     }
   }
@@ -837,8 +847,11 @@ class Messages {
 
   render_inline_file(file) {
     if (!file) {
-      return `<span class='btn btn-danger'> <b> loading... </b> </span>`;
+      return `<span class='btn btn-danger ml-2 mr-2 disabled'> <b> loading... </b> </span>`;
+    } else if (file.deleted == true) {
+      return `<span class='btn btn-danger disabled ml-2 mr-2'> <b>${file.name}</b> (deleted) </span>`;
     } else {
+
       switch(file.type) {
         case 'image': 
           return `<button class="btn btn-light btn-sm p-1 m-1">
@@ -1020,7 +1033,7 @@ class Messages {
   }
 
   render_dragon() {
-    $('#messages').append(`<div class="row"><div class="col-12" style="height:600px;">${icons.dragon}</div></div>`);
+    $('#messages').append(`<div id='dragon' class="row"><div class="col-12" style="height:600px;">${icons.dragon}</div></div>`);
     console.log('enter the dragon');
   }
 
@@ -1325,7 +1338,9 @@ class Getter {
         console.log("new messages render");
         messages.render(stuff.messages);
         messages.add(stuff.messages);
-        if(('at_end' in stuff) && (stuff.at_end == true)) {
+        if(('at_end' in stuff) && 
+           (stuff.at_end == true) && 
+           ($('#dragon').length)) {
           messages.render_dragon();
         }
       } else {

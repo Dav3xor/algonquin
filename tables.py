@@ -71,16 +71,16 @@ class User(DBTable):
         return [ message.public_fields() for message in messages ]
 
     def file_list(self):
-        files = File.raw_select("files, memberships", 
-                                """(files.room = memberships.room and memberships.user = :self_id) or
-                                   (files.room is NULL) or (files.owner = :self_id)""",
+        files = File.raw_select("files", 
+                                """(files.room in (select memberships.room from memberships where memberships.user = :self_id)) or
+                                   (files.room is NULL) or (files.owner = :self_id) or (files.public = 1)""",
                                 {'self_id': self.id},
-                                "files.id desc limit 100")
+                                "files.id desc limit 10")
         return { file.id:file.public_fields() for file in files }
 
     def card_list(self):
         cards = Card.raw_select("cards, memberships", 
-                                 """(cards.room = memberships.room and memberships.user = :self_id) or 
+                                 """(cards.room in (select memberships.room from memberships where memberships.user = :self_id)) or 
                                     (cards.owner is NULL) or (cards.owner = :self_id) or
                                     (cards.room is NULL)""",
                                  {'self_id': self.id},
@@ -177,6 +177,7 @@ class File(DBTable):
                            'xss-filter': True},
              'localname': {'type': 'TEXT'},
              'public':    {'type': 'BOOLEAN'},
+             'deleted':   {'type': 'BOOLEAN DEFAULT 0'},
              'type':      {'type': 'TEXT'},
              'size':      {'type': 'INTEGER'},
              'hash':      {'type': 'INTEGER', 'private':True},

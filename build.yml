@@ -79,6 +79,8 @@
     git:
       repo: 'https://github.com/Dav3xor/algonquin.git'
       dest: /home/algonquin/algonquin
+    become: yes
+    become_user: algonquin
 
   - name: set algonquin permissions
     file:

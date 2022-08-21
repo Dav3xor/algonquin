@@ -426,8 +426,13 @@ def handle_delete_file(json):
     if (not membership):       
         emit('delete-file-result', {'error': "no rights to delete"}, broadcast=False)
    
-    File.delete_where(id=file.id)
-    emit('delete-file-result', {'status': 'ok', 'file_id': file.id}, room = 'room-'+str(file.room))
+    #File.delete_where(id=file.id)
+    file.deleted = 1
+    file.save()
+    file.commit()
+    emit('delete-file-result', {'stuff_list': {'files':[file.public_fields()]},
+                                'status': 'ok', 
+                                'file_id': file.id}, room = 'room-'+str(file.room))
 
 
 @user_logged_in
@@ -669,7 +674,7 @@ def handle_settings(json):
     # it's a new user who used a token link.
     if 'no-status' in json:
         session = Session.raw_select("sessions",
-                                     "sessionid like ':user_id-token-%%' and user = :user_id",
+                                     f"sessionid like '{user.id}-token-%' and user = :user_id",
                                      {'user_id': user.id})[0]
         session.sessionid = Session.make_sessionid(user)
         session.save()
