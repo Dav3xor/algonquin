@@ -72,20 +72,24 @@ body {
   min-width:  35px;
   min-height: 35px;
 }
+.status-margin {
+  margin-top:50px;
+}
 
 .default-bubble {
   display: inline-block;
-  padding-top: 0.2em;
-  padding-bottom: 0.2em;
-  padding-left: 0.4em;
-  padding-right: 0.4em;
+  padding-top: 0.17em;
+  padding-bottom: 0.19em;
+  padding-left: 0.6em;
+  padding-right: 0.6em;
   line-height: 1;
   text-align: center;
   vertical-align: baseline;
-  border-radius: 0.8rem;
-  border: 2px solid #dee2e6; 
+  border-radius: 0.6rem;
+  border: 3px solid #dee2e6; 
   background-color: #aaa099; 
   color: black; min-width:40px; 
+  font-size: .75em;
 
 }
 
@@ -98,7 +102,7 @@ body {
 	left: 1px;
   right: auto;
   top: auto;
-	top: 12px;
+	top: 13px;
 	border: 8px solid;
 	border-color: lightyellow lightyellow transparent transparent;
 }
@@ -108,11 +112,11 @@ body {
 	position: absolute;
 	width: 0;
 	height: 0;
-	left: 6px;
+	left: 8px;
   right: auto;
   top: auto;
-	top: 14px;
-	border: 6px solid;
+	top: 16px;
+	border: 8px solid;
 	border-color: #aaa099 #aaa099 transparent transparent;
 }
 
@@ -123,8 +127,8 @@ body {
 	width: 0;
 	height: 0;
   left: auto;
-	right: 0px;
-	top: 12px;
+	right: 2px;
+	top: 13px;
 	border: 8px solid;
 	border-color: lightyellow transparent transparent lightyellow ;
 }
@@ -135,8 +139,8 @@ body {
 	width: 0;
 	height: 0;
   left: auto;
-	right: 5px;
-	top: 14px;
+	right: 8.5px;
+	top: 16px;
 	border: 6px solid;
 	border-color: #aaa099 transparent transparent #aaa099;
 }

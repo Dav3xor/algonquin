@@ -145,42 +145,42 @@ def file_upload_common(req):
 
     user = User.get(session.user)
 
+    hash, size   = File.hash_file(file)
+    type, extension = File.file_type(file.filename)
 
-    return file, session, user, None
+    print ("hash = " + hash)
+    print ("size = " + str(size))
+
+    # check for duplicates
+    
+    original_file = File.hash_exists(hash=hash, size=size)
+    if original_file:
+        print("duplicate file upload -- " + 
+              original_file.name + " - " + 
+              file.filename + " - " + 
+              original_file.localname)
+        filename = original_file.localname
+    else:
+        filename     = str(time.time()) + '.' + extension
+        file.save(os.path.join(config['file_root'], 'files', filename))
+   
+    db_file = File(owner     = user.id,
+                   public    = True,
+                   name      = file.filename,
+                   hash      = hash,
+                   size      = size,
+                   type      = type,
+                   localname = filename)
+
+    return db_file, user, None
 
 
 
 @app.route('/upload-file', methods=['POST'])
 def upload_file():
-    file, session, user, errors = file_upload_common(request)
+    db_file, user, errors = file_upload_common(request)
 
     if not errors:
-        hash, size   = File.hash_file(file)
-        type, extension = File.file_type(file.filename)
-
-        print ("hash = " + hash)
-        print ("size = " + str(size))
-
-        # check for duplicates
-        
-        original_file = File.hash_exists(hash=hash, size=size)
-        if original_file:
-            print("duplicate file upload -- " + 
-                  original_file.name + " - " + 
-                  file.filename + " - " + 
-                  original_file.localname)
-            filename = original_file.localname
-        else:
-            filename     = str(time.time()) + '.' + extension
-            file.save(os.path.join(config['file_root'], 'files', filename))
-       
-        db_file = File(owner     = user.id,
-                       public    = True,
-                       name      = file.filename,
-                       hash      = hash,
-                       size      = size,
-                       type      = type,
-                       localname = filename)
 
         if 'room' in request.form:
             db_file.room = request.form['room']
@@ -201,24 +201,23 @@ def upload_file():
 
 @app.route('/upload-portrait', methods=['POST'])
 def upload_portrait():
-    file, session, user, errors = file_upload_common(request)
+    db_file, user, errors = file_upload_common(request)
     if errors:
         return errors
     else:
-        if not valid_portrait(file.filename):
+        if not valid_portrait(db_file.name):
             return  json.dumps({'error': 'filetype not supported for portrait'})
 
-        filename = str(time.time()) + '.' + file.filename.split('.')[-1]
+        db_file.save()
+        db_file.commit()
 
-        file.save(os.path.join(config['file_root'], 'portraits', filename))
-
-        user.portrait = filename
+        user.portrait = db_file.localname
         user.save()
         user.commit()
 
         send_user(user, True, namespace=None)
         
-        return json.dumps({'status': 'ok', 'user': user.public_fields()})
+        return json.dumps({'status': 'ok', 'files': [db_file.public_fields()], 'user': user.public_fields()})
 
 
 # TODO: handle these with a real web server?
@@ -232,7 +231,7 @@ def send_files(path):
 
 @app.route('/portraits/<path:path>')
 def send_portraits(path):
-    return send_from_directory('portraits', path)
+    return send_from_directory('files', path)
 
 @user_logged_in
 @socketio.on('disconnect')

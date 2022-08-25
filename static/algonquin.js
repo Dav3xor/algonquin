@@ -142,7 +142,7 @@ class Files {
                                  </button>
                               </div>
                               <div class="col-5">
-                                 <button class="btn btn-secondary btn-sm btn-block text-left" ${deleted}>
+                                 <button class="btn btn-secondary btn-sm btn-block text-left" disabled>
                                    ${file_icon}
                                    ${file.name}
                                  </button>
@@ -376,8 +376,9 @@ class Settings {
       $('#portrait-image').attr('src', '/portraits/' + data.user.portrait);
       $('#you-image').attr('src', '/portraits/' + data.user.portrait);
       people.set_person(data);
-      people.render();
-      files.render()
+      //people.render();
+      //files.render()
+      getter.handle_stuff(data); 
       console.log("portrait render");
       messages.render(); });
   }
@@ -1248,6 +1249,8 @@ var cookie = {
   }
 };
 
+
+
 class Getter {
   constructor(protocol) {
     console.log(`getter protocol: ${protocol}`);
@@ -1285,8 +1288,7 @@ class Getter {
                         Reload
                       </button>
                     `;
-      $('#status-indicator').html(status);
-      $('#status-indicator').removeClass('d-none');
+      set_status(status);
     }
 
     if ('users' in stuff) {
@@ -2229,7 +2231,7 @@ $("#password").keyup(function(event) {
 });
 
 socket.on('connect', function() {
-  $('#status-indicator').addClass('d-none');
+  clear_status()
   var sessionid = cookie.read('sessionid');
   if (sessionid != '') {
     socket.emit('login-session', {sessionid: sessionid});
@@ -2336,6 +2338,22 @@ function dragstart_handler(ev) {
   // TODO: allow user to drag things out of the window...
   //alert('hi!');
   ev.dataTransfer.setData("text/plain", ev.target.id);
+}
+
+var status_margin_elements = ['#people', '#files', '#cards', '#search', '#about', '#settings', '#invite'];
+function set_status(status) {
+  $('#status-indicator').html(status);
+  $('#status-indicator').removeClass('d-none');
+  for (var i in status_margin_elements) {
+    $(status_margin_elements[i]).addClass('status-margin');
+  }
+}
+
+function clear_status() {
+  $('#status-indicator').addClass('d-none');
+  for (var i in status_margin_elements) {
+    $(status_margin_elements[i]).removeClass('status-margin');
+  }
 }
 
 $('#messages').scroll(function() {
@@ -2472,13 +2490,13 @@ socket.on('password-set', data => {
 
 socket.on('disconnect', data => {
   var status = `<div class="badge badge-danger">${icons.outlet} ${icons.plug}</div> Network Disconnect`;
+  set_status(status);
   $('#status-indicator').html(status);
   $('#status-indicator').removeClass('d-none');
 });
 
 socket.on('settings-result', data => {
-  $('#settings-result').removeClass('d-none');
-  $('#settings-result-status').html(data.status_msg);
+  set_status(data.status_msg);
 });
 
 socket.on('goto_chat', data => {
