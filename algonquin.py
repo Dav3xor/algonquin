@@ -4,6 +4,7 @@ from flask import Flask, render_template, send_from_directory, request
 from flask_socketio import SocketIO, emit, send, disconnect, join_room
 from urllib.parse import urlencode
 from werkzeug.utils import secure_filename
+from config import config, __version__, __protocol__
 
 import os
 import eventlet
@@ -12,24 +13,8 @@ import time
 import pprint
 import difflib
 
-__version__    = "v0.80"
-__protocol__   = 1
-
 
 pprint = pprint.PrettyPrinter()
-
-config = {'database':         'algonquin.db',
-          'protocol':         __protocol__,
-          'version':          __version__,
-          'site_name':        'Orgone Accumulator',
-          'site_url':         'orgone.institute',
-          'sysop_handle':     'sysop',
-          'sysop_email':      'sysop@sysop.com',
-          'public_rooms':     ['0 Day Warez', 'Poop', 'Dev/Test'],
-          'file_root':        '/home/dave/dev/algonquin/',
-          'portrait_types':   ['png', 'jpg', 'jpeg', 'gif', 'webp'],
-          'default_portrait': 'default.png',
-          'default_room':     '0 Day Warez'}
 
 DBTable.set_db(config['database'])
 

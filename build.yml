@@ -2,33 +2,41 @@
 - hosts: all
   vars:
     local_user: dave
-    chat_hostname: orgone
-    chat_fqdn: orgone.institute
-    chat_fqdntwo: www.orgone.institute
+    #chat_hostname: orgone
+    #chat_fqdn: orgone.institute
+    #chat_fqdntwo: www.orgone.institute
+    database_name: algonquin.db
+    site_name: Orgone Accumulator
+    site_url: orgone.institute
+    sysop_handle: sysop
+    sysop_email: sysop@sysop.com
+    public_rooms: ['0 Day Warez', 'Poop', 'Dev/Test']
+    default_room: 0 Day Warez
+    file_root: /home/algonquin/algonquin/
   remote_user: root
 
   tasks:
-  - name: Upgrade the OS (apt-get dist-upgrade)
-    apt:
-      upgrade: dist
+  #- name: Upgrade the OS (apt-get dist-upgrade)
+  #  apt:
+  #    upgrade: dist
 
-  - name: Run the equivalent of "apt-get update" as a separate step
-    apt:
-      update_cache: yes
+  #- name: Run the equivalent of "apt-get update" as a separate step
+  #  apt:
+  #    update_cache: yes
 
-  - name: Only run "update_cache=yes" if the last one is more than 3600 seconds ago
-    apt:
-      update_cache: yes
-      cache_valid_time: 3600
+  #- name: Only run "update_cache=yes" if the last one is more than 3600 seconds ago
+  #  apt:
+  #    update_cache: yes
+  #    cache_valid_time: 3600
 
-  - name: ensure apt packages are installed
-    apt:
-      pkg:
-      - nginx
-      - snap
-      - git
-      - python3-pip
-      - gunicorn3
+  #- name: ensure apt packages are installed
+  #  apt:
+  #    pkg:
+  #    - nginx
+  #    - snap
+  #    - git
+  #    - python3-pip
+  #    - gunicorn3
       
   - name: install pip packagees
     pip:
@@ -81,6 +89,14 @@
       dest: /home/algonquin/algonquin
     become: yes
     become_user: algonquin
+
+  - name: write config.py
+    ansible.builtin.template:
+      src: /templates/config.py
+      dest: /home/algonquin/algonquin/config.py
+      owner: algonquin
+      group: algonquin
+      mode: 0644
 
   - name: set algonquin permissions
     file:
