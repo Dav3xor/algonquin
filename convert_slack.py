@@ -143,13 +143,13 @@ def convert_msg(message):
         uid = mention[2:].split('|')[0]
         user = users[uid].id if uid in users else bots[uid].id
         user = f"~person{user}~"
-        print('-------')
-        print(mention)
-        print(user)
-        print(message)
+        #print('-------')
+        #print(mention)
+        #print(user)
+        #print(message)
         message = message.replace(mention, user) #re.sub(mention,user,message)
-        print(message)
-        print('-------')
+        #print(message)
+        #print('-------')
 
 
 
@@ -176,8 +176,8 @@ def convert_msg(message):
 
     phones = re.findall(phone_regex, message)
     for phone in phones:
-        print("------")
-        print(phone)
+        #print("------")
+        #print(phone)
         message = message.replace(f"<tel:{phone}>", f"~tel:{phone}~")
 
     spotifies = re.findall(spotify_regex, message)
@@ -255,7 +255,8 @@ def handle_messages(channel, messages):
                 user = message['comment']['user']
             else:
                 if 'user' not in message:
-                    print(message)
+                    print(' ', end='')
+                    #print(message)
                 else:
                     user = message['user']
             if user:
@@ -263,7 +264,9 @@ def handle_messages(channel, messages):
                 text    = convert_msg(message['text'])
                 bot     = False
                 time    = datetime.fromtimestamp(int(message['ts'].split('.')[0]))
-                
+               
+                if subtype == 'me_message':
+                    text = f"*{text}*"
                 msg = Message(user    = user,
                               room    = rooms[channel].id,
                               written = time,
@@ -296,7 +299,8 @@ for path in paths:
         with open(path,'r') as file:
             data = json.loads(file.read())
             room = path.parts[0].split('/')[0]
-            print(f"room = {room} path = {path} parts = {path.parts}")
+            #print(f"room = {room} path = {path} parts = {path.parts}")
+            print("*",end="")
             handle_messages(room, data)
 print(slack_id_rooms)
 print(types)

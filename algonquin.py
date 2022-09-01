@@ -27,7 +27,7 @@ config = {'database':         'algonquin.db',
           'sysop_email':      'sysop@sysop.com',
           'public_rooms':     ['0 Day Warez', 'Poop', 'Dev/Test'],
           'file_root':        '/home/dave/dev/algonquin/',
-          'portrait_types':   ['png', 'jpg', 'jpeg', 'gif'],
+          'portrait_types':   ['png', 'jpg', 'jpeg', 'gif', 'webp'],
           'default_portrait': 'default.png',
           'default_room':     '0 Day Warez'}
 

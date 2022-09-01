@@ -92,6 +92,10 @@ body {
   font-size: .75em;
 
 }
+.default-bubble a:link { color: #195e59; }
+.default-bubble a:visited { color: #103b38; }
+.default-bubble a:hover { color: #000000; }
+.default-bubble a:active { color: #000000; }
 
 /*Right triangle, placed bottom left side slightly in*/
 .tri-right.btm-left-in:before {

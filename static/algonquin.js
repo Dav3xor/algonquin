@@ -1002,11 +1002,11 @@ class Messages {
               <img src="/portraits/${portrait}" class="img-fluid portrait" />
             </div>`;
   }
-  render_msg_contents(message, contents, classes, float) {
+  render_msg_contents(message, classes, float) {
     return `<div class="col-10${float}">
               <span id="msg-${message.room}-${message.id}" 
                     class="${classes}">
-                ${markdown.makeHtml(contents)}
+                ${markdown.makeHtml(this.expand_tildes(message.message))}
               </span>
             </div>`;
   }
@@ -1044,7 +1044,6 @@ class Messages {
     var user          = people.get_person(message.user);
     var portrait      = "default.png";
     var handle        = "loading...";
-    var msg           = message.message;
     var switched_side = false;
     var oldest        = this.oldest_msg(message.room);
     //console.log("oldest: " + oldest);
@@ -1052,7 +1051,6 @@ class Messages {
     var backfill      = false;
     var side          = 0;
 
-    msg = this.expand_tildes(msg);
 
     if(user) {
       portrait = user.portrait;
@@ -1104,7 +1102,7 @@ class Messages {
       }
     }
 
-    var contents = this.render_msg_contents(message, msg, classes, float);
+    var contents = this.render_msg_contents(message, classes, float);
 
     var output = "";
     if(side % 2) {
@@ -2177,7 +2175,7 @@ var settings  = new Settings();
 var jukebox   = new Jukebox();
 var search    = new Search();
 
-var markdown = new showdown.Converter({'emoji':true, 'simplifiedAutoLink':true, 'openLinksInNewWindow':true});
+var markdown = new showdown.Converter({'emoji':true, 'strikethrough': true, 'simplifiedAutoLink':true, 'openLinksInNewWindow':true});
 
 function regulate_password(field1, field2, button) {
   if ( ($(field1).val().length > 0) && ($(field1).val() == $(field2).val()) ) {
