@@ -92,7 +92,7 @@
 
   - name: write config.py
     ansible.builtin.template:
-      src: /templates/config.py
+      src: templates/config.py
       dest: /home/algonquin/algonquin/config.py
       owner: algonquin
       group: algonquin
