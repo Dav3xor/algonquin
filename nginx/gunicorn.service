@@ -1,0 +1,25 @@
+[Unit]
+Description=gunicorn daemon
+Requires=gunicorn.socket
+After=network.target
+
+[Service]
+Type=notify
+# the specific user that our service will run as
+User=algonquin
+Group=algonquin
+# another option for an even more restricted service is
+# DynamicUser=yes
+# see http://0pointer.net/blog/dynamic-users-with-systemd.html
+RuntimeDirectory=gunicorn
+WorkingDirectory=/home/algonquin/algonquin
+#ExecStart=/usr/bin/gunicorn applicationname.wsgi
+#ExecStart=/usr/bin/gunicorn3 --worker-class eventlet -w 1 -b :8080 algonquin:app
+ExecStart=/usr/bin/gunicorn3 --worker-class eventlet -w 1 -b unix:/run/gunicorn.sock algonquin:app
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
