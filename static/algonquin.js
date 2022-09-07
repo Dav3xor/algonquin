@@ -31,7 +31,7 @@ class Tabs {
     $('#'+this.cur_tab+"-nav").removeClass("active");
     $('#'+tab+"-nav").addClass("active");
     if(tab == 'messages') {
-      console.log(`scrolltop = ${$('#messages').scrollTop()}`);
+      //console.log(`scrolltop = ${$('#messages').scrollTop()}`);
       if($('#messages').scrollTop() < 0) {
         $('#goto-bottom').removeClass('d-none');
       }
@@ -129,7 +129,7 @@ class Files {
                            ${icons.blank}
                          </button>`;
         }
-        console.log(file);
+        //console.log(file);
         $('#files').append(`<div class="row mt-1"> 
                                <div class="col-3">
                                  ${play_button}
@@ -597,6 +597,170 @@ const Scrollback_States = {
   Done: 'Done'
 }
 
+
+
+class Rooms {
+  constructor() {
+    this.rooms            = {};
+    var cur_room          = cookie.read('cur_room');
+    if(cur_room != "") {
+      this.cur_room = cur_room;
+    } else {
+      this.cur_room = "1";
+    }
+  }
+
+  empty() {
+    this.rooms = {};
+    this.render();
+  }
+  
+  change_room(room) {
+    this.cur_room = room;
+    this.rooms[this.cur_room].unread = 0;
+    cookie.write('cur_room', room, '365');
+    messages.clear_unread();
+    $('#messages').empty();
+    messages.render();
+    this.render_room_list();
+  }
+
+  get_room(room) {
+    return this.rooms[room];
+  }
+  
+  get_cur_room() {
+    if(!this.rooms.hasOwnProperty(this.cur_room)) {
+      return null;
+    } else {
+      return this.rooms[this.cur_room];
+    }
+  }
+
+  add_room(room) {
+    if(!this.rooms.hasOwnProperty(room.id)) {
+      this.rooms[room.id] = room;
+      this.rooms[room.id].message_index = [];
+      this.rooms[room.id].unread = 0;
+      this.rooms[room.id].at_end = false;
+      this.rooms[room.id].scrollback_state  = Scrollback_States.Ready;  
+      if(!(room.hasOwnProperty('last_seen'))) {
+        this.rooms[room.id].last_seen = 0;
+      }
+    } else {
+      if(!(room.hasOwnProperty('placeholder'))) {
+        for (var key in room) {
+          this.rooms[room.id][key] = room[key];
+        }
+      }
+      if((room.hasOwnProperty('last_seen')) && (room.last_seen > this.rooms[room.id].last_seen)) {
+        this.rooms[room.id].last_seen = room.last_seen;
+      }
+    }
+  }
+  add_message(message) {
+    // add room to rooms list if it's not there.
+    if (!this.rooms.hasOwnProperty(message.room)) {
+      this.add_room({id:message.room, placeholder:true});
+    }
+
+    // handle last seen
+    if(message.id > this.rooms[message.room].last_seen) {
+      this.rooms[message.room].unread += 1;
+      if((document.visibilityState == 'visible') && 
+         (message.room == this.cur_room)){
+        this.rooms[message.room].last_seen = message.id;
+      } 
+    }
+    this.rooms[message.room].message_index.push(parseInt(message.id));
+    // TODO: selection sort?
+    this.rooms[message.room].message_index.sort(function(a, b){return -1*(b-a)});
+  }
+
+  render_room_list() {
+    var unread = 0;
+    $('#room_list').empty();
+    //console.log("xxx");
+    for (var room in this.rooms) {
+      var room = this.rooms[room];
+      //console.log(room.name);
+      if ( room.name.startsWith('$%^&-') ) {
+        var ids = room.name.split('-').slice(1);
+        var expanded_name = "Chat With:";
+        var change_name = true;
+        for (var id in ids) {
+          var id = ids[id].toString();
+          var person = people.get_person(id);
+          
+          if (person) {
+            expanded_name += " " + people.people[id].handle;
+          } else {
+            change_name = false;
+            if(people.people[id]){
+            } else {
+              expanded_name += " (unknown person?)";
+            }
+
+          }
+        }
+        if(change_name == true) {
+          room.name = expanded_name;
+        }       
+      }
+
+      var contents = room.name;
+      if(room.unread > 0) {
+        unread += room.unread;
+        contents += `<span class="ml-2 badge badge-info">${room.unread}</span>`;
+      }
+
+      if ( room.id != this.cur_room ) {
+        $('#room_list').append(`<a class="dropdown-item" href="#" 
+                                                         onclick="rooms.change_room('${room.id}');"> 
+                                  ${contents}
+                                </a>`);
+      } else {
+        $('#messages_label').html(contents);
+      }
+
+    }
+    var msg_label = "messages";
+    if (unread > 0) {
+      msg_label += `<span class="ml-2 badge badge-info">${unread}</span>`;
+      $('#messages_off_label').html(msg_label);
+      $('#favicon').attr('href','/static/favicon2.svg');
+    } else {
+      $('#messages_off_label').html(msg_label);
+      $('#favicon').attr('href','/static/favicon.svg');
+    }
+    this.label = msg_label;
+  }
+
+  oldest_msg(room) {
+    if (!(room in this.rooms)) {
+      return null;
+    } else if(!(this.rooms[room].hasOwnProperty('message_index'))) {
+      return null;
+    } else if (this.rooms[room].message_index.length == 0) {
+      return null;
+    } else {
+      //console.log(this.rooms[room].message_index);
+      return this.rooms[room].message_index[0];
+    }
+  }
+
+  newest_msg(room) {
+    if (!(room in this.rooms)) {
+      return null;
+    }
+    else if (this.rooms[room].message_index.length == 0) {
+      return null;
+    } else {
+      return this.rooms[room].message_index[0];
+    }
+  }
+}
+  
 class Messages {
   reset() {
     this.top_side    = 0;
@@ -609,18 +773,11 @@ class Messages {
 
   constructor() {
     this.reset();
-    this.rooms            = {};
     this.messages         = {};
     this.expanded_input   = false;
     this.handling_unread  = false;
     this.label            = "messages"
-    var cur_room          = cookie.read('cur_room');
 
-    if(cur_room != "") {
-      this.cur_room = cur_room;
-    } else {
-      this.cur_room = "1";
-    }
 
     $("#new-message").keyup(function(event) {
       if (event.keyCode === 13) {
@@ -642,7 +799,7 @@ class Messages {
   }
 
   empty() {
-    this.rooms = {};
+    this.messages = {};
     this.render();
   }
 
@@ -677,7 +834,6 @@ class Messages {
     $('#messages').animate({ scrollTop: cur_location+1000}, 50);
   }
 
-    //$('#messages').height()) - parseInt($('#messages').scrollTop()
   goto(id) {
     var msg_id = `#message-${id}`;
     tabs.show('messages');
@@ -703,105 +859,11 @@ class Messages {
   send(socket) {
     var message = $('#new-message').val();
     if (message.trim() != '') {
-      socket.emit('message', {message:message, room:parseInt(messages.cur_room)});
+      socket.emit('message', {message:message, room:parseInt(rooms.get_cur_room().id)});
       $('#new-message').val("");
     }
   }
 
-  change_room(room) {
-    this.cur_room = room;
-    this.rooms[this.cur_room].unread = 0;
-    cookie.write('cur_room', room, '365');
-    this.clear_unread();
-    $('#messages').empty();
-    this.render();
-    this.render_room_list();
-  }
-
-  get_room(room) {
-    return this.rooms[room];
-  }
-
-  add_room(room) {
-    if(!this.rooms.hasOwnProperty(room.id)) {
-      this.rooms[room.id] = room;
-      this.rooms[room.id].message_index = [];
-      this.rooms[room.id].unread = 0;
-      this.rooms[room.id].at_end = false;
-      this.rooms[room.id].scrollback_state  = Scrollback_States.Ready;  
-      if(!(room.hasOwnProperty('last_seen'))) {
-        this.rooms[room.id].last_seen = 0;
-      }
-    } else {
-      if(!(room.hasOwnProperty('placeholder'))) {
-        for (var key in room) {
-          this.rooms[room.id][key] = room[key];
-        }
-      }
-      if((room.hasOwnProperty('last_seen')) && (room.last_seen > this.rooms[room.id].last_seen)) {
-        this.rooms[room.id].last_seen = room.last_seen;
-      }
-    }
-  }
-
-  render_room_list() {
-    var unread = 0;
-    $('#room_list').empty();
-    console.log("xxx");
-    for (var room in this.rooms) {
-      var room = this.rooms[room];
-      console.log(room.name);
-      if ( room.name.startsWith('$%^&-') ) {
-        var ids = room.name.split('-').slice(1);
-        var expanded_name = "Chat With:";
-        var change_name = true;
-        for (var id in ids) {
-          var id = ids[id].toString();
-          var person = people.get_person(id);
-          
-          if (person) {
-            expanded_name += " " + people.people[id].handle;
-          } else {
-            change_name = false;
-            if(people.people[id]){
-            } else {
-              expanded_name += " (unknown person?)";
-            }
-
-          }
-        }
-        if(change_name == true) {
-          room.name = expanded_name;
-        }       
-      }
-
-      var contents = room.name;
-      if(room.unread > 0) {
-        unread += room.unread;
-        contents += `<span class="ml-2 badge badge-info">${room.unread}</span>`;
-      }
-
-      if ( room.id != this.cur_room ) {
-        $('#room_list').append(`<a class="dropdown-item" href="#" 
-                                                         onclick="messages.change_room('${room.id}');"> 
-                                  ${contents}
-                                </a>`);
-      } else {
-        $('#messages_label').html(contents);
-      }
-
-    }
-    var msg_label = "messages";
-    if (unread > 0) {
-      msg_label += `<span class="ml-2 badge badge-info">${unread}</span>`;
-      $('#messages_off_label').html(msg_label);
-      $('#favicon').attr('href','/static/favicon2.svg');
-    } else {
-      $('#messages_off_label').html(msg_label);
-      $('#favicon').attr('href','/static/favicon.svg');
-    }
-    this.label = msg_label;
-  }
 
   render_inline_card(card) {
     if (!card) {
@@ -830,7 +892,7 @@ class Messages {
       return `<span class='btn btn-danger'> <b> loading... </b> </span>`;
     } else {
       return `<button class="btn btn-dark btn-sm"
-                      onclick="messages.change_room('${room.id}');">
+                      onclick="rooms.change_room('${room.id}');">
                 ${icons.flower}
                 #${room.name}
               </button>`;
@@ -921,7 +983,7 @@ class Messages {
     for (var tag in inline_rooms) {
       tag = inline_rooms[tag];
       var room_id = tag.slice(5,-1);
-      var room = messages.get_room(room_id);
+      var room = rooms.get_room(room_id);
       text = text.replace(tag, this.render_inline_room(room));
     }
     for (var tag in inline_phones) {
@@ -948,10 +1010,8 @@ class Messages {
 
 
   render(messages = null) {
-    var cur_room = null;
-    if(this.rooms.hasOwnProperty(this.cur_room)) {
-      cur_room = this.rooms[this.cur_room];
-    } else {
+    var cur_room = rooms.get_cur_room();
+    if(cur_room == null) {
       return;
     }
     //console.log(messages);
@@ -1011,29 +1071,6 @@ class Messages {
             </div>`;
   }
 
-  oldest_msg(room) {
-    if (!(room in this.rooms)) {
-      return null;
-    } else if(!(this.rooms[room].hasOwnProperty('message_index'))) {
-      return null;
-    } else if (this.rooms[room].message_index.length == 0) {
-      return null;
-    } else {
-      //console.log(this.rooms[room].message_index);
-      return this.rooms[room].message_index[0];
-    }
-  }
-
-  newest_msg(room) {
-    if (!(room in this.rooms)) {
-      return null;
-    }
-    else if (this.rooms[room].message_index.length == 0) {
-      return null;
-    } else {
-      return this.rooms[room].message_index[0];
-    }
-  }
 
   render_dragon() {
     $('#messages').append(`<div id='dragon' class="row"><div class="col-12" style="height:600px;">${icons.dragon}</div></div>`);
@@ -1045,7 +1082,7 @@ class Messages {
     var portrait      = "default.png";
     var handle        = "loading...";
     var switched_side = false;
-    var oldest        = this.oldest_msg(message.room);
+    var oldest        = rooms.oldest_msg(message.room);
     //console.log("oldest: " + oldest);
     //var newest        = this.newest_msg(message.room);
     var backfill      = false;
@@ -1153,74 +1190,60 @@ class Messages {
         // TODO: handle message editing/deletion...
         console.log("duplicate message: " + message.id);
       } else {
-        // add room to rooms list if it's not there.
-        if (!this.rooms.hasOwnProperty(message.room)) {
-          this.add_room({id:message.room, placeholder:true});
-        }
-
-        // handle last seen
-        if(message.id > this.rooms[message.room].last_seen) {
-          this.rooms[message.room].unread += 1;
-          if((document.visibilityState == 'visible') && 
-             (message.room == this.cur_room)){
-            this.rooms[message.room].last_seen = message.id;
-          } 
-        }
-        this.rooms[message.room].message_index.push(parseInt(message.id));
         this.messages[message.id] = message;
-        this.rooms[message.room].message_index.sort(function(a, b){return -1*(b-a)});
+        rooms.add_message(message);
       }
     }
     //console.log(this.rooms[message.room].message_index);
   }
 
   get_scrollback() {
-    if((this.rooms[this.cur_room].at_end == false) &&
-       ((this.rooms[this.cur_room].scrollback_state == Scrollback_States.Ready) ||
-       ((this.rooms[this.cur_room].scrollback_state == Scrollback_States.Loading2))))  {
-      socket.emit('get-messages', {'room_id':   this.cur_room,
-                                   'before_id': this.rooms[this.cur_room].message_index[0],
+    var room = rooms.get_cur_room();
+    if((room.at_end == false) &&
+       ((room.scrollback_state == Scrollback_States.Ready) ||
+       ((room.scrollback_state == Scrollback_States.Loading2))))  {
+      socket.emit('get-messages', {'room_id':   room.id,
+                                   'before_id': room.message_index[0],
                                    'count':     10} );
-      this.rooms[this.cur_room].scrollback_state = Scrollback_States.Loading;
+      room.scrollback_state = Scrollback_States.Loading;
       console.log("getting messages");
-    } else if(this.rooms[this.cur_room].scrollback_state == Scrollback_States.Loading) {
-      this.rooms[this.cur_room].scrollback_state = Scrollback_States.Loading2;
+    } else if(room.scrollback_state == Scrollback_States.Loading) {
+      room.scrollback_state = Scrollback_States.Loading2;
       console.log("waiting messages");
     }
   }
   scrollback_loaded(at_end, room) {
-    this.rooms[room].at_end = at_end;
-    if( this.rooms[room].scrollback_state == Scrollback_States.Loading2 ) {
+    room = rooms.get_room(room);
+    room.at_end = at_end;
+    if( room.scrollback_state == Scrollback_States.Loading2 ) {
       // we've been asked for another one...
       this.get_scrollback();
     } else {
-      this.rooms[room].scrollback_state = Scrollback_States.Ready;
+      room.scrollback_state = Scrollback_States.Ready;
     }
   }
 
   handle_unread() {
+    var room = rooms.get_cur_room();
     if((this.handling_unread == false) && 
-       (this.rooms[this.cur_room].unread > 0)) {
+       (room.unread > 0)) {
       this.handling_unread = true;
       setTimeout(() => {
         this.handling_unread = false;
         this.clear_unread();
-        this.render_room_list();
+        rooms.render_room_list();
       }, 2000);
     }
   }
 
   clear_unread() {
-    var last_seen = this.rooms[this.cur_room].message_index.slice(-1)[0];
+    var room = rooms.get_cur_room();
+    var last_seen = room.message_index.slice(-1)[0];
 
     if(last_seen) {
-      socket.emit('have-read', { room: this.cur_room, last: last_seen });
+      socket.emit('have-read', { room: room.id, last: last_seen });
     }
-
-    if(!(this.rooms[this.cur_room].hasOwnProperty('unread'))) {
-      this.rooms[this.cur_room].unread = 0;
-    }
-    this.rooms[this.cur_room].unread = 0;
+    room.unread = 0;
   }
       
 }
@@ -1308,7 +1331,7 @@ class Getter {
 
     if ('rooms' in stuff) {
       for (var room in stuff['rooms']) {
-        messages.add_room(stuff['rooms'][room]);
+        rooms.add_room(stuff['rooms'][room]);
       }
       update_messages = true;
       update_rooms    = true;
@@ -1337,7 +1360,6 @@ class Getter {
       }
       $('#favicon').attr('href','/static/favicon2.svg');
       if('messages' in stuff) {
-        console.log("new messages render");
         messages.render(stuff.messages);
         messages.add(stuff.messages);
         if(('at_end' in stuff) && 
@@ -1359,7 +1381,7 @@ class Getter {
     }
 
     if((update_rooms)||(update_messages)) {
-      messages.render_room_list();
+      rooms.render_room_list();
     }
 
     if(update_cards) {
@@ -2167,6 +2189,7 @@ var lissajous = new Lissajous(canvas, 30, 30);
 var tabs      = new Tabs('messages');
 var getter    = new Getter(__protocol__);
 var messages  = new Messages();
+var rooms     = new Rooms();
 var cards     = new Cards();
 var people    = new People();
 var files     = new Files();
@@ -2208,7 +2231,6 @@ $( window ).ready(function () {
 });
 
 $(window).keyup(function(event) {
-  console.log(event.keyCode);
   if(event.keyCode === 33) {
     messages.pageup();
   } else if (event.keyCode === 34) {
@@ -2272,6 +2294,7 @@ function send_logout() {
     people.empty();
     files.empty();
     messages.empty();
+    rooms.empty();
     $('#navbar').addClass('d-none');
     $('#footer').addClass('d-none');
     $('#contents').addClass('d-none');
@@ -2319,6 +2342,9 @@ function dragover_handler(ev) {
 function handle_file_upload(file) {
   upload_file(file, 'upload-file', function(data) {
     data = JSON.parse(data);
+    console.log("got files!");
+    getter.handle_stuff(data);
+
     for(file in data.files) {
       file = data.files[file];
       messages.add_file(file.id);
@@ -2363,7 +2389,7 @@ $('#messages').scroll(function() {
     $('#messages').scrollTop(0);
   }
 
-  console.log(`scroll: ${location}, ${ total_height }` );
+  //console.log(`scroll: ${location}, ${ total_height }` );
 
   if($('#messages').scrollTop() >= 0) {
     $('#goto-bottom').addClass('d-none');
@@ -2498,8 +2524,8 @@ socket.on('settings-result', data => {
 });
 
 socket.on('goto_chat', data => {
-  messages.add_room(data.room); 
-  messages.change_room(data.room.id);
+  rooms.add_room(data.room); 
+  rooms.change_room(data.room.id);
   tabs.show('messages');
 });
 
