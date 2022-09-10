@@ -115,18 +115,18 @@ def index():
 
 def file_upload_common(req):
     if 'file' not in req.files:
-        return None, json.dumps({'error': 'no file'})
+        return None, None, json.dumps({'error': 'no file'})
     file = req.files['file']
     #print(file)
     if file.filename == '':
-        return  None, None, None, json.dumps({'error': 'no filename'})
+        return  None, None, json.dumps({'error': 'no filename'})
     
     if 'sessionid' not in req.form:
-        return  None, None, None, json.dumps({'error': 'no sessionid'})
+        return  None, None, json.dumps({'error': 'no sessionid'})
     
     session = Session.get_where(sessionid=request.form['sessionid'])
     if not session:
-        return None, None, None, json.dumps({'error': 'bad sessionid'})
+        return None, None, json.dumps({'error': 'bad sessionid'})
 
     user = User.get(session.user)
 
@@ -186,10 +186,14 @@ def upload_file():
 
 @app.route('/upload-portrait', methods=['POST'])
 def upload_portrait():
+    print('1')
     db_file, user, errors = file_upload_common(request)
+    print('2')
     if errors:
+        print('3')
         return errors
     else:
+        print('4')
         if not valid_portrait(db_file.name):
             return  json.dumps({'error': 'filetype not supported for portrait'})
 

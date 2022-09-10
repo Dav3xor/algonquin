@@ -370,22 +370,48 @@ class Settings {
     }
     socket.emit('settings', settings);
   }
+/*
+  upload_file(file, 'upload-file', function(data) {
+    data = JSON.parse(data);
+    console.log("got files!");
+    getter.handle_stuff(data);
 
-  send_portrait() {
-    var file = document.getElementById('portrait-upload-file').files[0];
+    for(file in data.files) {
+      file = data.files[file];
+      if(cards.editor_open() == true) {
+        cards.add_file(file.id);
+      } else { 
+        messages.add_file(file.id);
+      }
+    }
+  });
+*/
+  send_portrait(file) {
     upload_file(file, 
                 'upload-portrait', 
                 function(data) {
       // following is done when upload is finished...
       data = JSON.parse(data);
-      $('#portrait-image').attr('src', '/portraits/' + data.user.portrait);
-      $('#you-image').attr('src', '/portraits/' + data.user.portrait);
-      people.set_person(data);
-      //people.render();
-      //files.render()
-      getter.handle_stuff(data); 
-      console.log("portrait render");
-      messages.render(); });
+      if ('error' in data) {
+        var status = `<div class="badge badge-danger" style="font-size:1.3em;">
+                        ${icons.person}
+                      </div>
+                      <span class="ml-3 mr-3">
+                        <b>Portrait Upload Error:</b> ${ data.error }
+                      </span>`;
+        set_status(status, 5000);
+      } else {
+        console.log(data);
+        $('#portrait-image').attr('src', '/portraits/' + data.user.portrait);
+        $('#you-image').attr('src', '/portraits/' + data.user.portrait);
+        people.set_person(data);
+        //people.render();
+        //files.render()
+        getter.handle_stuff(data); 
+        console.log("portrait render");
+        messages.render();
+      } 
+    });
   }
 
 
@@ -2400,9 +2426,12 @@ function handle_file_upload(file) {
 function drop_handler(ev) {
  ev.preventDefault();
  ev.stopPropagation();
+ console.log(tabs.current_tab());
  if(tabs.current_tab() == 'settings') {
-   ([...evt.target.files]).forEach(settings.send_portrait);
+   console.log("1");
+   ([...ev.dataTransfer.files]).forEach(settings.send_portrait);
  } else { 
+   console.log("2");
    ([...ev.dataTransfer.files]).forEach(handle_file_upload);
  }
 }
@@ -2414,11 +2443,17 @@ function dragstart_handler(ev) {
 }
 
 var status_margin_elements = ['#people', '#files', '#cards', '#search', '#about', '#settings', '#invite'];
-function set_status(status) {
+
+function set_status(status, duration=null) {
   $('#status-indicator').html(status);
   $('#status-indicator').removeClass('d-none');
   for (var i in status_margin_elements) {
     $(status_margin_elements[i]).addClass('status-margin');
+  }
+  if(duration) {
+    setTimeout(function() {
+      clear_status();
+    }, 2000);
   }
 }
 
