@@ -9,6 +9,11 @@ class Tabs {
     this.cur_tab = tab;
     setTimeout(function() { $('#new-message').focus() }, 500);
   }
+
+  current_tab() {
+    return this.cur_tab;
+  }
+
   show(tab) {
     $('#navb').collapse('hide');
     if(tab == 'messages') {
@@ -406,29 +411,53 @@ class Settings {
 class Cards {
   constructor() {
     this.cards             = {};
+    this.open_editor       = false;
     this.cur_edit_card     = null;
     this.form_fields       = ['title', 'content'];
   }
 
   new() {
     this.cur_edit_card = null;
+    this.open_editor   = true;
     this.set_room_list(messages);
     $('#card-title').empty();
     $('#card-content').empty();
     $('#card-id').val(null);
     $('#do-edit-card').html('Add Card');
+    $('#do-edit-card').attr('disabled', true);
     $('#edit-card').modal('show');
     $('#card-private').prop('checked', false);
     $('#card-rooms').prop('disabled', true);
     $('#card-locked').prop('checked', false);
   }
 
+  editor_open() {
+    return this.open_editor;
+  }
+
+  add_file(file) {
+    // TODO: remove duplicate code between here and messages
+    this.insert_at_cursor(`~file${file}~`);
+  }
+
+  insert_at_cursor(text) {
+    // TODO: remove duplicate code between here and messages
+    var target = document.getElementById("card-content");
+
+    if (target.setRangeText) {
+        //if setRangeText function is supported by current browser
+        target.setRangeText(text)
+    } else {
+        target.focus()
+        document.execCommand('insertText', false /*no UI*/, text);
+    }
+  }
   set_room_list(messages) {
     var card = this.get_card(this.cur_edit_card);
     $('#card-rooms').empty();
-    for (var room in messages.rooms) {
+    for (var room in rooms.rooms) {
       var selected = "";
-      room = messages.rooms[room];
+      room = rooms.rooms[room];
       if((card) && (room.id == card.room)) {
         selected = "selected";
       } else if ((!card) && (room.id == messages.cur_room)) {
@@ -443,6 +472,7 @@ class Cards {
     if(card) {
       this.cur_edit_card = card.id;
       this.set_room_list(messages);
+      this.open_editor   = true;
       if(card.room) {
         $('#card-private').prop('checked', true);
         $('#card-rooms').prop('disabled', false);
@@ -455,6 +485,7 @@ class Cards {
       $('#card-title').val(card.title);
       $('#card-content').val(card.contents);
       $('#do-edit-card').html('Update Card');
+      $('#do-edit-card').attr('disabled', true);
       $('#edit-card').modal('show');
     }
   }
@@ -464,6 +495,14 @@ class Cards {
                                      state: state});
   }
 
+  allow_submission() {
+    if( ($('#card-title').val().length > 0) && ($('#card-content').val().length > 0)) {
+      $('#do-edit-card').prop('disabled', false);
+    } else {
+      $('#do-edit-card').prop('disabled', true);
+    }
+
+  }
   show(card_id) {
     var card = this.get_card(card_id);
     if(card) {
@@ -494,6 +533,7 @@ class Cards {
 
   hide_editor() {
     $('#edit-card').modal('hide');
+    this.open_editor   = false;
   }
 
   hide_display() {
@@ -529,6 +569,7 @@ class Cards {
     }
 
     this.hide_editor();
+    console.log(card);
     socket.emit('edit-card', card);
   }
 
@@ -2347,7 +2388,11 @@ function handle_file_upload(file) {
 
     for(file in data.files) {
       file = data.files[file];
-      messages.add_file(file.id);
+      if(cards.editor_open() == true) {
+        cards.add_file(file.id);
+      } else { 
+        messages.add_file(file.id);
+      }
     }
   });
 }
@@ -2355,7 +2400,11 @@ function handle_file_upload(file) {
 function drop_handler(ev) {
  ev.preventDefault();
  ev.stopPropagation();
- ([...ev.dataTransfer.files]).forEach(handle_file_upload);
+ if(tabs.current_tab() == 'settings') {
+   ([...evt.target.files]).forEach(settings.send_portrait);
+ } else { 
+   ([...ev.dataTransfer.files]).forEach(handle_file_upload);
+ }
 }
 
 function dragstart_handler(ev) {

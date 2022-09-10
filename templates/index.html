@@ -11,7 +11,9 @@
     <title>{{ config.site_name }}</title>
   </head>
 
-  <body style="overflow-y: auto;" >
+  <body ondrop="drop_handler(event)" 
+        ondragover="dragover_handler(event)"
+        style="overflow-y: auto;" >
     <script>
       var __protocol__ = {{ config.protocol }};
     </script>
@@ -176,15 +178,19 @@
               <div class="form-group">
                 <label for="card-title">Title:</label>
                 <input type="text" class="form-control" name="card-title" 
+                       oninput="cards.allow_submission();"
                        placeholder="Contents" id="card-title" required>
               </div>
               <div class="form-group">
                 <label for="card-content">Contents:</label>
-                <textarea class="form-control" name="card-content" id="card-content" cols=60 rows="5"
+                <textarea class="form-control" name="card-content" 
+                          id="card-content" cols=60 rows="5"
+                          oninput="cards.allow_submission();"
                           required></textarea>
               </div>
               <div class="form-check">
-                <input class="form-check-input" type="checkbox" value="" id="card-private" 
+                <input class="form-check-input" type="checkbox" 
+                       value="" id="card-private" 
                        onclick="$('#card-rooms').prop('disabled', function(i,v) { return !v; });">
                 <label class="form-check-label" for="card-private">
                   Private to room:
@@ -201,7 +207,7 @@
               </div>
               <div class="pb-2">
                 <button id="do-edit-card" onclick="cards.send_card();" 
-                        type="button" class="btn btn-success btn-sm">
+                        type="button" class="btn btn-success btn-sm" disabled>
                   Add Card
                 </button>
                 <button id="do-hide-card" onclick="cards.hide_editor();" 
@@ -264,9 +270,7 @@
 
 
     <div id="contents">
-      <div ondrop="drop_handler(event)" 
-           ondragover="dragover_handler(event)"
-           onclick="$('#new-message').focus()"
+      <div onclick="$('#new-message').focus()"
            class="messages container-fluid d-none" 
            id="messages">
       </div>

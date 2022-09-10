@@ -176,7 +176,7 @@ def upload_file():
 
         if db_file.room: 
             emit('stuff_list', 
-                 {'files':{db_file.id:db_file.public_fields()}},
+                 { 'files':{ db_file.id: db_file.public_fields() } },
                  room = 'room-'+str(db_file.room),
                  namespace = None)
 
