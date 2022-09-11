@@ -1459,6 +1459,7 @@ showdown.helper.emojis = {
   'golf':'\u26f3\ufe0f',
   'golfing_man':'\ud83c\udfcc\ufe0f',
   'golfing_woman':'\ud83c\udfcc\ufe0f&zwj;\u2640\ufe0f',
+  'golfer':'\ud83c\udfcc\ufe0f',
   'gorilla':'\ud83e\udd8d',
   'grapes':'\ud83c\udf47',
   'green_apple':'\ud83c\udf4f',
@@ -3254,7 +3255,7 @@ showdown.subParser('emoji', function (text, options, globals) {
 
   text = text.replace(emojiRgx, function (wm, emojiCode) {
     if (showdown.helper.emojis.hasOwnProperty(emojiCode)) {
-      return showdown.helper.emojis[emojiCode];
+      return "<span style='font-size:2em;'>" + showdown.helper.emojis[emojiCode] + "</span>";
     }
     return wm;
   });
