@@ -69,10 +69,39 @@ class Invite {
     $('#add-user').prop('disabled', false);
   }
 }
-class Files {
-  constructor() {
-    this.files = {};
 
+
+
+async function upload_file(file, url, success_fn) {
+  var sessionid = cookie.read('sessionid');
+  var file_number = parseInt(cookie.read('file_number'));
+  cookie.write('file_number', file_number + 1, 365);
+  for(let start = 0; start < file.size; start += files.chunk_size) {
+    set_status(`${ file.name }: ${ parseInt((start/file.size)*100) }%`, 2000)
+    const chunk = file.slice(start, start+files.chunk_size);
+    var form        = new FormData();
+    var room        = rooms.get_cur_room()
+    if(room) {
+      form.append('room', room.id);
+    }
+    form.append('sessionid', sessionid);
+    form.append('chunk', start/files.chunk_size);
+    form.append('file_number', file_number);
+    form.append('file', chunk);
+    if (start + files.chunk_size >= file.size) {
+      form.append('end', true);
+      form.append('filename',file.name);
+    }
+    await fetch(url, { method: 'post', 
+                       body: form }).then(res => res.text());
+  }
+}
+
+
+class Files {
+  constructor(chunk_size) {
+    this.files = {};
+    this.chunk_size = chunk_size;
   }
 
   empty() {
@@ -679,7 +708,7 @@ class Rooms {
 
   empty() {
     this.rooms = {};
-    this.render();
+    //this.render();
   }
   
   change_room(room) {
@@ -2259,7 +2288,7 @@ var messages  = new Messages();
 var rooms     = new Rooms();
 var cards     = new Cards();
 var people    = new People();
-var files     = new Files();
+var files     = new Files(__chunk_size__);
 var invite    = new Invite();
 var settings  = new Settings();
 var jukebox   = new Jukebox();
@@ -2360,8 +2389,8 @@ function send_message() {
 function send_logout() {
     people.empty();
     files.empty();
-    messages.empty();
     rooms.empty();
+    messages.empty();
     $('#navbar').addClass('d-none');
     $('#footer').addClass('d-none');
     $('#contents').addClass('d-none');
@@ -2373,28 +2402,12 @@ function send_logout() {
     var sessionid = cookie.read('sessionid');
     cookie.delete('sessionid');
     cookie.delete('cur_room');
+    cookie.delete('file_number');
     socket.emit('logout', {sessionid: sessionid});
     lissajous.setb(5);
 }
 
 
-// general function to handle uploading files to 
-// the server.
-
-function upload_file(file, url, success_fn) {
-  var sessionid = cookie.read('sessionid');
-  var form = new FormData();
-
-  form.append('sessionid', sessionid);
-  form.append('room', messages.cur_room);
-  form.append('file', file);
-  $.ajax({ url: url,
-           type: 'POST',
-           data: form,
-           processData: false,
-           contentType: false,
-           success: success_fn });
-}
 
 
 // The following functions are for handling file drag/drop
@@ -2409,9 +2422,10 @@ function dragover_handler(ev) {
 function handle_file_upload(file) {
   upload_file(file, 'upload-file', function(data) {
     data = JSON.parse(data);
+    console.log(data);
     console.log("got files!");
     getter.handle_stuff(data);
-
+    // TODO: sort this out (probably remove everything? -- deprecated)
     for(file in data.files) {
       file = data.files[file];
       if(cards.editor_open() == true) {
@@ -2426,12 +2440,9 @@ function handle_file_upload(file) {
 function drop_handler(ev) {
  ev.preventDefault();
  ev.stopPropagation();
- console.log(tabs.current_tab());
  if(tabs.current_tab() == 'settings') {
-   console.log("1");
    ([...ev.dataTransfer.files]).forEach(settings.send_portrait);
  } else { 
-   console.log("2");
    ([...ev.dataTransfer.files]).forEach(handle_file_upload);
  }
 }
@@ -2550,6 +2561,9 @@ socket.on('login-result', data => {
     } else {
       $('#contents').removeClass('d-none');
     }
+    if(cookie.read('file_number') == '') {
+      cookie.write('file_number', '0', 365);
+    }
     getter.handle_stuff(data);
     lissajous.setb(4);
     settings.set_defaults();
@@ -2583,7 +2597,6 @@ socket.on('delete-file-result', data => {
   if(data.status == 'ok') {
     files.delete_file(data.file_id);
     files.render();
-    console.log("file delete render");
     messages.render();
   }
 });
@@ -2613,7 +2626,20 @@ socket.on('goto_chat', data => {
   tabs.show('messages');
 });
 
-socket.on('stuff_list', data => {
+socket.on('file-uploaded', data => {
+  getter.handle_stuff(data);
+  // TODO: sort this out (probably remove everything? -- deprecated)
+  for(file in data.files) {
+    file = data.files[file];
+    if(cards.editor_open() == true) {
+      cards.add_file(file.id);
+    } else { 
+      messages.add_file(file.id);
+    }
+  }
+});
+
+socket.on('stuff-list', data => {
   getter.handle_stuff(data);
 });
 

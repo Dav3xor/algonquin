@@ -5,6 +5,7 @@ from flask_socketio import SocketIO, emit, send, disconnect, join_room
 from urllib.parse import urlencode
 from werkzeug.utils import secure_filename
 from config import config, __version__, __protocol__
+from pathlib import Path
 
 import os
 import eventlet
@@ -114,50 +115,76 @@ def index():
 
 
 def file_upload_common(req):
-    if 'file' not in req.files:
-        return None, None, json.dumps({'error': 'no file'})
-    file = req.files['file']
-    #print(file)
-    if file.filename == '':
-        return  None, None, json.dumps({'error': 'no filename'})
+    fields = ['sessionid', 'room', 'chunk', 'file_number']
+
+    for field in fields:
+        if field not in req.form:
+            return None, None, json.dumps({'error': f'no {field} in request'})
+        
+    file        = req.files['file']
+    room        = req.form['room']
+    session     = Session.get_where(sessionid=req.form['sessionid'])
+    chunk       = req.form['chunk']
+    file_number = req.form['file_number']
     
-    if 'sessionid' not in req.form:
-        return  None, None, json.dumps({'error': 'no sessionid'})
-    
-    session = Session.get_where(sessionid=request.form['sessionid'])
     if not session:
         return None, None, json.dumps({'error': 'bad sessionid'})
 
     user = User.get(session.user)
-
-    hash, size   = File.hash_file(file)
-    type, extension = File.file_type(file.filename)
-
-    print ("hash = " + hash)
-    print ("size = " + str(size))
-
-    # check for duplicates
     
-    original_file = File.hash_exists(hash=hash, size=size)
-    if original_file:
-        print("duplicate file upload -- " + 
-              original_file.name + " - " + 
-              file.filename + " - " + 
-              original_file.localname)
-        filename = original_file.localname
-    else:
-        filename     = str(time.time()) + '.' + extension
-        file.save(os.path.join(config['file_root'], 'files', filename))
-   
-    db_file = File(owner     = user.id,
-                   public    = True,
-                   name      = file.filename,
-                   hash      = hash,
-                   size      = size,
-                   type      = type,
-                   localname = filename)
+    tmp_dir = f'{ user.id }-{ session.id }-{ room }-{ file_number }'
+    path = os.path.join(config['file_root'], 'files', 'tmp', tmp_dir)
 
-    return db_file, user, None
+    Path(path).mkdir(parents=True, exist_ok=True)
+    file.save(os.path.join(path, str(chunk)))
+
+    if 'end' not in req.form:
+        return None, None, None
+    else:
+        if 'filename' not in req.form:
+            filename = 'unknown'
+        else:
+            filename = req.form['filename']
+        # do it this way to give the interpreter a chance to switch threads
+        # TODO: break this out into some sort of task queue deal
+        
+        outfile = os.path.join(path, 'output')
+
+        for i in range(0,int(chunk)+1):
+            infile  = os.path.join(path, str(i))
+            os.system(f'cat { infile } >> { outfile }')
+            #os.remove(infile)
+
+        with open(outfile, 'rb') as f:
+            hash, size   = File.hash_file(f)
+            type, extension = File.file_type(filename)
+
+        print ("hash = " + hash)
+        print ("size = " + str(size))
+
+        # check for duplicates
+        
+        original_file = File.hash_exists(hash=hash, size=size)
+        if original_file:
+            print("duplicate file upload -- " + 
+                  original_file.name + " - " + 
+                  filename + " - " + 
+                  original_file.localname)
+            newfilename = original_file.localname
+        else:
+            newfilename     = str(time.time()) + '.' + extension
+            os.rename(outfile, os.path.join(config['file_root'], 'files', newfilename))
+            #file.save(os.path.join(config['file_root'], 'files', filename))
+       
+        db_file = File(owner     = user.id,
+                       public    = True,
+                       name      = filename,
+                       hash      = hash,
+                       size      = size,
+                       type      = type,
+                       localname = newfilename)
+
+        return db_file, user, None
 
 
 
@@ -165,8 +192,10 @@ def file_upload_common(req):
 def upload_file():
     db_file, user, errors = file_upload_common(request)
 
-    if not errors:
-
+    if (not errors) and (not db_file):
+        # got a chunk, but not the last one
+        return json.dumps({'status': 'ok'})
+    elif not errors:
         if 'room' in request.form:
             db_file.room = request.form['room']
 
@@ -175,12 +204,18 @@ def upload_file():
         db_file.commit()
 
         if db_file.room: 
-            emit('stuff_list', 
-                 { 'files':{ db_file.id: db_file.public_fields() } },
+            emit('stuff-list', 
+                 { 'files':[ db_file.public_fields() ] },
                  room = 'room-'+str(db_file.room),
                  namespace = None)
 
-        return json.dumps({'status': 'ok', 'files': [db_file.public_fields()]})
+        #return json.dumps({'status': 'ok', 'files': [db_file.public_fields()]})
+        for sid in scoreboard.get_sids_from_user(user.id):
+            emit('file-uploaded', 
+                 {'status': 'ok', 'files': [db_file.public_fields()]}, 
+                 room = sid,
+                 namespace = None)
+        return json.dumps({'status': 'ok'})
     else:
         return errors
 
@@ -334,10 +369,10 @@ stuff = {'users': {'class': User,
 def send_stuff (room, **kwargs):
     kwargs['__protocol__'] = __protocol__
     if type(room) == bool: # broadcast
-        emit('stuff_list', kwargs, broadcast=room, namespace='/')
+        emit('stuff-list', kwargs, broadcast=room, namespace='/')
     else:
         # send only to initiating user...
-        emit('stuff_list', kwargs, to=room, namespace='/')
+        emit('stuff-list', kwargs, to=room, namespace='/')
 
 @user_logged_in
 @socketio.on('get-stuff')
@@ -418,7 +453,7 @@ def handle_delete_file(json):
     file.deleted = 1
     file.save()
     file.commit()
-    emit('delete-file-result', {'stuff_list': {'files':[file.public_fields()]},
+    emit('delete-file-result', {'stuff-list': {'files':[file.public_fields()]},
                                 'status': 'ok', 
                                 'file_id': file.id}, room = 'room-'+str(file.room))
 
@@ -499,7 +534,7 @@ def handle_message(json):
     message.commit()
     message = Message.get(message.id)
     print(message.public_fields())
-    emit('stuff_list', {'messages': [ message.public_fields() ]}, 
+    emit('stuff-list', {'messages': [ message.public_fields() ]}, 
          room = 'room-'+str(room))
 
 @user_logged_in
@@ -522,7 +557,7 @@ def handle_card_toggle_lock(json):
             card.save()
             card.commit()
             print('card locked')
-        emit('stuff_list', {'cards': { card.id:card.public_fields() }})
+        emit('stuff-list', {'cards': { card.id:card.public_fields() }})
 
 
 
@@ -557,14 +592,14 @@ def handle_edit_card(json):
         card.room = int(json['room'])
         card.save()
         card.commit()
-        emit('stuff_list', {'cards': { card.id:card.public_fields() }}, 
+        emit('stuff-list', {'cards': { card.id:card.public_fields() }}, 
              room = 'room-'+str(json['room']))
     else:
         print("room set to None")
         card.room = None
         card.save()
         card.commit()
-        emit('stuff_list', {'cards': { card.id:card.public_fields() }})
+        emit('stuff-list', {'cards': { card.id:card.public_fields() }})
 
 
 
