@@ -36,7 +36,6 @@ class Tabs {
     $('#'+this.cur_tab+"-nav").removeClass("active");
     $('#'+tab+"-nav").addClass("active");
     if(tab == 'messages') {
-      //console.log(`scrolltop = ${$('#messages').scrollTop()}`);
       if($('#messages').scrollTop() < 0) {
         $('#goto-bottom').removeClass('d-none');
       }
@@ -163,7 +162,6 @@ class Files {
                            ${icons.blank}
                          </button>`;
         }
-        //console.log(file);
         $('#files').append(`<div class="row mt-1"> 
                                <div class="col-3">
                                  ${play_button}
@@ -312,7 +310,6 @@ class Search {
     $('#send-query').html(icons.search);
 
     $('#search-query').keyup(() =>  {
-      console.log(event.keyCode);
       if (event.keyCode === 13) {
         $("#send-query").click();
       } else {
@@ -345,11 +342,9 @@ class Search {
                        'video': 'video' }
   file_icon(result) {
     if (result.ftable in this.result_icons) {
-      console.log("1");
       return icons[this.result_icons[result.ftable]];
     // TODO: add support for file icons (add join to db query, etc...)
     } else {
-      console.log("2");
       return null;
     }
   }
@@ -370,7 +365,6 @@ class Search {
                      <div class='col-6'>${markdown.makeHtml(messages.expand_tildes(result.contents))}</div>
                    </div>`;
     }
-    console.log(contents);
     $('#search-results').html(contents);
   }
 }
@@ -399,22 +393,7 @@ class Settings {
     }
     socket.emit('settings', settings);
   }
-/*
-  upload_file(file, 'upload-file', function(data) {
-    data = JSON.parse(data);
-    console.log("got files!");
-    getter.handle_stuff(data);
 
-    for(file in data.files) {
-      file = data.files[file];
-      if(cards.editor_open() == true) {
-        cards.add_file(file.id);
-      } else { 
-        messages.add_file(file.id);
-      }
-    }
-  });
-*/
   send_portrait(file) {
     upload_file(file, 
                 'upload-portrait', 
@@ -430,14 +409,10 @@ class Settings {
                       </span>`;
         set_status(status, 5000);
       } else {
-        console.log(data);
         $('#portrait-image').attr('src', '/portraits/' + data.user.portrait);
         $('#you-image').attr('src', '/portraits/' + data.user.portrait);
         people.set_person(data);
-        //people.render();
-        //files.render()
         getter.handle_stuff(data); 
-        console.log("portrait render");
         messages.render();
       } 
     });
@@ -614,7 +589,6 @@ class Cards {
 
     if($('#card-private').prop('checked')) {
       card.room = parseInt($('#card-rooms').val());
-      //console.log(card.room);
     }
 
     if($('#card-locked').prop('checked')) {
@@ -624,7 +598,6 @@ class Cards {
     }
 
     this.hide_editor();
-    console.log(card);
     socket.emit('edit-card', card);
   }
 
@@ -776,10 +749,8 @@ class Rooms {
   render_room_list() {
     var unread = 0;
     $('#room_list').empty();
-    //console.log("xxx");
     for (var room in this.rooms) {
       var room = this.rooms[room];
-      //console.log(room.name);
       if ( room.name.startsWith('$%^&-') ) {
         var ids = room.name.split('-').slice(1);
         var expanded_name = "Chat With:";
@@ -840,7 +811,6 @@ class Rooms {
     } else if (this.rooms[room].message_index.length == 0) {
       return null;
     } else {
-      //console.log(this.rooms[room].message_index);
       return this.rooms[room].message_index[0];
     }
   }
@@ -998,7 +968,6 @@ class Messages {
   render_inline_phone(phone) {
     var number1 = "5035352342";
     var number2 = "(503) 535-2342";
-    console.log(phone);
     return `<button class="btn btn-dark btn-sm">
               ${icons.telephone}
               <a href="tel:${number1}">${number2}</a>
@@ -1097,7 +1066,6 @@ class Messages {
   }
   
   max_id(messages, room) {
-    //console.log("xxx: "+messages);
     var max = 0;
     messages.forEach(message => { if((message.room == room) && 
                                      (message.id > max)) max=message.id });
@@ -1110,21 +1078,16 @@ class Messages {
     if(cur_room == null) {
       return;
     }
-    //console.log(messages);
     if(!messages) {
       // redraw everything
-      //console.log("render mode: everything");
       this.reset();
       messages = cur_room.message_index;
     } else if((cur_room.message_index.length > 0) && 
               (this.max_id(messages, cur_room) < cur_room.message_index[0])) {
       // backfill mode...
-      //console.log("render mode: backfill");
-      //messages.reverse();
     } else {
-      //console.log("render mode: new message");
-      messages.reverse();
       // new messages...
+      messages.reverse();
     }
 
     for (let message of messages) {
@@ -1179,8 +1142,6 @@ class Messages {
     var handle        = "loading...";
     var switched_side = false;
     var oldest        = rooms.oldest_msg(message.room);
-    //console.log("oldest: " + oldest);
-    //var newest        = this.newest_msg(message.room);
     var backfill      = false;
     var side          = 0;
 
@@ -1195,7 +1156,6 @@ class Messages {
     if ((oldest) && (message.id < oldest)) {
       // backfill
       if (this.top_user != message.user) {
-        //console.log('backfill mode: engaged');
         if(this.top_side > 0) {
           switched_side  = true;
         }
@@ -1255,13 +1215,11 @@ class Messages {
       $(`#message-${message.id}`).html(output);
     } else {
       if(backfill) {
-        //console.log('a');
         $('#messages').append(`${footer}
                                 <div class="row mb-1" id="message-${message.id}"> 
                                   ${output}
                                 </div>`);
       } else {
-        //console.log('b');
         $('#messages').prepend(`${footer}
                                 <div class="row mb-1" id="message-${message.id}"> 
                                   ${output}
@@ -1278,7 +1236,6 @@ class Messages {
   }
  
   add(new_messages) {
-    //console.log(new_messages);
     for (var message in new_messages) {
       message = new_messages[message];
 
@@ -1290,7 +1247,6 @@ class Messages {
         rooms.add_message(message);
       }
     }
-    //console.log(this.rooms[message.room].message_index);
   }
 
   get_scrollback() {
@@ -1302,10 +1258,8 @@ class Messages {
                                    'before_id': room.message_index[0],
                                    'count':     10} );
       room.scrollback_state = Scrollback_States.Loading;
-      console.log("getting messages");
     } else if(room.scrollback_state == Scrollback_States.Loading) {
       room.scrollback_state = Scrollback_States.Loading2;
-      console.log("waiting messages");
     }
   }
   scrollback_loaded(at_end, room) {
@@ -2422,8 +2376,6 @@ function dragover_handler(ev) {
 function handle_file_upload(file) {
   upload_file(file, 'upload-file', function(data) {
     data = JSON.parse(data);
-    console.log(data);
-    console.log("got files!");
     getter.handle_stuff(data);
     // TODO: sort this out (probably remove everything? -- deprecated)
     for(file in data.files) {
@@ -2484,7 +2436,6 @@ $('#messages').scroll(function() {
     $('#messages').scrollTop(0);
   }
 
-  //console.log(`scroll: ${location}, ${ total_height }` );
 
   if($('#messages').scrollTop() >= 0) {
     $('#goto-bottom').addClass('d-none');
@@ -2628,10 +2579,13 @@ socket.on('goto_chat', data => {
 
 socket.on('file-uploaded', data => {
   getter.handle_stuff(data);
-  // TODO: sort this out (probably remove everything? -- deprecated)
   for(file in data.files) {
     file = data.files[file];
-    if(cards.editor_open() == true) {
+    if('portrait' in data) {
+      $('#portrait-image').attr('src', '/portraits/' + data.user.portrait);
+      $('#you-image').attr('src', '/portraits/' + data.user.portrait);
+      people.set_person(data.user);
+    } else if(cards.editor_open() == true) {
       cards.add_file(file.id);
     } else { 
       messages.add_file(file.id);

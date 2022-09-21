@@ -221,14 +221,13 @@ def upload_file():
 
 @app.route('/upload-portrait', methods=['POST'])
 def upload_portrait():
-    print('1')
     db_file, user, errors = file_upload_common(request)
-    print('2')
+    if (not errors) and (not db_file):
+        # got a chunk, but not the last one
+        return json.dumps({'status': 'ok'})
     if errors:
-        print('3')
         return errors
     else:
-        print('4')
         if not valid_portrait(db_file.name):
             return  json.dumps({'error': 'filetype not supported for portrait'})
 
@@ -239,9 +238,17 @@ def upload_portrait():
         user.save()
         user.commit()
 
-        send_user(user, True, namespace=None)
         
-        return json.dumps({'status': 'ok', 'files': [db_file.public_fields()], 'user': user.public_fields()})
+        for sid in scoreboard.get_sids_from_user(user.id):
+            emit('file-uploaded', 
+                 {'status': 'ok',
+                  'portrait': True,
+                  'user': user.public_fields(),
+                  'files': [db_file.public_fields()]}, 
+                 room = sid,
+                 namespace = None)
+        send_user(user, True, namespace=None)
+        return json.dumps({'status': 'ok'})
 
 
 # TODO: handle these with a real web server?
@@ -379,7 +386,7 @@ def send_stuff (room, **kwargs):
 def handle_get_stuff(json):
     user = scoreboard.get_user_from_sid(request.sid)
     output = {}
-    print (json)
+    #print (json)
     for key, table in stuff.items():
         if key in json and len(json[key])>0:
             keys = []
@@ -401,15 +408,12 @@ def handle_get_stuff(json):
 @socketio.on('get-messages')
 @json_has_keys('room_id', 'before_id', 'count')
 def handle_get_messages(json):
-    print("1")
     user = scoreboard.get_user_from_sid(request.sid)
     room = int(json['room_id'])
     output = {}
     membership = Membership.get_where(room = room,
                                       user = user)
-    print("2")
     if membership:
-        print("3")
         date   = int(json['before_id'])
         count  = int(json['count'])
         count  = count if count < 100 else count
@@ -500,7 +504,6 @@ def handle_start_chat(json):
     user         = scoreboard.get_user_from_sid(request.sid)
     room         = Room.get_or_set_chat(user, json['users'])
     online_users = scoreboard.online_users();
-    print("start chat")
     for member in json['users']:
         sids = scoreboard.get_sids_from_user(member)
         if user == member:
@@ -517,7 +520,6 @@ def handle_start_chat(json):
                 emit('add_room', 
                      {'room': room.public_fields()}, 
                      room=sid)
-    print("end chat")
 
 # user has uploaded a message
 @user_logged_in
@@ -533,7 +535,6 @@ def handle_message(json):
     message.save()
     message.commit()
     message = Message.get(message.id)
-    print(message.public_fields())
     emit('stuff-list', {'messages': [ message.public_fields() ]}, 
          room = 'room-'+str(room))
 
@@ -541,22 +542,18 @@ def handle_message(json):
 @socketio.on('card-toggle-lock')
 @json_has_keys('card_id')
 def handle_card_toggle_lock(json):
-    print(json) 
     user = User.get(scoreboard.get_user_from_sid(request.sid))
     card = Card.get(json['card_id'])
     state = json['state']
     if card and user and (card.owner == user.id or user.id == 1):
-        print('card locking:')
         if state == 'locked' and card.locked == True:
             card.locked = False
             card.save()
             card.commit()
-            print('card unlocked')
         elif state == 'unlocked' and card.locked == False:
             card.locked = True
             card.save()
             card.commit()
-            print('card locked')
         emit('stuff-list', {'cards': { card.id:card.public_fields() }})
 
 
@@ -567,7 +564,6 @@ def handle_card_toggle_lock(json):
 @json_has_keys('title', 'content', 'locked')
 def handle_edit_card(json):
     user = scoreboard.get_user_from_sid(request.sid)
-    print(json)
     if 'id' in json:
         card          = Card.get(int(json['id']))
         if card:
@@ -588,14 +584,12 @@ def handle_edit_card(json):
                     title     = json['title'])
 
     if 'room' in json:
-        print("setting room to: " + str(json['room']))
         card.room = int(json['room'])
         card.save()
         card.commit()
         emit('stuff-list', {'cards': { card.id:card.public_fields() }}, 
              room = 'room-'+str(json['room']))
     else:
-        print("room set to None")
         card.room = None
         card.save()
         card.commit()
@@ -634,8 +628,7 @@ def handle_new_user(json):
     except Exception as e:
         status = 0
         status_msg = str(e)
-        print(type(e))
-        print(status_msg)
+
     response = {'message': json['message'] + '\n\n' + url,
                 'url': url,
                 'status': status,
