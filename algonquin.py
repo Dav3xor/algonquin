@@ -293,20 +293,28 @@ def do_login(user, session, send_session_id=False):
         join_room('room-'+str(membership.room))
         #print(membership.room)
 
+    response['userid']        = user.id
+    response['authenticated'] = True
+    response['result']        = 'Login Ok'
+    response['__protocol__']    = __protocol__
+    if send_session_id:
+        response['sessionid'] = session.sessionid
+    
+    if '-token-' in session.sessionid:
+        response['new-user'] = True
+    emit('login-result', response, broadcast=False);
+
+    response = {}
     response['users']         = user.related_users()
     response['rooms']         = user.membership_list()
     response['messages']      = user.message_list(response['rooms'].keys())
     response['files']         = user.file_list()
     response['cards']         = user.card_list()
-    response['userid']        = user.id
-    response['authenticated'] = True
-    response['result']        = 'Login Ok'
-    response['__protocol__']    = __protocol__
+    send_stuff(request.sid, **response)
+
     send_user(user, True)
 
-    if send_session_id:
-        response['sessionid'] = session.sessionid
-    
+
     return response
 
 @user_logged_in
@@ -330,8 +338,7 @@ def handle_login_email(json):
                           user = user.id)
         session.save()
         session.commit()
-    response = do_login(user, session, True)
-    emit('login-result', response, broadcast=False);
+    do_login(user, session, True)
 
 @not_logged_in
 @socketio.on('login-session')
@@ -344,13 +351,8 @@ def handle_login_session(json):
         emit('login-result', {'authenticated': False}, broadcast=False)
     else:
         user = User.get(int(sessionid.split('-')[0]))
-        
-        response = do_login(user, session)
+        do_login(user, session)
 
-        if '-token-' in sessionid:
-            response['new-user'] = True
-
-        emit('login-result', response, broadcast=False)
 
 stuff = {'users': {'class': User, 
                    'tables': 'users',
@@ -375,6 +377,14 @@ stuff = {'users': {'class': User,
 
 def send_stuff (room, **kwargs):
     kwargs['__protocol__'] = __protocol__
+    if 'users' in kwargs:
+        users = scoreboard.online_users()
+        for user in [i for i in kwargs['users']]:
+            if user in users:
+                kwargs['users'][user]['online'] = True
+            else:
+                kwargs['users'][user]['online'] = False
+
     if type(room) == bool: # broadcast
         emit('stuff-list', kwargs, broadcast=room, namespace='/')
     else:
@@ -628,7 +638,6 @@ def handle_new_user(json):
     except Exception as e:
         status = 0
         status_msg = str(e)
-
     response = {'message': json['message'] + '\n\n' + url,
                 'url': url,
                 'status': status,
