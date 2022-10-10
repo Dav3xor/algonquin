@@ -59,6 +59,10 @@ class Scoreboard:
             return self.user_to_sid[user]
     def online_users(self):
         return set(self.sid_to_user.values())
+    def user_online(self, id):
+        if id not in self.user_to_sid:
+            return False
+        return True if len(self.user_to_sid[id]) > 0 else False
 
 scoreboard=Scoreboard()
 
@@ -264,12 +268,6 @@ def send_files(path):
 def send_portraits(path):
     return send_from_directory('files', path)
 
-@user_logged_in
-@socketio.on('disconnect')
-def handle_disconnect():
-    #print("client disconnecting: " + request.sid)
-    scoreboard.remove(request.sid)
-
 def online_users():
     users = scoreboard.online_users()
     return {user:User.get(user).public_fields() for user in users }
@@ -317,13 +315,25 @@ def do_login(user, session, send_session_id=False):
 
     return response
 
+def disconnect_user(sid):
+    user = User.get_where(id=scoreboard.get_user_from_sid(sid))
+    scoreboard.remove(sid)
+    send_stuff(True, users={user.id: user.public_fields()})
+
+
 @user_logged_in
 @socketio.on('logout')
 def handle_logout(json):
     #print("logging out: " + str(json['sessionid']))
     Session.delete_where(sessionid=json['sessionid'])
     Session.commit()
-    scoreboard.remove(request.sid)
+    disconnect_user(request.sid)
+
+@user_logged_in
+@socketio.on('disconnect')
+def handle_disconnect():
+    #print("client disconnecting: " + request.sid)
+    disconnect_user(request.sid)
 
 @not_logged_in
 @socketio.on('login-email')
@@ -378,13 +388,8 @@ stuff = {'users': {'class': User,
 def send_stuff (room, **kwargs):
     kwargs['__protocol__'] = __protocol__
     if 'users' in kwargs:
-        users = scoreboard.online_users()
         for user in [i for i in kwargs['users']]:
-            if user in users:
-                kwargs['users'][user]['online'] = True
-            else:
-                kwargs['users'][user]['online'] = False
-
+           kwargs['users'][user]['online'] = scoreboard.user_online(user)
     if type(room) == bool: # broadcast
         emit('stuff-list', kwargs, broadcast=room, namespace='/')
     else:
@@ -493,7 +498,7 @@ def handle_have_read(json):
     user = scoreboard.get_user_from_sid(request.sid)
     membership = Membership.get_where(room = json['room'], user=user)
     if membership:
-        print(f"last seen: id:{membership.id} last:{json['last']}")
+        #print(f"last seen: id:{membership.id} last:{json['last']}")
         membership.last_seen = json['last']
         membership.save()
         membership.commit()

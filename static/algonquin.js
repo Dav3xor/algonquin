@@ -29,7 +29,11 @@ class Tabs {
       $('#footer').addClass('d-none');
       $('#goto-bottom').addClass('d-none');
     }            
-    
+
+    if(tab == 'people') {
+      people.build_table();
+    }
+
     $('#'+this.cur_tab).addClass('d-none'); 
     $('#'+tab).removeClass('d-none'); 
 
@@ -208,8 +212,22 @@ class People {
     this.people = {};
     this.this_person = -1;
 
+    this.table = null;
 
     $('#ring-bell').append(icons.bell);
+  }
+
+  build_table() {
+    console.log('build table');
+    if (this.table == null) {
+      this.table = $('#people-list').DataTable({
+        "rowId": "rowid",
+        "columns": [ { "data": 'portrait'}, 
+                     { "data": 'online', 'width': '30px'}, 
+                     { "data": 'name'}, 
+                     { "data": 'buttons'} ]});
+      this.render();
+    }
   }
 
   empty() {
@@ -253,55 +271,66 @@ class People {
     }
   }
 
-  render() {
-    $('#people').empty();
-    for (var person in this.people) {
-      person = this.get_person(person);
-      if(person) {
-        var about = "";
-        if(person.hasOwnProperty('about')) {
-          about = `<a tabindex="0" role="button" 
-                      class="btn btn-sm btn-danger ml-2 pb-0" 
-                      title="About ${person.handle}"
-                      data-placement="bottom"
-                      data-bs-toggle="popover"
-                      data-bs-trigger="hover"
-                      data-bs-animation="true"
-                      data-content="${person.about}">
-                      <h5>About...</h5>
-                    </a>`;
-        }
-        $('#people').append(`<div class="row mt-1"> 
-                               <div class="col-1 ml-2">
-                                 <img src="/portraits/${person.portrait}" height="36" />
-                               </div>
-                               <div class="col-3">
-                                 <span class="badge badge-dark btn-sm ml-2">
-                                   <h5>${person.handle}</h5>
-                                 </span>
-                               </div>
-                               <div class="col-1">
-                                 ${about}
-                               </div>
-                               <div class="col-6">
-                                 <button class="btn btn-warning btn-sm ml-2" 
-                                         type="button" id="new-file-${person.id}">
-                                   ${icons.paperclip}
-                                 </button>
-                                 <button class="btn btn-success btn-sm ml-2" 
-                                         onclick="start_chat([${person.id},people.get_this_person().id]);" 
-                                         id="start-chat-${person.id}" type="button">
-                                   ${icons.chat_bubble}
-                                 </button>
-                                 <button class="btn btn-success btn-danger btn-sm ml-2" 
-                                         onclick="send_bell_user(${person.id});" 
-                                         id="start-chat-${person.id}" type="button">
-                                   ${icons.bell}
-                                 </button>
-                               </div>
+  update_table_row(person) {
+    var rowid    = `person-id-${person.id}`;
+    var online   = `<button class="btn btn-dark btn-sm" ${person.online ? "":"disabled"}>
+                      ${icons.person}
+                    </button>`
+    var name     = `<h4>${person.handle}</h4>`;
+    var portrait = `<img src="/portraits/${person.portrait}" height="36" />`;
+    
+    var about = "";
+    if(person.hasOwnProperty('about')) {
+      about = `<a tabindex="0" role="button" 
+                  class="btn btn-sm btn-danger ml-2 pb-0" 
+                  title="About ${person.handle}"
+                  data-placement="bottom"
+                  data-bs-toggle="popover"
+                  data-bs-trigger="hover"
+                  data-bs-animation="true"
+                  data-content="${person.about}">
+                  <h5>About...</h5>
+                </a>`;
+    }
 
-                             </div>`);
+    var buttons = `<button class="btn btn-warning btn-sm ml-2" 
+                           type="button" id="new-file-${person.id}">
+                     ${icons.paperclip}
+                   </button>
+                   <button class="btn btn-success btn-sm ml-2" 
+                           onclick="start_chat([${person.id},people.get_this_person().id]);" 
+                           id="start-chat-${person.id}" type="button">
+                     ${icons.chat_bubble}
+                   </button>
+                   <button class="btn btn-success btn-danger btn-sm ml-2" 
+                           onclick="send_bell_user(${person.id});" 
+                           id="start-chat-${person.id}" type="button">
+                     ${icons.bell}
+                   </button>`;
+    var rowdata = {'rowid':    rowid,
+                   'portrait': portrait,
+                   'online':   online, 
+                   'name':     name, 
+                   'buttons':  buttons}
+
+    var row = this.table.row('#'+rowid);
+    if (row.any()) {
+      row.data(rowdata).draw();
+    } else {
+      this.table.row.add(rowdata).draw( false );
+    }
+  }
+
+  render() {
+    if(this.table != null) {
+      console.log("people render");
+      for (var person in this.people) {
+        person = this.get_person(person);
+        if(person) {
+          this.update_table_row(person);
+        }
       }
+      this.table.columns.adjust().draw();
     }
   }
 }
@@ -2568,7 +2597,7 @@ socket.on('disconnect', data => {
 });
 
 socket.on('settings-result', data => {
-  set_status(data.status_msg);
+  set_status(data.status_msg,5000);
 });
 
 socket.on('goto_chat', data => {

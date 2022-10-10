@@ -6,6 +6,7 @@
     
     <link rel="stylesheet" href="/static/bootstrap.min.css">
     <link rel="stylesheet" href="/static/algonquin.css">
+    <link rel="stylesheet" href="/static/datatables.min.css">
     <link id="favicon" rel="icon" href="/static/favicon.svg" color="red">
 
     <title>{{ config.site_name }}</title>
@@ -288,6 +289,16 @@
       </button>
 
       <div class="container-fluid d-none" id="people">
+        <div class="table-responsive">
+            <table id="people-list" class="table table-striped table-bordered compact" style="width:100%;">
+              <thead>
+                <th></th>
+                <th>online</th>
+                <th>name</th>
+                <th>actions</th>
+              </thead>
+            </table>
+        </div>
       </div>
 
       <div class="container-fluid d-none" id="files"
@@ -510,7 +521,7 @@
             crossorigin="anonymous"></script>
     <script src="/static/showdown.js"></script>
     <script src="/static/algonquin.js"></script>
-
+    <script src="/static/datatables.min.js"></script>
   </body>
 </html>
 

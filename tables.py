@@ -47,8 +47,8 @@ class User(DBTable):
         #                         from memberships m 
         #                         where m.user = :self_id);'''
         where = Membership.subquery_in('room', 'memberships.user = :self_id')
-        print("------- related_users -------")
-        print(where)
+        #print("------- related_users -------")
+        #print(where)
         users = self.raw_select(query, where, {'self_id': self.id},)
         return { user.id:user.public_fields() for user in users } 
 
