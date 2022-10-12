@@ -222,10 +222,11 @@ class People {
     if (this.table == null) {
       this.table = $('#people-list').DataTable({
         "rowId": "rowid",
-        "columns": [ { "data": 'portrait'}, 
-                     { "data": 'online', 'width': '30px'}, 
+        "columns": [ { "data": 'portrait', 'orderable': false, 'width': '30px'}, 
+                     { "data": 'online', 'orderData': [4,2], 'width': '25px'}, 
                      { "data": 'name'}, 
-                     { "data": 'buttons'} ]});
+                     { "data": 'buttons', "orderable": false, 'width': '150px'},
+                     { "data": 'online_order', 'visible': false} ]});
       this.render();
     }
   }
@@ -310,6 +311,7 @@ class People {
     var rowdata = {'rowid':    rowid,
                    'portrait': portrait,
                    'online':   online, 
+                   'online_order': person.online ? 1:0,
                    'name':     name, 
                    'buttons':  buttons}
 
