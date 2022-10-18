@@ -31,7 +31,12 @@ class Tabs {
     }            
 
     if(tab == 'people') {
-      people.build_table();
+      build_table(people);
+    } else if(tab == 'search') {
+      build_table(search);
+    } else if(tab == 'files') {
+      console.log('xxx');
+      build_table(files);
     }
 
     $('#'+this.cur_tab).addClass('d-none'); 
@@ -105,6 +110,13 @@ class Files {
   constructor(chunk_size) {
     this.files = {};
     this.chunk_size = chunk_size;
+    
+    this.table_name = "#files-list";
+    this.table = null;
+    this.table_def = {'rowId':   'rowid',
+                      'columns': [ { 'data': 'play', 'width': '150px'},
+                                   { 'data': 'filename'},
+                                   { 'data': 'buttons', 'width': '75px'} ]};
   }
 
   empty() {
@@ -112,7 +124,7 @@ class Files {
     this.render();
   }
 
-  add_file(file) {
+  add_update_file(file) {
     this.files[file.id] = file;
   }
 
@@ -138,98 +150,108 @@ class Files {
     }
   }
 
-  render() {
-    $('#files').empty();
-    for (var file in this.files) {
-      var file  = this.files[file];
-      //alert(JSON.stringify(file));
-      var owner = people.get_person(file.owner);
-      if(owner) {
+  update_table_row(file) {
+    var rowid    = `file-id-${file.id}`;
+    //alert(JSON.stringify(file));
+    var owner = people.get_person(file.owner);
+    if(owner) {
 
-        var file_icon = icons.unknown;
-        if (icons.hasOwnProperty(file.type)) {
-          file_icon = icons[file.type];
-        }
-        var button_id = `files-play-sound-${file.id}`;
-        var play_button = "";
-        var deleted = file.deleted ? 'disabled' : '';
-
-        if ((!file.deleted)&&(file.type in {'video':true, 'audio':true})){
-          play_button = `
-            <button class="btn btn-info btn-sm" id="${button_id}" 
-                    style="width:60px;"
-                    onclick="jukebox.play_pause('${button_id}', '/files/${file.localname}'); ${deleted}">
-              ${icons.play}
-            </button>`;
-        } else {
-          play_button = `<button class="btn btn-dark btn-sm" style="width:60px;" disabled>
-                           ${icons.blank}
-                         </button>`;
-        }
-        $('#files').append(`<div class="row mt-1"> 
-                               <div class="col-3">
-                                 ${play_button}
-                                 <a download class="btn btn-light btn-sm ${deleted}" href="/files/${file.localname}" ${deleted}>
-                                   ${icons.download}
-                                 </a>
-                                 <button class="btn btn-light btn-sm" 
-                                         onclick="window.open('/files/${file.localname}','_blank');" ${deleted}>
-                                   ${icons.new_tab}
-                                 </button>
-                              </div>
-                              <div class="col-5">
-                                 <button class="btn btn-secondary btn-sm btn-block text-left" disabled>
-                                   ${file_icon}
-                                   ${file.name}
-                                 </button>
-                               </div>
-                               <div class="col-2">
-                                 <div class="container-sm">
-                                   <h5>${owner.handle}</h5>
-                                 </div>
-                               </div> 
-                               <div class="col-2">
-                                 <button class="btn btn-success btn-sm ml-2" 
-                                         onclick="start_chat([${owner.id},people.get_this_person().id]);" 
-                                         id="start-chat-${owner.id}" type="button" ${deleted}>
-                                   ${icons.chat_bubble}
-                                 </button>
-                                 <button class="btn btn-warning btn-sm" onclick="send_delete_file(${file.id});" ${deleted}>
-                                   ${icons.trash}
-                                 </button>
-                               </div>
-
-                             </div>`);
-
+      var file_icon = icons.unknown;
+      if (icons.hasOwnProperty(file.type)) {
+        file_icon = icons[file.type];
       }
+      var button_id = `files-play-sound-${file.id}`;
+      var play_button = "";
+      var deleted = file.deleted ? 'disabled' : '';
+
+      if ((!file.deleted)&&(file.type in {'video':true, 'audio':true})){
+        play_button = `
+          <button class="btn btn-info btn-sm" id="${button_id}" 
+                  style="width:60px;"
+                  onclick="jukebox.play_pause('${button_id}', '/files/${file.localname}'); ${deleted}">
+            ${icons.play}
+          </button>`;
+      } else {
+        play_button = `<button class="btn btn-dark btn-sm" style="width:60px;" disabled>
+                         ${icons.blank}
+                       </button>`;
+      }
+      var play = `${play_button}
+                    <a download class="btn btn-light btn-sm ${deleted}" href="/files/${file.localname}" ${deleted}>
+                      ${icons.download}
+                    </a>
+                    <button class="btn btn-light btn-sm" 
+                            onclick="window.open('/files/${file.localname}','_blank');" ${deleted}>
+                      ${icons.new_tab}
+                    </button>`;
+      var filename = `<button class="btn btn-secondary btn-sm btn-block text-left" disabled>
+                        ${file_icon}
+                        ${file.name}
+                      </button>`;
+      var buttons = `<button class="btn btn-success btn-sm ml-2" 
+                               onclick="start_chat([${owner.id},people.get_this_person().id]);" 
+                               id="start-chat-${owner.id}" type="button" ${deleted}>
+                         ${icons.chat_bubble}
+                     </button>
+                     <button class="btn btn-warning btn-sm" onclick="send_delete_file(${file.id});" ${deleted}>
+                       ${icons.trash}
+                     </button>`;
+      var rowdata = {'rowid':    rowid,
+                     'play':     play,
+                     'filename': filename, 
+                     'buttons':  buttons}
+      add_table_row(this.table, rowid, rowdata);
+    }
+  }
+
+  render() {
+    if(this.table != null) {
+      console.log("files render");
+      for (var file in this.files) {
+        file = this.files[file];
+        if(file) {
+          this.update_table_row(file);
+        }
+      }
+      this.table.columns.adjust().draw();
     }
   }
 }
 
+
+function build_table(obj) {
+  console.log('build table');
+  if (obj.table == null) {
+    obj.table = $(obj.table_name).DataTable(obj.table_def);
+    obj.render();
+  }
+}
+
+function add_table_row(table, rowid, rowdata) {
+    var row = table.row('#'+rowid);
+    if (row.any()) {
+      row.data(rowdata);//.draw();
+    } else {
+      table.row.add(rowdata).draw( false );
+    }
+}
 
 class People {
   constructor() {
     this.people = {};
     this.this_person = -1;
 
+    this.table_name = "#people-list";
     this.table = null;
-
+    this.table_def = { "rowId": "rowid",
+                       "columns": [ { "data": 'portrait', 'orderable': false, 'width': '30px'}, 
+                                    { "data": 'online', 'orderData': [4,2], 'width': '25px'}, 
+                                    { "data": 'name'}, 
+                                    { "data": 'buttons', "orderable": false, 'width': '150px'},
+                                    { "data": 'online_order', 'visible': false} ]};
     $('#ring-bell').append(icons.bell);
   }
 
-  build_table() {
-    console.log('build table');
-    if (this.table == null) {
-      this.table = $('#people-list').DataTable({
-        "rowId": "rowid",
-        "columns": [ { "data": 'portrait', 'orderable': false, 'width': '30px'}, 
-                     { "data": 'online', 'orderData': [4,2], 'width': '25px'}, 
-                     { "data": 'name'}, 
-                     { "data": 'buttons', "orderable": false, 'width': '150px'},
-                     { "data": 'online_order', 'visible': false} ]});
-      this.render();
-    }
-  }
 
   empty() {
     this.people = {};
@@ -314,13 +336,7 @@ class People {
                    'online_order': person.online ? 1:0,
                    'name':     name, 
                    'buttons':  buttons}
-
-    var row = this.table.row('#'+rowid);
-    if (row.any()) {
-      row.data(rowdata).draw();
-    } else {
-      this.table.row.add(rowdata).draw( false );
-    }
+    add_table_row(this.table, rowid, rowdata);
   }
 
   render() {
@@ -332,10 +348,11 @@ class People {
           this.update_table_row(person);
         }
       }
-      this.table.columns.adjust().draw();
+      this.table.columns.adjust().draw(false);
     }
   }
 }
+
 class Search {
   constructor() {
     $('#send-query').html(icons.search);
@@ -347,6 +364,13 @@ class Search {
         this.handle_query_change();
       }
     });
+    this.table_name = "#search-list";
+    this.table = null;
+    this.table_def = { "rowId": "rowid",
+                       "columns": [ { "data": 'type', 'width': '25px'}, 
+                                    { "data": 'row'}, 
+                                    { "data": 'rowid'}, 
+                                    { "data": 'result'} ]};
   }
 
   send_query(query) {
@@ -366,11 +390,11 @@ class Search {
   result_icons = {'users': 'person',
                         'messages': 'chat_bubble',
                         'cards': 'card' } 
-  file_icons = { 'audio': 'audio',
-                       'image': 'image',
-                       'archive': 'archive',
-                       'pdf': 'pdf',
-                       'video': 'video' }
+  file_icons = { 'audio':   'audio',
+                 'image':   'image',
+                 'archive': 'archive',
+                 'pdf':     'pdf',
+                 'video':   'video' }
   file_icon(result) {
     if (result.ftable in this.result_icons) {
       return icons[this.result_icons[result.ftable]];
@@ -381,22 +405,23 @@ class Search {
   }
 
   render(results) {
+    this.table.clear();
     var contents = "";
     for(var result in results) {
-      result = results[result];
-      contents += `<div class='row'>
-                     <div class='col-2'>
-                       <button onclick='messages.goto(${result.row_id});' 
-                               class='btn btn-success btn-sm' type='button'>
-                         ${this.file_icon(result)}
-                       </button>
-                     </div>
-                     <div class='col-2'>${result.row}</div>
-                     <div class='col-2'>${result.row_id}</div>
-                     <div class='col-6'>${markdown.makeHtml(messages.expand_tildes(result.contents))}</div>
-                   </div>`;
+      var result = results[result];
+      var type   = `<button onclick='messages.goto(${result.row_id});' 
+                            class='btn btn-success btn-sm' type='button'>
+                      ${this.file_icon(result)}
+                    </button>`;
+      var row    = `${result.row}`;
+      var rowid  = `${result.row_id}`;
+      var result = `${markdown.makeHtml(messages.expand_tildes(result.contents))}`;
+      var rowdata = {'type':   type,
+                     'row':    row,
+                     'rowid':   rowid, 
+                     'result': result }
+      add_table_row(this.table, rowid, rowdata);
     }
-    $('#search-results').html(contents);
   }
 }
 
@@ -1404,7 +1429,7 @@ class Getter {
 
     if ('files' in stuff) {
       for(var file in stuff['files']) {
-        files.add_file(stuff['files'][file])
+        files.add_update_file(stuff['files'][file])
       }
       update_messages = true;
       update_files    = true;
@@ -2436,14 +2461,10 @@ function dragstart_handler(ev) {
   ev.dataTransfer.setData("text/plain", ev.target.id);
 }
 
-var status_margin_elements = ['#people', '#files', '#cards', '#search', '#about', '#settings', '#invite'];
 
 function set_status(status, duration=null) {
   $('#status-indicator').html(status);
   $('#status-indicator').removeClass('d-none');
-  for (var i in status_margin_elements) {
-    $(status_margin_elements[i]).addClass('status-margin');
-  }
   if(duration) {
     setTimeout(function() {
       clear_status();
@@ -2453,9 +2474,6 @@ function set_status(status, duration=null) {
 
 function clear_status() {
   $('#status-indicator').addClass('d-none');
-  for (var i in status_margin_elements) {
-    $(status_margin_elements[i]).removeClass('status-margin');
-  }
 }
 
 $('#messages').scroll(function() {
@@ -2576,11 +2594,23 @@ socket.on('invite-result', data => {
 });
 
 socket.on('delete-file-result', data => {
+  console.log(`deleting file -- ${data.file_id}`);
+  console.log(data);
   if(data.status == 'ok') {
-    files.delete_file(data.file_id);
-    files.render();
+    for (file in data['stuff-list'].files) {
+      file = data['stuff-list'].files[file];
+      var filename = file ? file.name:"unknown file?";
+      files.delete_file(data.file_id);
+      files.update_table_row(file);
+    }
+    //files.render();
     messages.render();
+    set_status(`${filename} deleted`, 3000);
+  } else {
+    set_status(`${filename} delete failed: ${data.error}`, 3000);
   }
+
+
 });
 
 socket.on('search-result', data => {

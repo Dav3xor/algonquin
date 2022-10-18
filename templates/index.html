@@ -288,32 +288,48 @@
       </span> 
       </button>
 
-      <div class="container-fluid d-none" id="people">
+      <div class="container-fluid d-none status-margin" id="people">
         <div class="table-responsive">
-            <table id="people-list" class="table table-striped table-bordered compact" style="width:100%;">
+          <table id="people-list" class="table table-striped table-bordered compact" style="width:100%;">
+            <thead>
+              <th></th>
+              <th>online</th>
+              <th>name</th>
+              <th>actions</th>
+            </thead>
+          </table>
+        </div>
+      </div>
+
+      <div class="container-fluid d-none status-margin" id="files"
+           ondrop="drop_handler(event)" 
+           ondragover="dragover_handler(event)">
+        <table id="files-list" class="table table-striped table-bordered compact" style="width:100%;">
+          <thead>
+            <th></th>
+            <th>filename</th>
+            <th></th>
+          </thead>
+        </table>
+      </div>
+
+      <div class="container-fluid d-none status-margin" id="cards">
+      </div>
+
+      <div class="container-fluid d-none status-margin" id="search">
+        <div class="table-responsive">
+            <table id="search-list" class="table table-striped table-bordered compact" style="width:100%;">
               <thead>
-                <th></th>
-                <th>online</th>
-                <th>name</th>
-                <th>actions</th>
+                <th>type</th>
+                <th>row</th>
+                <th>row id</th>
+                <th>result</th>
               </thead>
             </table>
         </div>
       </div>
-
-      <div class="container-fluid d-none" id="files"
-           ondrop="drop_handler(event)" 
-           ondragover="dragover_handler(event)">
-      </div>
-
-      <div class="container-fluid d-none" id="cards">
-      </div>
-
-      <div class="container-fluid d-none" id="search">
-        <div id="search-results"></div>
-      </div>
       
-      <div class="container-fluid d-none" id="about">
+      <div class="container-fluid d-none status-margin" id="about">
         <div class="row">
           <div class="col-sm-4">
             <h1>Algonquin Chat:</h1>
@@ -353,7 +369,7 @@
         </div>
       </div>
 
-      <div class="container-fluid d-none" id="settings">
+      <div class="container-fluid d-none status-margin" id="settings">
         <div class="row">
           <div class="col-sm-6">
             <form "form-inline" autocomplete="off" onsubmit="return false;">
@@ -434,7 +450,7 @@
       </div>
 
 
-      <div class="container-fluid d-none" id="invite">
+      <div class="container-fluid d-none status-margin" id="invite">
         <form "form-inline" autocomplete="off" onsubmit="return false;">
           <div class="row">
             <div class="col-sm-6">

@@ -318,7 +318,8 @@ def do_login(user, session, send_session_id=False):
 def disconnect_user(sid):
     user = User.get_where(id=scoreboard.get_user_from_sid(sid))
     scoreboard.remove(sid)
-    send_stuff(True, users={user.id: user.public_fields()})
+    if user:
+        send_stuff(True, users={user.id: user.public_fields()})
 
 
 @user_logged_in
@@ -472,9 +473,11 @@ def handle_delete_file(json):
     file.deleted = 1
     file.save()
     file.commit()
-    emit('delete-file-result', {'stuff-list': {'files':[file.public_fields()]},
-                                'status': 'ok', 
-                                'file_id': file.id}, room = 'room-'+str(file.room))
+
+    emit('delete-file-result', 
+         {'stuff-list': {'files':[file.public_fields()]},
+          'status': 'ok' }, 
+         room = 'room-'+str(file.room))
 
 
 @user_logged_in
