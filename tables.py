@@ -93,7 +93,8 @@ class Room(DBTable):
     attrs = {'id':     {'type': 'INTEGER PRIMARY KEY'},
              'owner':  {'type': 'INTEGER NOT NULL',
                        'fkey': ['user', 'id', 'User','rooms']},
-             'topic':  {'type': 'TEXT'},
+             'topic':  {'type': 'TEXT', 'xss-filter': True},
+             'about':  {'type': 'TEXT', 'xss-filter': True},
              'public': {'type': 'BOOLEAN'},
              'name':   {'type': 'TEXT NOT NULL', 'xss-filter': True},
              'last_seen': {'relative': 'memberships'}}
@@ -131,10 +132,10 @@ class Card(DBTable):
                            'fkey': ['owner', 'id', 'User', 'cards']},
              'room':      {'type': 'INTEGER',
                            'fkey': ['room', 'id', 'Room', 'cards']},
-             'title':     {'type': 'TEXT',
+             'title':     {'type': 'TEXT', 'xss-filter': True,
                            'searchable': True},
              'locked':    {'type': 'BOOLEAN'},
-             'contents':  {'type': 'TEXT',
+             'contents':  {'type': 'TEXT', 'xss-filter': True,
                            'searchable': True}}
     table_name = 'cards'
     def __init__(self, **kwargs):
@@ -154,7 +155,8 @@ set_properties(Card_Edit, Card_Edit.attrs)
 
 class Folder(DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
-             'name':      {'type': 'TEXT'},
+             'name':      {'type': 'TEXT', 
+                           'xss-filter': True},
              'parent':    {'type': 'INTEGER',
                            'fkey': ['folder', 'id', 'Folder', 'child_folders']}}
     table_name = 'folders'
@@ -177,6 +179,8 @@ class File(DBTable):
                            'searchable': True,
                            'xss-filter': True},
              'localname': {'type': 'TEXT'},
+             'comment':   {'type': 'TEXT', 'searchable': True,
+                           'xss-filter': True},
              'public':    {'type': 'BOOLEAN'},
              'deleted':   {'type': 'BOOLEAN DEFAULT 0'},
              'type':      {'type': 'TEXT'},

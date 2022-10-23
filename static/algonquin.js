@@ -387,32 +387,60 @@ class Search {
     }
   }
 
-  result_icons = {'users': 'person',
-                        'messages': 'chat_bubble',
-                        'cards': 'card' } 
   file_icons = { 'audio':   'audio',
                  'image':   'image',
                  'archive': 'archive',
                  'pdf':     'pdf',
                  'video':   'video' }
-  file_icon(result) {
-    if (result.ftable in this.result_icons) {
-      return icons[this.result_icons[result.ftable]];
+  file_icon(file_type) {
+    if (file_type in this.file_icons) {
+      return icons[this.file_icons[file_type]];
     // TODO: add support for file icons (add join to db query, etc...)
     } else {
-      return null;
+      return icons.unknown;
     }
   }
 
   render(results) {
+    console.log("search results...")
+    console.log(results);
     this.table.clear();
     var contents = "";
     for(var result in results) {
       var result = results[result];
-      var type   = `<button onclick='messages.goto(${result.row_id});' 
-                            class='btn btn-success btn-sm' type='button'>
-                      ${this.file_icon(result)}
-                    </button>`;
+      switch (result.ftable) {
+        case 'messages':
+          var message = messages.get_message(result.row_id);
+          var type   = `<button onclick='messages.goto(${result.row_id});' 
+                                class='btn btn-success btn-sm' type='button'${message ? '':'disabled'}>
+                          ${icons.chat_bubble}
+                        </button>`;
+          break;
+        case 'files':
+          var file   = files.get_file(result.row_id);
+          var type   = `<button class='btn btn-success btn-sm' type='button'${file ? '':'disabled'}>
+                          ${ this.file_icon(file.type) }
+                        </button>`;
+          break;
+        case 'cards':
+          var card   = cards.get_card(result.row_id);
+          var type   = `<button class='btn btn-success btn-sm' type='button'${card ? '':'disabled'}>
+                          ${icons.card}
+                        </button>`;
+          break;
+        case 'users':
+          var person = people.get_person(result.row_id);
+          var type   = `<button class='btn btn-success btn-sm' type='button'${person ? '':'disabled'}>
+                          ${icons.person}
+                        </button>`;
+          break;
+        default :
+          var type    = `<button class='btn btn-success btn-sm' type='button' disabled>
+                           ?
+                         </button>`;
+          break;
+      }
+
       var row    = `${result.row}`;
       var rowid  = `${result.row_id}`;
       var result = `${markdown.makeHtml(messages.expand_tildes(result.contents))}`;
@@ -954,6 +982,20 @@ class Messages {
   pagedown() {
     var cur_location = parseInt($('#messages').scrollTop());
     $('#messages').animate({ scrollTop: cur_location+1000}, 50);
+  }
+
+  get_message(id) {
+    // sigh, javascript...
+    if(id==undefined) {
+      return null;
+    }
+
+    if (! this.messages.hasOwnProperty(id)) {
+      getter.add('messages', id);
+      return null;
+    } else {
+      return this.messages[id];
+    }
   }
 
   goto(id) {
