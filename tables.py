@@ -75,11 +75,11 @@ class User(DBTable):
                                 """(files.room in (select memberships.room from memberships where memberships.user = :self_id)) or
                                    (files.room is NULL) or (files.owner = :self_id) or (files.public = 1)""",
                                 {'self_id': self.id},
-                                "files.id desc limit 10")
+                                "files.id desc limit 100")
         return { file.id:file.public_fields() for file in files }
 
     def card_list(self):
-        cards = Card.raw_select("cards, memberships", 
+        cards = Card.raw_select("cards", 
                                  """(cards.room in (select memberships.room from memberships where memberships.user = :self_id)) or 
                                     (cards.owner is NULL) or (cards.owner = :self_id) or
                                     (cards.room is NULL)""",
@@ -155,7 +155,8 @@ set_properties(Card_Edit, Card_Edit.attrs)
 
 class Folder(DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
-             'name':      {'type': 'TEXT', 
+             'name':      {'type': 'TEXT',
+                           'searchable': True,
                            'xss-filter': True},
              'parent':    {'type': 'INTEGER',
                            'fkey': ['folder', 'id', 'Folder', 'child_folders']}}
@@ -183,7 +184,8 @@ class File(DBTable):
                            'xss-filter': True},
              'public':    {'type': 'BOOLEAN'},
              'deleted':   {'type': 'BOOLEAN DEFAULT 0'},
-             'type':      {'type': 'TEXT'},
+             'type':      {'type': 'TEXT',
+                           'searchable': True},
              'size':      {'type': 'INTEGER'},
              'hash':      {'type': 'INTEGER', 'private':True},
              'uploaded':  {'type': "TIMESTAMP DATETIME DEFAULT (datetime('now', 'localtime'))"}}

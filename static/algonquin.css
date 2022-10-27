@@ -3,6 +3,10 @@
   src: url(/static/RadioRanchNF.ttf);
 }
 
+.cards {
+  overflow-y: scroll;
+}
+
 .messages {
   height: 500px;
   display: flex;

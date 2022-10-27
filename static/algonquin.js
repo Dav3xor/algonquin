@@ -1,4 +1,3 @@
-
 function qsv(selector) {
   return document.querySelector(selector).value;
 }
@@ -35,7 +34,6 @@ class Tabs {
     } else if(tab == 'search') {
       build_table(search);
     } else if(tab == 'files') {
-      console.log('xxx');
       build_table(files);
     }
 
@@ -150,8 +148,20 @@ class Files {
     }
   }
 
+  table_row_name(id) {
+    return `file-id-${id}`;
+  }
+
+  goto(id) {
+    tabs.show('files');
+    var row       = '#' + this.table_row_name(id);
+
+    // this is crazy, but it's on datatables.net's own page, so...
+    this.table.row(row).draw().show().draw(false);
+  }
+
   update_table_row(file) {
-    var rowid    = `file-id-${file.id}`;
+    var rowid    = this.table_row_name(file.id);
     //alert(JSON.stringify(file));
     var owner = people.get_person(file.owner);
     if(owner) {
@@ -220,7 +230,6 @@ class Files {
 
 
 function build_table(obj) {
-  console.log('build table');
   if (obj.table == null) {
     obj.table = $(obj.table_name).DataTable(obj.table_def);
     obj.render();
@@ -294,8 +303,20 @@ class People {
     }
   }
 
+  table_row_name(id) {
+    return `person-id-${id}`;
+  }
+
+  goto(id) {
+    tabs.show('people');
+    var row       = '#' + this.table_row_name(id);
+
+    // this is crazy, but it's on datatables.net's own page, so...
+    this.table.row(row).draw().show().draw(false);
+  }
+
   update_table_row(person) {
-    var rowid    = `person-id-${person.id}`;
+    var rowid    = this.table_row_name(person.id);
     var online   = `<button class="btn btn-dark btn-sm" ${person.online ? "":"disabled"}>
                       ${icons.person}
                     </button>`
@@ -341,7 +362,6 @@ class People {
 
   render() {
     if(this.table != null) {
-      console.log("people render");
       for (var person in this.people) {
         person = this.get_person(person);
         if(person) {
@@ -402,8 +422,6 @@ class Search {
   }
 
   render(results) {
-    console.log("search results...")
-    console.log(results);
     this.table.clear();
     var contents = "";
     for(var result in results) {
@@ -418,19 +436,25 @@ class Search {
           break;
         case 'files':
           var file   = files.get_file(result.row_id);
-          var type   = `<button class='btn btn-success btn-sm' type='button'${file ? '':'disabled'}>
+          var type   = `<button class='btn btn-success btn-sm' 
+                          onclick='files.goto(${result.row_id});'
+                          type='button'${file ? '':'disabled'}>
                           ${ this.file_icon(file.type) }
                         </button>`;
           break;
         case 'cards':
           var card   = cards.get_card(result.row_id);
-          var type   = `<button class='btn btn-success btn-sm' type='button'${card ? '':'disabled'}>
+          var type   = `<button class='btn btn-success btn-sm' 
+                                onclick='cards.goto(${result.row_id});'
+                                type='button'${card ? '':'disabled'}>
                           ${icons.card}
                         </button>`;
           break;
         case 'users':
           var person = people.get_person(result.row_id);
-          var type   = `<button class='btn btn-success btn-sm' type='button'${person ? '':'disabled'}>
+          var type   = `<button onclick='people.goto(${result.row_id});'
+                                class='btn btn-success btn-sm' 
+                                type='button'${person ? '':'disabled'}>
                           ${icons.person}
                         </button>`;
           break;
@@ -506,6 +530,7 @@ class Settings {
 
   set_defaults() {
     var person = people.get_this_person();
+    console.log('sg');
     $('#portrait-image').attr('src', '/portraits/' + person.portrait);
     $('#you-image').attr('src', '/portraits/' + person.portrait);
     for (var setting in this.settings) {
@@ -552,6 +577,12 @@ class Cards {
   add_file(file) {
     // TODO: remove duplicate code between here and messages
     this.insert_at_cursor(`~file${file}~`);
+  }
+
+  goto(id) {
+    var card_id = `card-${id}`;
+    tabs.show('cards');
+    document.getElementById(card_id).scrollIntoView({behavior:"smooth", block:"center"});
   }
 
   insert_at_cursor(text) {
@@ -706,7 +737,7 @@ class Cards {
                          ${icons.edit_small} 
                        </button>`;
       }
-      $(container).append(`<div class="card bg-light text-dark mt-4">
+      $(container).append(`<div class="card bg-light text-dark mt-4" id="card-${card.id}">
                               <h5 class="card-header d-flex justify-content-between 
                                          align-items-center">${card.title}
                                 <span>
@@ -1373,14 +1404,16 @@ class Messages {
 
   handle_unread() {
     var room = rooms.get_cur_room();
-    if((this.handling_unread == false) && 
-       (room.unread > 0)) {
-      this.handling_unread = true;
-      setTimeout(() => {
-        this.handling_unread = false;
-        this.clear_unread();
-        rooms.render_room_list();
-      }, 2000);
+    if(room) {
+      if((this.handling_unread == false) && 
+         (room.unread > 0)) {
+        this.handling_unread = true;
+        setTimeout(() => {
+          this.handling_unread = false;
+          this.clear_unread();
+          rooms.render_room_list();
+        }, 2000);
+      }
     }
   }
 
