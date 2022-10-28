@@ -17,6 +17,9 @@ paths.sort()
 types = set()
 subtypes = set()
 
+slack_folder = Folder(name='Files From Slack') # no parent = directory off of root
+slack_folder.save()
+
 def handle_users(users):
     db_users = {}
     db_bots  = {}
@@ -48,7 +51,8 @@ def handle_users(users):
                    portrait = config['default_portrait'])
     keyboardmaestro.save()
     db_bots['B020041V0JJ'] = keyboardmaestro
-    
+   
+
     for user in users:
         username = user['name']
         slack_id = user['id']
@@ -227,6 +231,7 @@ def handle_files(channel, files):
             filetype  = File.file_type(filename.split('?')[0].split('/')[-1])
             timestamp = datetime.fromtimestamp(int(cur_file['timestamp']))
             file = File(owner     = owner,
+                        folder    = slack_folder.id,
                         room      = rooms[channel].id,
                         name      = filename,
                         public    = True,
