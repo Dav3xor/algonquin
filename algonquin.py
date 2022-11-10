@@ -307,6 +307,7 @@ def do_login(user, session, send_session_id=False):
     response['rooms']         = user.membership_list()
     response['messages']      = user.message_list(response['rooms'].keys())
     response['files']         = user.file_list()
+    response['folders']       = user.folder_list()
     response['cards']         = user.card_list()
     send_stuff(request.sid, **response)
 

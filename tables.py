@@ -70,18 +70,37 @@ class User(DBTable):
                                            "messages.id desc limit 40")
         return [ message.public_fields() for message in messages ]
 
-    def file_list(self):
+    # TODO: modify this after adding folder support?
+    def file_list(self, folder='null'):
         files = File.raw_select("files", 
-                                """(files.room in (select memberships.room from memberships where memberships.user = :self_id)) or
-                                   (files.room is NULL) or (files.owner = :self_id) or (files.public = 1)""",
-                                {'self_id': self.id},
+                                """((files.room in (select memberships.room from memberships 
+                                                   where memberships.user = :self_id)) or
+                                   (files.room is NULL) or 
+                                   (files.owner = :self_id) or 
+                                   (files.public = 1)) and files.folder is :folder""",
+                                {'self_id': self.id, 
+                                 'folder':  folder},
                                 "files.id desc limit 100")
         return { file.id:file.public_fields() for file in files }
+    
+    def folder_list(self, folder='null'):
+        folders = Folder.raw_select("folders", 
+                                    """((folders.room in (select memberships.room from memberships 
+                                                       where memberships.user = :self_id)) or
+                                       (folders.room is NULL) or 
+                                       (folders.owner = :self_id) or
+                                       (folders.public = 1)) and folders.parent is :folder""",
+                                    {'self_id': self.id, 
+                                     'folder':  folder},
+                                    "folders.id desc limit 100")
+        return { folder.id:folder.public_fields() for folder in folders }
 
     def card_list(self):
         cards = Card.raw_select("cards", 
-                                 """(cards.room in (select memberships.room from memberships where memberships.user = :self_id)) or 
-                                    (cards.owner is NULL) or (cards.owner = :self_id) or
+                                 """(cards.room in (select memberships.room from memberships 
+                                                    where memberships.user = :self_id)) or 
+                                    (cards.owner is NULL) or 
+                                    (cards.owner = :self_id) or
                                     (cards.room is NULL)""",
                                  {'self_id': self.id},
                                  "cards.id desc limit 100")
@@ -158,11 +177,18 @@ class Folder(DBTable):
              'name':      {'type': 'TEXT',
                            'searchable': True,
                            'xss-filter': True},
+             'room':      {'type': 'INTEGER',
+                           'fkey': ['room', 'id', 'Room', 'folders']},
+             'owner':     {'type': 'INTEGER NOT NULL',
+                           'fkey': ['user', 'id', 'User', 'folders']},
+             'public':    {'type': 'BOOLEAN'},
              'parent':    {'type': 'INTEGER',
                            'fkey': ['folder', 'id', 'Folder', 'child_folders']}}
     table_name = 'folders'
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
+
+
 set_properties(Folder, Folder.attrs)
              
 
