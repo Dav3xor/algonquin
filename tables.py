@@ -71,28 +71,33 @@ class User(DBTable):
         return [ message.public_fields() for message in messages ]
 
     # TODO: modify this after adding folder support?
-    def file_list(self, folder='null'):
+    def file_list(self, folder=None):
         files = File.raw_select("files", 
                                 """((files.room in (select memberships.room from memberships 
                                                    where memberships.user = :self_id)) or
-                                   (files.room is NULL) or 
-                                   (files.owner = :self_id) or 
-                                   (files.public = 1)) and files.folder is :folder""",
+                                    (files.room is NULL) or 
+                                    (files.owner = :self_id ) or 
+                                    (files.public = 1)) and 
+                                   (files.folder is :folder )""",
                                 {'self_id': self.id, 
                                  'folder':  folder},
                                 "files.id desc limit 100")
+        #print(f"files = {files}")
         return { file.id:file.public_fields() for file in files }
     
-    def folder_list(self, folder='null'):
+    def folder_list(self, folder=None):
         folders = Folder.raw_select("folders", 
-                                    """((folders.room in (select memberships.room from memberships 
-                                                       where memberships.user = :self_id)) or
-                                       (folders.room is NULL) or 
-                                       (folders.owner = :self_id) or
-                                       (folders.public = 1)) and folders.parent is :folder""",
+                                    """((folders.public = 1) or 
+                                        (folders.owner is NULL) or
+                                        (folders.owner = :self_id ) or
+                                        (folders.room is NULL) or
+                                        (folders.room in (select memberships.room from memberships 
+                                                           where memberships.user = :self_id))) and 
+                                       (folders.parent is :folder)""",
                                     {'self_id': self.id, 
                                      'folder':  folder},
                                     "folders.id desc limit 100")
+        #print(f"folders = {folders}")
         return { folder.id:folder.public_fields() for folder in folders }
 
     def card_list(self):

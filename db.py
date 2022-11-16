@@ -102,10 +102,12 @@ class DBTable:
         DBTable.tables[table_class.__name__] = table_class
 
     @classmethod
-    def set_db(cls, database): 
+    def set_db(cls, database, debug=False): 
         print(f"connecting to database: {database}")
         DBTable.db = sqlite3.connect(database, check_same_thread=False)
         DBTable.cursor = DBTable.db.cursor()
+        if debug:
+            DBTable.db.set_trace_callback(print)
 
     @classmethod
     def commit(cls):

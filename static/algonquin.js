@@ -148,20 +148,37 @@ class Files {
     }
   }
 
-  table_row_name(id) {
-    return `file-id-${id}`;
+  table_row_name(id, type) {
+    return `file-id-${type}-${id}`;
   }
 
-  goto(id) {
+  goto(id, type) {
     tabs.show('files');
-    var row       = '#' + this.table_row_name(id);
+    var row       = '#' + this.table_row_name(id, type);
 
     // this is crazy, but it's on datatables.net's own page, so...
     this.table.row(row).draw().show().draw(false);
   }
 
-  update_table_row(file) {
-    var rowid    = this.table_row_name(file.id);
+  update_table_row_folder(folder) {
+    var rowid    = this.table_row_name(folder.id, 2);
+    var owner = people.get_person(folder.owner);
+    if(owner) {
+      var filename = `<button class="btn btn-primary btn-sm btn-block text-left" disabled>
+                        ${icons.folder}
+                        ${folder.name}
+                      </button>`;
+      var rowdata = {'rowid':    rowid,
+                     'play':     '',
+                     'filename': filename, 
+                     'buttons':  ''}
+      add_table_row(this.table, rowid, rowdata);
+    }
+  }
+
+
+  update_table_row_file(file) {
+    var rowid    = this.table_row_name(file.id, 1);
     //alert(JSON.stringify(file));
     var owner = people.get_person(file.owner);
     if(owner) {
@@ -216,11 +233,17 @@ class Files {
 
   render() {
     if(this.table != null) {
-      console.log("files render");
+      console.log("folders render");
+      for (var folder in this.folders) {
+        folder = this.folders[folders];
+        if(folder) {
+          this.update_table_row_folder(folder);
+        }
+      }
       for (var file in this.files) {
         file = this.files[file];
         if(file) {
-          this.update_table_row(file);
+          this.update_table_row_file(file);
         }
       }
       this.table.columns.adjust().draw();
@@ -436,7 +459,15 @@ class Search {
         case 'files':
           var file   = files.get_file(result.row_id);
           var type   = `<button class='btn btn-success btn-sm' 
-                          onclick='files.goto(${result.row_id});'
+                          onclick='files.goto(${result.row_id},1);'
+                          type='button'${file ? '':'disabled'}>
+                          ${ this.file_icon(file.type) }
+                        </button>`;
+          break;
+        case 'folders':
+          var folder   = folders.get_file(result.row_id);
+          var type   = `<button class='btn btn-success btn-sm' 
+                          onclick='files.goto(${result.row_id},2);'
                           type='button'${file ? '':'disabled'}>
                           ${ this.file_icon(file.type) }
                         </button>`;
@@ -2696,7 +2727,7 @@ socket.on('delete-file-result', data => {
       file = data['stuff-list'].files[file];
       var filename = file ? file.name:"unknown file?";
       files.delete_file(data.file_id);
-      files.update_table_row(file);
+      files.update_table_row_file(file);
     }
     //files.render();
     messages.render();
