@@ -107,6 +107,7 @@ async function upload_file(file, url, success_fn) {
 class Files {
   constructor(chunk_size) {
     this.files = {};
+    this.folders = {};
     this.chunk_size = chunk_size;
     
     this.table_name = "#files-list";
@@ -124,6 +125,10 @@ class Files {
 
   add_update_file(file) {
     this.files[file.id] = file;
+  }
+
+  add_update_folder(folder) {
+    this.folders[folder.id] = folder;
   }
 
   get_latest() {
@@ -164,7 +169,7 @@ class Files {
     var rowid    = this.table_row_name(folder.id, 2);
     var owner = people.get_person(folder.owner);
     if(owner) {
-      var filename = `<button class="btn btn-primary btn-sm btn-block text-left" disabled>
+      var filename = `<button class="btn btn-info btn-sm btn-block text-left disabled" >
                         ${icons.folder}
                         ${folder.name}
                       </button>`;
@@ -235,7 +240,7 @@ class Files {
     if(this.table != null) {
       console.log("folders render");
       for (var folder in this.folders) {
-        folder = this.folders[folders];
+        folder = this.folders[folder];
         if(folder) {
           this.update_table_row_folder(folder);
         }
@@ -1540,6 +1545,14 @@ class Getter {
       update_messages = true;
       update_files    = true;
     }
+    
+    if ('folders' in stuff) {
+      for(var folder in stuff['folders']) {
+        files.add_update_folder(stuff['folders'][file])
+      }
+      update_messages = true;
+      update_files    = true;
+    }
 
     if ('rooms' in stuff) {
       for (var room in stuff['rooms']) {
@@ -2182,7 +2195,7 @@ var icons = {
                           0-3 1.5 1.5 0 0 0 0 3z"/>
                </svg>`,
 
-    'folder':       `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92" 
+    'folder':       `<svg xmlns="http://www.w3.org/2000/svg" width="1.92em" height="1.92em" 
                           fill="currentColor" class="bi bi-folder" viewBox="0 0 16 16">
                        <path d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 
                                 2 0 0 0 9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 
