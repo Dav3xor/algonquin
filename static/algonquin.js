@@ -108,6 +108,8 @@ class Files {
   constructor(chunk_size) {
     this.files = {};
     this.folders = {};
+    this.cur_folder = null;
+
     this.chunk_size = chunk_size;
     
     this.table_name = "#files-list";
@@ -128,6 +130,7 @@ class Files {
   }
 
   add_update_folder(folder) {
+    console.log(`g ${folder.id}`);
     this.folders[folder.id] = folder;
   }
 
@@ -166,6 +169,7 @@ class Files {
   }
 
   update_table_row_folder(folder) {
+    console.log('f');
     var rowid    = this.table_row_name(folder.id, 2);
     var owner = people.get_person(folder.owner);
     if(owner) {
@@ -241,13 +245,13 @@ class Files {
       console.log("folders render");
       for (var folder in this.folders) {
         folder = this.folders[folder];
-        if(folder) {
+        if(folder && folder.parent == this.cur_folder) {
           this.update_table_row_folder(folder);
         }
       }
       for (var file in this.files) {
         file = this.files[file];
-        if(file) {
+        if(file && file.folder == this.cur_folder) {
           this.update_table_row_file(file);
         }
       }
@@ -1548,7 +1552,7 @@ class Getter {
     
     if ('folders' in stuff) {
       for(var folder in stuff['folders']) {
-        files.add_update_folder(stuff['folders'][file])
+        files.add_update_folder(stuff['folders'][folder])
       }
       update_messages = true;
       update_files    = true;
