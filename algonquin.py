@@ -451,7 +451,16 @@ def handle_get_messages(json):
                    at_end=at_end, 
                    room_id=room, 
                    messages=messages)
-        
+    
+
+@user_logged_in
+@socketio.on('get-folder')
+@json_has_keys('folder_id')
+def handle_get_folder(json):
+    user    = User.get(scoreboard.get_user_from_sid(request.sid))
+    files   = user.file_list(json['folder_id'])
+    folders = user.folder_list(json['folder_id'])
+    send_stuff(request.sid, files=files, folders=folders)
 
 @user_logged_in
 @socketio.on('delete-file')

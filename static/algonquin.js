@@ -156,6 +156,16 @@ class Files {
     }
   }
 
+  change_folder(folder_id) {
+    if(! this.folders.hasOwnProperty(folder_id)) {
+      console.log(`invalid change_folder -- ${folder_id}`);
+    } else {
+      this.cur_folder = folder_id;
+      socket.emit('get-folder', {'folder_id': folder_id});
+    }
+  }
+
+
   table_row_name(id, type) {
     return `file-id-${type}-${id}`;
   }
@@ -173,10 +183,11 @@ class Files {
     var rowid    = this.table_row_name(folder.id, 2);
     var owner = people.get_person(folder.owner);
     if(owner) {
-      var filename = `<button onmouseover="$('#${rowid}-button').prop('disabled', false);" 
-                              onmouseout="$('#${rowid}-button').prop('disabled', true);" 
-                              class="btn btn-info btn-sm btn-block text-left"
-                              id="${rowid}-button" disabled>
+      var filename = `<button onmouseover="$('#${rowid}-button').removeClass('disabled');" 
+                              onmouseout="$('#${rowid}-button').addClass('disabled');" 
+                              ondblclick="files.change_folder(${folder.id});" 
+                              class="btn btn-info btn-sm btn-block text-left disabled"
+                              id="${rowid}-button">
                         ${icons.folder}
                         ${folder.name}
                       </button>`;
@@ -223,9 +234,10 @@ class Files {
                             onclick="window.open('/files/${file.localname}','_blank');" ${deleted}>
                       ${icons.new_tab}
                     </button>`;
-      var filename = `<button class="btn btn-secondary btn-sm btn-block text-left"
-                              onmouseover="$('#${rowid}-button').prop('disabled', false);" 
-                              onmouseout="$('#${rowid}-button').prop('disabled', true);" 
+      var filename = `<button class="btn btn-secondary btn-sm btn-block text-left disabled"
+                              onmouseover="$('#${rowid}-button').removeClass('disabled');" 
+                              onmouseout="$('#${rowid}-button').addClass('disabled');" 
+                              ondblclick="console.log('double click');"
                               id="${rowid}-button" disabled>
                         ${file_icon}
                         ${file.name}
@@ -575,7 +587,6 @@ class Settings {
 
   set_defaults() {
     var person = people.get_this_person();
-    console.log('sg');
     $('#portrait-image').attr('src', '/portraits/' + person.portrait);
     $('#you-image').attr('src', '/portraits/' + person.portrait);
     for (var setting in this.settings) {

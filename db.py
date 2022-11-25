@@ -166,7 +166,7 @@ class DBTable:
         stmt = cls.expand_select(tables, where, 
                                  order_by=order_by, 
                                  extra_columns=extra_columns)
-        #print(stmt)
+        print(stmt)
         DBTable.cursor.execute(stmt, args)
         rows = DBTable.cursor.fetchall()
         return [ cls(**dict(zip(cls.attrs.keys(), values))) for values in rows ]

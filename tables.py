@@ -86,19 +86,30 @@ class User(DBTable):
         return { file.id:file.public_fields() for file in files }
     
     def folder_list(self, folder=None):
-        folders = Folder.raw_select("folders", 
-                                    """((folders.public = 1) or 
-                                        (folders.owner is NULL) or
+        folders = Folder.raw_select("folders inner join rooms on folders.id = rooms.folder, memberships ", 
+                                    """((folders.owner is NULL) or
                                         (folders.owner = :self_id ) or
-                                        (folders.room is NULL) or
-                                        (folders.room in (select memberships.room from memberships 
-                                                           where memberships.user = :self_id))) and 
+                                        (rooms.id = memberships.room and memberships.user = :self_id)) and 
                                        (folders.parent is :folder)""",
                                     {'self_id': self.id, 
                                      'folder':  folder},
                                     "folders.id desc limit 100")
         #print(f"folders = {folders}")
         return { folder.id:folder.public_fields() for folder in folders }
+    #def folder_list(self, folder=None):
+    #    folders = Folder.raw_select("folders", 
+    #                                """((folders.public = 1) or 
+    #                                    (folders.owner is NULL) or
+    #                                    (folders.owner = :self_id ) or
+    #                                    (folders.room is NULL) or
+    #                                    (folders.room in (select memberships.room from memberships 
+    #                                                       where memberships.user = :self_id))) and 
+    #                                   (folders.parent is :folder)""",
+    #                                {'self_id': self.id, 
+    #                                 'folder':  folder},
+    #                                "folders.id desc limit 100")
+    #    #print(f"folders = {folders}")
+    #    return { folder.id:folder.public_fields() for folder in folders }
 
     def card_list(self):
         cards = Card.raw_select("cards", 
@@ -113,10 +124,31 @@ class User(DBTable):
 
 set_properties(User, User.attrs)
 
+class Folder(DBTable):
+    attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
+             'name':      {'type': 'TEXT',
+                           'searchable': True,
+                           'xss-filter': True},
+             'owner':     {'type': 'INTEGER NOT NULL',
+                           'fkey': ['user', 'id', 'User', 'folders']},
+             'public':    {'type': 'BOOLEAN'},
+             'parent':    {'type': 'INTEGER',
+                           'fkey': ['folder', 'id', 'Folder', 'child_folders']}}
+    table_name = 'folders'
+    def __init__(self, **kwargs):
+        DBTable.__init__(self, **kwargs)
+
+
+set_properties(Folder, Folder.attrs)
+             
+
+
 class Room(DBTable):
     attrs = {'id':     {'type': 'INTEGER PRIMARY KEY'},
              'owner':  {'type': 'INTEGER NOT NULL',
                        'fkey': ['user', 'id', 'User','rooms']},
+             'folder': {'type': 'INTEGER NOT NULL',
+                        'fkey': ['folder', 'id', 'Folder','rooms']},
              'topic':  {'type': 'TEXT', 'xss-filter': True},
              'about':  {'type': 'TEXT', 'xss-filter': True},
              'public': {'type': 'BOOLEAN'},
@@ -176,27 +208,6 @@ class Card_Edit(DBTable):
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
 set_properties(Card_Edit, Card_Edit.attrs)
-
-class Folder(DBTable):
-    attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
-             'name':      {'type': 'TEXT',
-                           'searchable': True,
-                           'xss-filter': True},
-             'room':      {'type': 'INTEGER',
-                           'fkey': ['room', 'id', 'Room', 'folders']},
-             'owner':     {'type': 'INTEGER NOT NULL',
-                           'fkey': ['user', 'id', 'User', 'folders']},
-             'public':    {'type': 'BOOLEAN'},
-             'parent':    {'type': 'INTEGER',
-                           'fkey': ['folder', 'id', 'Folder', 'child_folders']}}
-    table_name = 'folders'
-    def __init__(self, **kwargs):
-        DBTable.__init__(self, **kwargs)
-
-
-set_properties(Folder, Folder.attrs)
-             
-
 
 
 class File(DBTable):
