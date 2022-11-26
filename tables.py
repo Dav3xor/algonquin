@@ -96,20 +96,6 @@ class User(DBTable):
                                     "folders.id desc limit 100")
         #print(f"folders = {folders}")
         return { folder.id:folder.public_fields() for folder in folders }
-    #def folder_list(self, folder=None):
-    #    folders = Folder.raw_select("folders", 
-    #                                """((folders.public = 1) or 
-    #                                    (folders.owner is NULL) or
-    #                                    (folders.owner = :self_id ) or
-    #                                    (folders.room is NULL) or
-    #                                    (folders.room in (select memberships.room from memberships 
-    #                                                       where memberships.user = :self_id))) and 
-    #                                   (folders.parent is :folder)""",
-    #                                {'self_id': self.id, 
-    #                                 'folder':  folder},
-    #                                "folders.id desc limit 100")
-    #    #print(f"folders = {folders}")
-    #    return { folder.id:folder.public_fields() for folder in folders }
 
     def card_list(self):
         cards = Card.raw_select("cards", 

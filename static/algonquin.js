@@ -260,10 +260,12 @@ class Files {
 
   render() {
     if(this.table != null) {
+      this.table.clear();
       console.log("folders render");
       for (var folder in this.folders) {
         folder = this.folders[folder];
         if(folder && folder.parent == this.cur_folder) {
+          console.log(folder.id);
           this.update_table_row_folder(folder);
         }
       }

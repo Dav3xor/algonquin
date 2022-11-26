@@ -200,8 +200,12 @@ def upload_file():
         # got a chunk, but not the last one
         return json.dumps({'status': 'ok'})
     elif not errors:
+        # got the last chunk, so reconstitute
         if 'room' in request.form:
-            db_file.room = request.form['room']
+            room = Room.get_where(id=request.form['room'])
+            if room:
+                db_file.room = room.id
+                db_file.folder = room.folder
 
 
         db_file.save()
