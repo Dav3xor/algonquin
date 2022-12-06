@@ -86,9 +86,10 @@ class User(DBTable):
         return { file.id:file.public_fields() for file in files }
     
     def folder_list(self, folder=None):
-        folders = Folder.raw_select("folders inner join rooms on folders.id = rooms.folder, memberships ", 
+        folders = Folder.raw_select("folders left join rooms on folders.id = rooms.folder, memberships ", 
                                     """((folders.owner is NULL) or
                                         (folders.owner = :self_id ) or
+                                        (folders.public = 1) or
                                         (rooms.id = memberships.room and memberships.user = :self_id)) and 
                                        (folders.parent is :folder)""",
                                     {'self_id': self.id, 

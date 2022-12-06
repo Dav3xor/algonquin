@@ -15,7 +15,7 @@ def set_properties(c, properties):
             else:
                 return None
         def __set__(self, obj, value):
-            if 'xss-filter' in self.attr_attrs:
+            if ('xss-filter' in self.attr_attrs) and (value != None):
                 parser = XssHtml()
                 parser.feed(value)
                 parser.close()
@@ -97,6 +97,8 @@ class DBTable:
         for name, value in kwargs.items():
             if value or type(value) in (bool,int, float, str):
                 setattr(self, name, value)
+            if value == None:
+                setattr(self, name, value)
    
     def add_table(table_class):
         DBTable.tables[table_class.__name__] = table_class
@@ -157,6 +159,7 @@ class DBTable:
     def subquery_in(cls, output, where):
         query = cls.expand_select(cls.table_name, where, result_columns=[output])
         return f'{cls.table_name}.{output} in ({query})'
+
     @classmethod
     def raw_select(cls, tables, where, args, 
                    order_by = None, 
@@ -166,7 +169,7 @@ class DBTable:
         stmt = cls.expand_select(tables, where, 
                                  order_by=order_by, 
                                  extra_columns=extra_columns)
-        print(stmt)
+        #print(stmt)
         DBTable.cursor.execute(stmt, args)
         rows = DBTable.cursor.fetchall()
         return [ cls(**dict(zip(cls.attrs.keys(), values))) for values in rows ]
@@ -197,7 +200,8 @@ class DBTable:
             return not cls.attrs[field]['private']
 
     def public_fields(self):
-        return { key:value for (key, value) in self.data.items() if self.is_public(key) }
+        fields = { key:value for (key, value) in self.data.items() if self.is_public(key) }
+        return fields
 
     @classmethod
     def get(cls, id):

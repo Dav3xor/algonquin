@@ -78,7 +78,7 @@ class Invite {
 
 
 
-async function upload_file(file, url, success_fn) {
+async function upload_file(file, url, folder_id=null) {
   var sessionid = cookie.read('sessionid');
   var file_number = parseInt(cookie.read('file_number'));
   cookie.write('file_number', file_number + 1, 365);
@@ -97,6 +97,7 @@ async function upload_file(file, url, success_fn) {
     if (start + files.chunk_size >= file.size) {
       form.append('end', true);
       form.append('filename',file.name);
+      form.append('folder', folder_id);
     }
     await fetch(url, { method: 'post', 
                        body: form }).then(res => res.text());
@@ -108,8 +109,7 @@ class Files {
   constructor(chunk_size) {
     this.files = {};
     this.folders = {};
-    this.cur_folder = null;
-
+    this.path = [null];
     this.chunk_size = chunk_size;
     
     this.table_name = "#files-list";
@@ -118,6 +118,10 @@ class Files {
                       'columns': [ { 'data': 'play', 'width': '150px'},
                                    { 'data': 'filename'},
                                    { 'data': 'buttons', 'width': '75px'} ]};
+  }
+
+  get_cur_folder() {
+    return this.path.slice(-1)[0];
   }
 
   empty() {
@@ -160,7 +164,7 @@ class Files {
     if(! this.folders.hasOwnProperty(folder_id)) {
       console.log(`invalid change_folder -- ${folder_id}`);
     } else {
-      this.cur_folder = folder_id;
+      this.path.push(folder_id);
       socket.emit('get-folder', {'folder_id': folder_id});
     }
   }
@@ -264,14 +268,14 @@ class Files {
       console.log("folders render");
       for (var folder in this.folders) {
         folder = this.folders[folder];
-        if(folder && folder.parent == this.cur_folder) {
+        if(folder && folder.parent == this.get_cur_folder()) {
           console.log(folder.id);
           this.update_table_row_folder(folder);
         }
       }
       for (var file in this.files) {
         file = this.files[file];
-        if(file && file.folder == this.cur_folder) {
+        if(file && file.folder == this.get_cur_folder()) {
           this.update_table_row_file(file);
         }
       }
@@ -562,27 +566,7 @@ class Settings {
   }
 
   send_portrait(file) {
-    upload_file(file, 
-                'upload-portrait', 
-                function(data) {
-      // following is done when upload is finished...
-      data = JSON.parse(data);
-      if ('error' in data) {
-        var status = `<div class="badge badge-danger" style="font-size:1.3em;">
-                        ${icons.person}
-                      </div>
-                      <span class="ml-3 mr-3">
-                        <b>Portrait Upload Error:</b> ${ data.error }
-                      </span>`;
-        set_status(status, 5000);
-      } else {
-        $('#portrait-image').attr('src', '/portraits/' + data.user.portrait);
-        $('#you-image').attr('src', '/portraits/' + data.user.portrait);
-        people.set_person(data);
-        getter.handle_stuff(data); 
-        messages.render();
-      } 
-    });
+    upload_file(file, 'upload-portrait');
   }
 
 
@@ -2592,19 +2576,20 @@ function dragover_handler(ev) {
 
 
 function handle_file_upload(file) {
-  upload_file(file, 'upload-file', function(data) {
-    data = JSON.parse(data);
-    getter.handle_stuff(data);
-    // TODO: sort this out (probably remove everything? -- deprecated)
-    for(file in data.files) {
-      file = data.files[file];
-      if(cards.editor_open() == true) {
-        cards.add_file(file.id);
-      } else { 
-        messages.add_file(file.id);
-      }
-    }
-  });
+  var folder_id = null;
+  switch(tabs.current_tab()) {
+    case 'messages':
+      var room = rooms.get_cur_room();
+      folder_id = room ? room.folder: null;
+      break;
+    case 'files':
+      folder_id = files.get_cur_folder().id;
+      break;
+    default:
+      folder_id = null;
+      break;
+  }
+  upload_file(file, 'upload-file', folder_id);
 }
 
 function drop_handler(ev) {

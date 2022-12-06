@@ -15,9 +15,22 @@ s = tables.Session(user      = u.id,
                    sessionid = token)
 s.save()
 
+misc = tables.Folder(name   = "Misc",
+                     owner  = u.id,
+                     public = True,
+                     parent = None)
+misc.save()
+
+portraits = tables.Folder(name   = "Portraits",
+                          owner  = u.id,
+                          public = True,
+                          parent = None)
+portraits.save()
+
+
 for room in config['public_rooms']:
-    f = tables.Folder(name = room,
-                      owner = u.id,
+    f = tables.Folder(name   = room,
+                      owner  = u.id,
                       public = True,
                       parent = None)
     f.save()

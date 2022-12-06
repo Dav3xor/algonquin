@@ -149,6 +149,12 @@ def file_upload_common(req):
             filename = 'unknown'
         else:
             filename = req.form['filename']
+
+        if 'folder' not in req.form or req.form['folder'] == 'null':
+            folder = None
+        else:
+            folder = int(req.form['folder'])
+        
         # do it this way to give the interpreter a chance to switch threads
         # TODO: break this out into some sort of task queue deal
         
@@ -183,6 +189,7 @@ def file_upload_common(req):
         db_file = File(owner     = user.id,
                        public    = True,
                        name      = filename,
+                       folder    = folder,
                        hash      = hash,
                        size      = size,
                        type      = type,
@@ -239,6 +246,7 @@ def upload_portrait():
         if not valid_portrait(db_file.name):
             return  json.dumps({'error': 'filetype not supported for portrait'})
 
+        db_file.folder = config['portrait_folder']
         db_file.save()
         db_file.commit()
 
