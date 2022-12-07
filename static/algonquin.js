@@ -120,8 +120,32 @@ class Files {
                                    { 'data': 'buttons', 'width': '75px'} ]};
   }
 
+  get_folder(id) {
+    // sigh, javascript...
+    if(id==undefined) {
+      return null;
+    }
+
+    if (! this.folders.hasOwnProperty(id)) {
+      getter.add('folders', id);
+      return null;
+    } else {
+      return this.folders[id];
+    }
+  }
+
   get_cur_folder() {
     return this.path.slice(-1)[0];
+  }
+  
+  get_path_index(index) {
+    if (index > this.path.length) {
+      return null;
+    } else if (index <= 0) {
+      return null;
+    } else {
+      return this.get_folder(this.path[index]);
+    }
   }
 
   empty() {
@@ -262,7 +286,25 @@ class Files {
     }
   }
 
+  render_path() {
+    var contents = '';
+    for (var folder in this.path) {
+      folder = this.get_path_index(this.path[folder]);
+      if (folder == null) {
+        contents += `<span class="badge badge-secondary badge-dark">
+                       Root 
+                     </span>`;
+      } else {
+        contents += `<span class="badge badge-secondary badge-dark">
+                       ${folder.name} 
+                     </span>`;
+      }
+    }
+    $('#files-path').html(contents);
+  }
+
   render() {
+    this.render_path();
     if(this.table != null) {
       this.table.clear();
       console.log("folders render");
