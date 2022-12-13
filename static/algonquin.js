@@ -287,19 +287,20 @@ class Files {
   }
 
   render_path() {
-    var contents = '';
+    var contents = '<div class="alert alert-secondary"> Path:';
     for (var folder in this.path) {
       folder = this.get_path_index(this.path[folder]);
       if (folder == null) {
-        contents += `<span class="badge badge-secondary badge-dark">
+        contents += `<button class="btn btn-dark btn-sm">
                        Root 
-                     </span>`;
+                     </button>`;
       } else {
-        contents += `<span class="badge badge-secondary badge-dark">
+        contents += `<button class="btn btn-dark btn-sm>
                        ${folder.name} 
-                     </span>`;
+                     </button>`;
       }
     }
+    contents += "</div>";
     $('#files-path').html(contents);
   }
 
