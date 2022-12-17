@@ -115,6 +115,7 @@ class Files {
     this.table_name = "#files-list";
     this.table = null;
     this.table_def = {'rowId':   'rowid',
+                      "dom": "tip",
                       'columns': [ { 'data': 'play', 'width': '150px'},
                                    { 'data': 'filename'},
                                    { 'data': 'buttons', 'width': '75px'} ]};
@@ -193,6 +194,12 @@ class Files {
     }
   }
 
+  change_folder_by_level(level) {
+    if(level < this.path.length) {
+      this.path.splice(level+1, this.path.length - level);
+      socket.emit('get-folder', {'folder_id': this.path[level]});
+    }
+  }
 
   table_row_name(id, type) {
     return `file-id-${type}-${id}`;
@@ -287,20 +294,21 @@ class Files {
   }
 
   render_path() {
-    var contents = '<div class="alert alert-secondary"> Path:';
-    for (var folder in this.path) {
-      folder = this.get_path_index(this.path[folder]);
+    var contents = 'Path:';
+    for (var i in this.path) {
+      var folder = this.get_path_index(this.path[i]);
       if (folder == null) {
-        contents += `<button class="btn btn-dark btn-sm">
+        contents += `<button class="btn btn-dark btn-sm"
+                             onclick="files.change_folder_by_level(${i});">
                        Root 
                      </button>`;
       } else {
-        contents += `<button class="btn btn-dark btn-sm>
+        contents += `<button class="btn btn-dark btn-sm"
+                             onclick="files.change_folder_by_level(${i});">
                        ${folder.name} 
                      </button>`;
       }
     }
-    contents += "</div>";
     $('#files-path').html(contents);
   }
 
@@ -352,6 +360,7 @@ class People {
     this.table_name = "#people-list";
     this.table = null;
     this.table_def = { "rowId": "rowid",
+                       "dom": "tip",
                        "columns": [ { "data": 'portrait', 'orderable': false, 'width': '30px'}, 
                                     { "data": 'online', 'orderData': [4,2], 'width': '25px'}, 
                                     { "data": 'name'}, 
@@ -486,6 +495,7 @@ class Search {
     this.table_name = "#search-list";
     this.table = null;
     this.table_def = { "rowId": "rowid",
+                       "dom": "tip",
                        "columns": [ { "data": 'type', 'width': '25px'}, 
                                     { "data": 'row'}, 
                                     { "data": 'result'} ]};
