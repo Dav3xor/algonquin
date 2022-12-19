@@ -464,6 +464,24 @@ def handle_get_messages(json):
                    room_id=room, 
                    messages=messages)
     
+@user_logged_in
+@socketio.on('add-folder')
+@json_has_keys('parent_folder','name')
+def handle_add_folder(json):
+    print(json)
+    user_id = scoreboard.get_user_from_sid(request.sid)
+    parent  = Folder.get(json['parent_folder'])
+
+    folder  = Folder(name    = json['name'],
+                     owner   = user_id,
+                     public  = parent.public if parent else True,
+                     parent  = parent.id if parent else None)
+
+    folder.save()
+    send_stuff(request.sid,
+               folders      = [folder.public_fields()])
+
+
 
 @user_logged_in
 @socketio.on('get-folder')
@@ -472,7 +490,9 @@ def handle_get_folder(json):
     user    = User.get(scoreboard.get_user_from_sid(request.sid))
     files   = user.file_list(json['folder_id'])
     folders = user.folder_list(json['folder_id'])
-    send_stuff(request.sid, files=files, folders=folders)
+    send_stuff(request.sid, 
+               files        = files, 
+               folders      = folders)
 
 @user_logged_in
 @socketio.on('delete-file')

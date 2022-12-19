@@ -185,6 +185,16 @@ class Files {
     }
   }
 
+  add_folder(name, parent_folder=null) {
+    if (parent_folder == null) {
+      parent_folder = this.path.slice(-1).pop();
+      if(parent_folder == null) {
+        parent_folder=0;
+      }
+    }
+    socket.emit('add-folder', {'parent_folder': parent_folder,
+                               'name': name});
+  }
   change_folder(folder_id) {
     if(! this.folders.hasOwnProperty(folder_id)) {
       console.log(`invalid change_folder -- ${folder_id}`);
