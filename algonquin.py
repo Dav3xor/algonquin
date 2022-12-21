@@ -150,7 +150,7 @@ def file_upload_common(req):
         else:
             filename = req.form['filename']
 
-        if 'folder' not in req.form or req.form['folder'] == 'null':
+        if 'folder' not in req.form or req.form['folder'] in ('null', None, 0, '0'):
             folder = None
         else:
             folder = int(req.form['folder'])
@@ -379,23 +379,23 @@ def handle_login_session(json):
 
 
 stuff = {'users': {'class': User, 
-                   'tables': 'users',
+                   'tables': [User],
                    'where': 'users.id in (%s)',
                    'order_by': 'users.id'},
          'files': {'class': File, 
-                   'tables': 'files, memberships',
+                   'tables': [File, Membership],
                    'where': 'files.id = memberships.room and memberships.user = ? and files.id in (%s)',
                    'order_by': 'files.id'},
          'cards': {'class': Card, 
-                   'tables': 'cards, memberships',
+                   'tables': [Card, Membership],
                    'where': 'cards.id = memberships.room and memberships.user = ? and cards.id in (%s)',
                    'order_by': 'cards.id'},
          'rooms': {'class': Room, 
-                   'tables': 'rooms, memberships',
+                   'tables': [Room, Membership],
                    'where': 'rooms.id = memberships.room and memberships.user = ? and rooms.id in (%s)',
                    'order_by': 'rooms.id'},
          'messages': {'class': Message, 
-                      'tables': 'messages, memberships',
+                      'tables': [Message, Membership],
                       'where': 'messages.room = memberships.room and memberships.user = ? and messages.id in (%s)',
                       'order_by': 'rooms.id'}}
 
@@ -426,10 +426,10 @@ def handle_get_stuff(json):
                 where = table['where'] % ','.join(['?' for i in json[key].keys()])
             extra_columns = stuff[key]['extra_columns'] if 'extra_columns' in stuff[key] else []
             keys += [*json[key].keys()] 
-            rows = stuff[key]['class'].raw_select(table['tables'], 
-                                                  where, 
+            rows = stuff[key]['class'].raw_select(where, 
                                                   keys, 
-                                                  table['order_by'])
+                                                  order_by = table['order_by'],
+                                                  tables   = table['tables'])
             output[key] = { row.id:row.public_fields() for row in rows }
     send_stuff(request.sid, **output)
 
@@ -447,10 +447,9 @@ def handle_get_messages(json):
         count  = int(json['count'])
         count  = count if count < 100 else count
 
-        messages = Message.raw_select("messages",
-                                      "room = :room and id < :date",
+        messages = Message.raw_select("room = :room and id < :date",
                                       {'room': membership.room, 'date': date, 'count': count},
-                                      "id desc limit :count")
+                                      order_by = "id desc limit :count")
         messages = [ row.public_fields() for row in messages ]
         
         at_end = False
@@ -748,8 +747,7 @@ def handle_settings(json):
 
     # it's a new user who used a token link.
     if 'no-status' in json:
-        session = Session.raw_select("sessions",
-                                     f"sessionid like '{user.id}-token-%' and user = :user_id",
+        session = Session.raw_select(f"sessionid like '{user.id}-token-%' and user = :user_id",
                                      {'user_id': user.id})[0]
         session.sessionid = Session.make_sessionid(user)
         session.save()

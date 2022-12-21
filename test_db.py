@@ -45,8 +45,7 @@ def test_smoke_test(setup):
     assert p2.id != None
 
 def test_raw_select(setup):
-    p1 = Person.raw_select('people',
-                           'people.id = ?',
+    p1 = Person.raw_select('people.id = ?',
                            [1])
 
     assert p1 == []
@@ -55,8 +54,7 @@ def test_raw_select(setup):
     p1.save()
     p1.commit()
 
-    people = Person.raw_select('people',
-                               'people.id = ?',
+    people = Person.raw_select('people.id = ?',
                                [1])
     print (people)
     assert people[0].name == "Bob"
@@ -67,8 +65,7 @@ def test_raw_select(setup):
     p2.save()
     p2.commit()
 
-    people = Person.raw_select('people',
-                               'people.id > ?',
+    people = Person.raw_select('people.id > ?',
                                [0],
                                'people.id')
     assert len(people) == 2
@@ -78,11 +75,11 @@ def test_raw_select(setup):
     organ.save()
     organ.commit()
 
-    o1 = Organ.raw_select("organs, people",
-                          "organs.owner = people.id and people.id = ?",
+    o1 = Organ.raw_select("organs.owner = people.id and people.id = ?",
                           [1],
                           "organs.id",
-                          ["age"])
+                          ["age"],
+                          tables=[Organ, People])
     assert o1[0].age == 2
 
 def test_child_iteration(setup):

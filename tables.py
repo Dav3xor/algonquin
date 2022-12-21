@@ -1,4 +1,4 @@
-from db import DBTable, set_properties, build_tables
+from db import DBTable, set_properties, build_tables, left_join, db_join
 from passlib.hash import pbkdf2_sha256
 from urllib.parse import urlencode
 import hashlib
@@ -34,46 +34,40 @@ class User(DBTable):
             return None
 
     def join_public(self):
-        public_rooms = Room.raw_select("rooms", "public = :public", {'public': 1})
+        public_rooms = Room.raw_select("public = :public", {'public': 1})
         for room in public_rooms:
             membership = Membership(user = self.id,
                                     room = room.id)
             membership.save()
 
     def related_users(self):
-        query = f'''  users 
-                      join memberships on users.id = memberships.user'''
-        #where = f'''  m.room in (select m.room 
-        #                         from memberships m 
-        #                         where m.user = :self_id);'''
-        where = Membership.subquery_in('room', 'memberships.user = :self_id')
-        #print("------- related_users -------")
-        #print(where)
-        users = self.raw_select(query, where, {'self_id': self.id},)
+        tables = db_join(User, Membership, 'id', 'user')
+        where  = Membership.subquery_in('room', 'memberships.user = :self_id')
+        users = self.raw_select(where, 
+                                {'self_id': self.id}, 
+                                tables=tables)
         return { user.id:user.public_fields() for user in users } 
 
     def membership_list(self):
-        rooms = Room.raw_select("rooms, memberships", 
-                                "rooms.id = memberships.room and memberships.user = :self_id",
+        rooms = Room.raw_select("rooms.id = memberships.room and memberships.user = :self_id",
                                 {'self_id': self.id},
-                                "rooms.id",
-                                extra_columns=["last_seen"])
+                                order_by      = "rooms.id",
+                                tables        = [Room, Membership],
+                                extra_columns = ["last_seen"])
 
         return { room.id:room.public_fields() for room in rooms }
         
     def message_list(self, rooms):
         messages = []
         for room in rooms: 
-            messages += Message.raw_select("messages", 
-                                           "messages.room = :room",
+            messages += Message.raw_select("messages.room = :room",
                                            {'room': room},
-                                           "messages.id desc limit 40")
+                                           order_by = "messages.id desc limit 40")
         return [ message.public_fields() for message in messages ]
 
     # TODO: modify this after adding folder support?
     def file_list(self, folder=None):
-        files = File.raw_select("files", 
-                                """((files.room in (select memberships.room from memberships 
+        files = File.raw_select("""((files.room in (select memberships.room from memberships 
                                                    where memberships.user = :self_id)) or
                                     (files.room is NULL) or 
                                     (files.owner = :self_id ) or 
@@ -81,32 +75,32 @@ class User(DBTable):
                                    (files.folder is :folder )""",
                                 {'self_id': self.id, 
                                  'folder':  folder},
-                                "files.id desc limit 100")
+                                order_by = "files.id desc limit 100")
         #print(f"files = {files}")
         return { file.id:file.public_fields() for file in files }
     
     def folder_list(self, folder=None):
-        folders = Folder.raw_select("folders left join rooms on folders.id = rooms.folder, memberships ", 
-                                    """((folders.owner is NULL) or
+        folders = Folder.raw_select("""((folders.owner is NULL) or
                                         (folders.owner = :self_id ) or
                                         (folders.public = 1) or
                                         (rooms.id = memberships.room and memberships.user = :self_id)) and 
                                        (folders.parent is :folder)""",
                                     {'self_id': self.id, 
                                      'folder':  folder},
-                                    "folders.id desc limit 100")
+                                    order_by = "folders.id desc limit 100",
+                                    tables = [left_join(Folder, Room, 'id', 'folder'),
+                                              Membership])
         #print(f"folders = {folders}")
         return { folder.id:folder.public_fields() for folder in folders }
 
     def card_list(self):
-        cards = Card.raw_select("cards", 
-                                 """(cards.room in (select memberships.room from memberships 
+        cards = Card.raw_select("""(cards.room in (select memberships.room from memberships 
                                                     where memberships.user = :self_id)) or 
                                     (cards.owner is NULL) or 
                                     (cards.owner = :self_id) or
                                     (cards.room is NULL)""",
                                  {'self_id': self.id},
-                                 "cards.id desc limit 100")
+                                 order_by = "cards.id desc limit 100")
         return { card.id:card.public_fields() for card in cards }
 
 set_properties(User, User.attrs)

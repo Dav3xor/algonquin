@@ -78,7 +78,7 @@ class Invite {
 
 
 
-async function upload_file(file, url, folder_id=null) {
+async function upload_file(file, url, room_id=null, folder_id=null) {
   var sessionid = cookie.read('sessionid');
   var file_number = parseInt(cookie.read('file_number'));
   cookie.write('file_number', file_number + 1, 365);
@@ -86,15 +86,26 @@ async function upload_file(file, url, folder_id=null) {
     set_status(`${ file.name }: ${ parseInt((start/file.size)*100) }%`, 2000)
     const chunk = file.slice(start, start+files.chunk_size);
     var form        = new FormData();
-    var room        = rooms.get_cur_room()
-    if(room) {
-      form.append('room', room.id);
+
+    
+    /*
+    if(folder_id != null) {
+      var room        = rooms.get_cur_room()
+      if(room) {
+        form.append('room', room.id);
+      }
+    } else {
+      form.append('folder', folder_id);
     }
+    */
+
     form.append('sessionid', sessionid);
     form.append('chunk', start/files.chunk_size);
     form.append('file_number', file_number);
     form.append('file', chunk);
     if (start + files.chunk_size >= file.size) {
+      form.append('folder', folder_id);
+      form.append('room', room_id);
       form.append('end', true);
       form.append('filename',file.name);
       form.append('folder', folder_id);
@@ -306,9 +317,9 @@ class Files {
   render_path() {
     var contents = 'Path:';
     for (var i in this.path) {
-      var folder = this.get_path_index(this.path[i]);
+      var folder = this.get_path_index(i);
       if (folder == null) {
-        contents += `<button class="btn btn-dark btn-sm"
+        contents += `<button class="btn btn-dark btn-sm mr-2"
                              onclick="files.change_folder_by_level(${i});">
                        Root 
                      </button>`;
@@ -2639,20 +2650,28 @@ function dragover_handler(ev) {
 
 
 function handle_file_upload(file) {
-  var folder_id = null;
+  var folder_id = 0;
+  var room_id   = 0;
   switch(tabs.current_tab()) {
     case 'messages':
-      var room = rooms.get_cur_room();
-      folder_id = room ? room.folder: null;
+      var room  = rooms.get_cur_room().id;
+      room_id   = room ? room.id: 0;
+      folder_id = room ? room.folder: 0;
       break;
     case 'files':
-      folder_id = files.get_cur_folder().id;
+      folder_id = files.get_cur_folder();
+      if(folder_id == null) {
+        folder_id = 0;
+      }
+      console.log(`files -- ${folder_id}`);
       break;
     default:
-      folder_id = null;
       break;
   }
-  upload_file(file, 'upload-file', folder_id);
+  console.log(`files2 -- ${folder_id}`);
+  upload_file(file, 'upload-file', 
+              room_id   = room_id, 
+              folder_id = folder_id);
 }
 
 function drop_handler(ev) {

@@ -60,8 +60,7 @@ class DBChild:
 
     def __iter__(self):
         #print(f"iter: {self.table.table_name}")
-        self.child_rows = self.table.raw_select(self.table.table_name, 
-                                                f"{self.related_column} = :key",
+        self.child_rows = self.table.raw_select(f"{self.related_column} = :key",
                                                 {'key': self.key})
                                                 
         return self
@@ -73,6 +72,12 @@ class DBChild:
             return self.child_rows[self.current-1]
         else:
             raise StopIteration
+
+def left_join(left, right, left_, right_):
+    return f"{left.table_name} left join {right.table_name} on {left.table_name}.{left_} = {right.table_name}.{right_}"
+
+def db_join(left, right, left_, right_):
+    return f"{left.table_name} join {right.table_name} on {left.table_name}.{left_} = {right.table_name}.{right_}"
 
 class DBTable:
     insert_stmt          = "INSERT INTO %s(%s) VALUES(%s)"
@@ -121,6 +126,10 @@ class DBTable:
                       result_columns = None,
                       extra_columns = None,
                       distinct = False):
+
+        if not tables:
+            tables = cls.table_name
+
         if result_columns:
             columns = [cls.table_name + '.' + column for column in result_columns]
         else:
@@ -161,10 +170,14 @@ class DBTable:
         return f'{cls.table_name}.{output} in ({query})'
 
     @classmethod
-    def raw_select(cls, tables, where, args, 
+    def raw_select(cls, where, args, 
+                   tables = None,
                    order_by = None, 
                    extra_columns = None, 
                    distinct = False):
+        
+        if type(tables) == list:
+            tables = ','.join([i if type(i) == str else i.table_name for i in tables])
         #print("raw select2:")
         stmt = cls.expand_select(tables, where, 
                                  order_by=order_by, 
@@ -299,8 +312,7 @@ class DBSearch(DBTable):
 
     @classmethod
     def search(cls, query):
-        return cls.raw_select(cls.table_name,
-                              f"{cls.table_name} match :query",
+        return cls.raw_select(f"{cls.table_name} match :query",
                               {'query': query},
                               "rank limit 1000")
     def __init__(self, **kwargs):
