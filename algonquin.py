@@ -119,12 +119,15 @@ def index():
 
 
 def file_upload_common(req):
-    fields = ['sessionid', 'room', 'chunk', 'file_number']
+    fields = ['sessionid', 'room', 'folder', 'chunk', 'file_number']
 
     for field in fields:
         if field not in req.form:
-            return None, None, json.dumps({'error': f'no {field} in request'})
-        
+            error = f'no {field} in request'
+            # TODO: sigh, start using a logging framework?
+            print(error)
+            return None, None, json.dumps({'error': error})
+
     file        = req.files['file']
     room        = req.form['room']
     session     = Session.get_where(sessionid=req.form['sessionid'])
@@ -136,12 +139,16 @@ def file_upload_common(req):
 
     user = User.get(session.user)
     
-    tmp_dir = f'{ user.id }-{ session.id }-{ room }-{ file_number }'
+    if 'folder' not in req.form or req.form['folder'] in ('null', None, 0, '0'):
+        folder = 0
+    else:
+        folder = int(req.form['folder'])
+
+    tmp_dir = f'{ user.id }-{ session.id }-{ folder }-{ file_number }'
     path = os.path.join(config['file_root'], 'files', 'tmp', tmp_dir)
 
     Path(path).mkdir(parents=True, exist_ok=True)
     file.save(os.path.join(path, str(chunk)))
-
     if 'end' not in req.form:
         return None, None, None
     else:
@@ -150,10 +157,6 @@ def file_upload_common(req):
         else:
             filename = req.form['filename']
 
-        if 'folder' not in req.form or req.form['folder'] in ('null', None, 0, '0'):
-            folder = None
-        else:
-            folder = int(req.form['folder'])
         
         # do it this way to give the interpreter a chance to switch threads
         # TODO: break this out into some sort of task queue deal
@@ -184,12 +187,11 @@ def file_upload_common(req):
         else:
             newfilename     = str(time.time()) + '.' + extension
             os.rename(outfile, os.path.join(config['file_root'], 'files', newfilename))
-            #file.save(os.path.join(config['file_root'], 'files', filename))
        
         db_file = File(owner     = user.id,
                        public    = True,
                        name      = filename,
-                       folder    = folder,
+                       folder    = folder if folder > 0 else None,
                        hash      = hash,
                        size      = size,
                        type      = type,
@@ -301,7 +303,6 @@ def do_login(user, session, send_session_id=False):
 
     for membership in user.memberships:
         join_room('room-'+str(membership.room))
-        #print(membership.room)
 
     response['userid']        = user.id
     response['authenticated'] = True
@@ -467,7 +468,6 @@ def handle_get_messages(json):
 @socketio.on('add-folder')
 @json_has_keys('parent_folder','name')
 def handle_add_folder(json):
-    print(json)
     user_id = scoreboard.get_user_from_sid(request.sid)
     parent  = Folder.get(json['parent_folder'])
 
@@ -661,8 +661,6 @@ def handle_edit_card(json):
 @socketio.on('invite-new-user')
 @json_has_keys('password', 'email', 'handle', 'message')
 def handle_new_user(json):
-    #print(json)
-    
     status     = 1
     status_msg = 'User Successfully Created'
 
@@ -692,7 +690,6 @@ def handle_new_user(json):
                 'status': status,
                 'status_msg': status_msg,
                 'users': {user.id:user.public_fields()}}
-    #print(response)
     emit('invite-result', response, broadcast=False);
 
 @user_logged_in

@@ -103,12 +103,11 @@ async function upload_file(file, url, room_id=null, folder_id=null) {
     form.append('chunk', start/files.chunk_size);
     form.append('file_number', file_number);
     form.append('file', chunk);
+    form.append('folder', folder_id);
+    form.append('room', room_id);
     if (start + files.chunk_size >= file.size) {
-      form.append('folder', folder_id);
-      form.append('room', room_id);
       form.append('end', true);
       form.append('filename',file.name);
-      form.append('folder', folder_id);
     }
     await fetch(url, { method: 'post', 
                        body: form }).then(res => res.text());
@@ -170,7 +169,6 @@ class Files {
   }
 
   add_update_folder(folder) {
-    console.log(`g ${folder.id}`);
     this.folders[folder.id] = folder;
   }
 
@@ -235,7 +233,6 @@ class Files {
   }
 
   update_table_row_folder(folder) {
-    console.log('f');
     var rowid    = this.table_row_name(folder.id, 2);
     var owner = people.get_person(folder.owner);
     if(owner) {
@@ -337,11 +334,9 @@ class Files {
     this.render_path();
     if(this.table != null) {
       this.table.clear();
-      console.log("folders render");
       for (var folder in this.folders) {
         folder = this.folders[folder];
         if(folder && folder.parent == this.get_cur_folder()) {
-          console.log(folder.id);
           this.update_table_row_folder(folder);
         }
       }
@@ -1587,7 +1582,7 @@ class Getter {
   }
 
   handle_stuff(stuff) {
-    console.log(stuff);
+    //console.log(stuff);
     var update_messages = false;
     var update_files = false;
     var update_users = false;
@@ -2663,12 +2658,10 @@ function handle_file_upload(file) {
       if(folder_id == null) {
         folder_id = 0;
       }
-      console.log(`files -- ${folder_id}`);
       break;
     default:
       break;
   }
-  console.log(`files2 -- ${folder_id}`);
   upload_file(file, 'upload-file', 
               room_id   = room_id, 
               folder_id = folder_id);
@@ -2823,8 +2816,7 @@ socket.on('invite-result', data => {
 });
 
 socket.on('delete-file-result', data => {
-  console.log(`deleting file -- ${data.file_id}`);
-  console.log(data);
+  //console.log(`deleting file -- ${data.file_id}`);
   if(data.status == 'ok') {
     for (file in data['stuff-list'].files) {
       file = data['stuff-list'].files[file];
