@@ -1,11 +1,12 @@
-from db import DBTable, set_properties, build_tables, left_join, db_join
+import db
+from db import set_properties, build_tables, left_join, db_join 
 from passlib.hash import pbkdf2_sha256
 from urllib.parse import urlencode
 import hashlib
 import os
 from formats import formats
 
-class User(DBTable):
+class User(db.DBTable):
     attrs = {'id':       {'type': 'INTEGER PRIMARY KEY'},
              'email':    {'type': 'TEXT NOT NULL UNIQUE', 
                           'xss-filter': True, 
@@ -22,7 +23,7 @@ class User(DBTable):
     table_name = 'users'
 
     def __init__(self, **kwargs):
-        DBTable.__init__(self, **kwargs)
+        db.DBTable.__init__(self, **kwargs)
 
     def set_password(self, password):
         self.pwhash = pbkdf2_sha256.hash(password)
@@ -48,8 +49,11 @@ class User(DBTable):
                                 tables=tables)
         return { user.id:user.public_fields() for user in users } 
 
+    #( ((Room,'id'), '=', (Membership, 'room')), 'and'
     def membership_list(self):
-        rooms = Room.raw_select("rooms.id = memberships.room and memberships.user = :self_id",
+        #"rooms.id = memberships.room and memberships.user = :self_id",
+        rooms = Room.raw_select(((Room,'id'), '=', (Membership,'room'), 'and',
+                                 (Membership,'user'), '=', ':self_id'),
                                 {'self_id': self.id},
                                 order_by      = "rooms.id",
                                 tables        = [Room, Membership],
@@ -105,7 +109,7 @@ class User(DBTable):
 
 set_properties(User, User.attrs)
 
-class Folder(DBTable):
+class Folder(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'name':      {'type': 'TEXT',
                            'searchable': True,
@@ -117,14 +121,14 @@ class Folder(DBTable):
                            'fkey': ['folder', 'id', 'Folder', 'child_folders']}}
     table_name = 'folders'
     def __init__(self, **kwargs):
-        DBTable.__init__(self, **kwargs)
+        db.DBTable.__init__(self, **kwargs)
 
 
 set_properties(Folder, Folder.attrs)
              
 
 
-class Room(DBTable):
+class Room(db.DBTable):
     attrs = {'id':     {'type': 'INTEGER PRIMARY KEY'},
              'owner':  {'type': 'INTEGER NOT NULL',
                        'fkey': ['user', 'id', 'User','rooms']},
@@ -159,11 +163,11 @@ class Room(DBTable):
         return chat
 
     def __init__(self, **kwargs):
-        DBTable.__init__(self, **kwargs)
+        db.DBTable.__init__(self, **kwargs)
 
 set_properties(Room, Room.attrs)
 
-class Card(DBTable):
+class Card(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'owner':     {'type': 'INTEGER NOT NULL',
                            'fkey': ['owner', 'id', 'User', 'cards']},
@@ -176,10 +180,10 @@ class Card(DBTable):
                            'searchable': True}}
     table_name = 'cards'
     def __init__(self, **kwargs):
-        DBTable.__init__(self, **kwargs)
+        db.DBTable.__init__(self, **kwargs)
 set_properties(Card, Card.attrs)
 
-class Card_Edit(DBTable):
+class Card_Edit(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'editor':    {'type': 'INTEGER NOT NULL',
                            'fkey': ['editor', 'id', 'User', 'card_edits']},
@@ -187,11 +191,11 @@ class Card_Edit(DBTable):
                            'searchable': True}}
     table_name = 'card_edits'
     def __init__(self, **kwargs):
-        DBTable.__init__(self, **kwargs)
+        db.DBTable.__init__(self, **kwargs)
 set_properties(Card_Edit, Card_Edit.attrs)
 
 
-class File(DBTable):
+class File(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'owner':     {'type': 'INTEGER NOT NULL',
                            'fkey': ['user', 'id', 'User', 'files']},
@@ -214,7 +218,7 @@ class File(DBTable):
              'uploaded':  {'type': "TIMESTAMP DATETIME DEFAULT (datetime('now', 'localtime'))"}}
     table_name = 'files'
     def __init__(self, **kwargs):
-        DBTable.__init__(self, **kwargs)
+        db.DBTable.__init__(self, **kwargs)
 
     @classmethod
     def hash_file(cls, file):
@@ -250,14 +254,14 @@ class File(DBTable):
 
 set_properties(File, File.attrs)
 
-class Session(DBTable):
+class Session(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'user':      {'type': 'INTEGER NOT NULL',
                            'fkey': ['user','id', 'User', 'sessions']},
              'sessionid': {'type': 'INTEGER'}}
     table_name = 'sessions'
     def __init__(self, **kwargs):
-        DBTable.__init__(self, **kwargs)
+        db.DBTable.__init__(self, **kwargs)
 
     @classmethod
     def make_sessionid(cls, user):
@@ -275,7 +279,7 @@ class Session(DBTable):
         
 set_properties(Session, Session.attrs)
 
-class Message(DBTable):
+class Message(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'user': {'type': 'INTEGER NOT NULL',
                            'fkey': ['user', 'id', 'User', 'messages']},
@@ -287,10 +291,10 @@ class Message(DBTable):
                            'xss-filter': True}}
     table_name = 'messages'
     def __init__(self, **kwargs):
-        DBTable.__init__(self, **kwargs)
+        db.DBTable.__init__(self, **kwargs)
 set_properties(Message, Message.attrs)
 
-class Membership(DBTable):
+class Membership(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'user':      {'type': 'INTEGER NOT NULL',
                            'fkey': ['user', 'id', 'User', 'memberships']},
@@ -299,7 +303,7 @@ class Membership(DBTable):
                            'fkey': ['room', 'id', 'Room', 'members']}}
     table_name = 'memberships'
     def __init__(self, **kwargs):
-        DBTable.__init__(self, **kwargs)
+        db.DBTable.__init__(self, **kwargs)
     @classmethod
     def join(cls, user, room):
         if Membership.count(user=user, room=room) == 0:

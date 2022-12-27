@@ -1,5 +1,6 @@
 import sqlite3
 import pprint
+import inspect
 from pxfilter import XssHtml
 
 pprint = pprint.PrettyPrinter()
@@ -79,6 +80,22 @@ def left_join(left, right, left_, right_):
 def db_join(left, right, left_, right_):
     return f"{left.table_name} join {right.table_name} on {left.table_name}.{left_} = {right.table_name}.{right_}"
 
+def build_where(clause):
+    print(clause)
+    print(type(clause))
+    if type(clause) in (str,int,float,bool):
+        print("1")
+        return f" {clause} "
+    elif type(clause) == tuple and inspect.isclass(clause[0]) and issubclass(clause[0], DBTable):
+        print(f"2 - {clause}")
+        return f" {'.'.join((clause[0].table_name,)+clause[1:])} "
+    else:
+        print("3")
+        output = ''
+        for i in clause:
+            output += build_where(i)
+        return f"({output})"
+
 class DBTable:
     insert_stmt          = "INSERT INTO %s(%s) VALUES(%s)"
     select_stmt          = "SELECT %s FROM %s WHERE %s"
@@ -126,6 +143,9 @@ class DBTable:
                       result_columns = None,
                       extra_columns = None,
                       distinct = False):
+
+        if type(where) == tuple:
+            where = build_where(where)
 
         if not tables:
             tables = cls.table_name
@@ -314,7 +334,7 @@ class DBSearch(DBTable):
     def search(cls, query):
         return cls.raw_select(f"{cls.table_name} match :query",
                               {'query': query},
-                              "rank limit 1000")
+                              distinct = "rank limit 1000")
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
 
