@@ -52,8 +52,8 @@ class User(db.DBTable):
     #( ((Room,'id'), '=', (Membership, 'room')), 'and'
     def membership_list(self):
         #"rooms.id = memberships.room and memberships.user = :self_id",
-        rooms = Room.raw_select(((Room,'id'), '=', (Membership,'room'), 'and',
-                                 (Membership,'user'), '=', ':self_id'),
+        rooms = Room.raw_select((Room.id_, '=', Membership.room_, 'and',
+                                 Membership.user_, '=', ':self_id'),
                                 {'self_id': self.id},
                                 order_by      = "rooms.id",
                                 tables        = [Room, Membership],
@@ -64,19 +64,19 @@ class User(db.DBTable):
     def message_list(self, rooms):
         messages = []
         for room in rooms: 
-            messages += Message.raw_select("messages.room = :room",
+            messages += Message.raw_select(((Message,'room'), '=', ':room'),
                                            {'room': room},
                                            order_by = "messages.id desc limit 40")
         return [ message.public_fields() for message in messages ]
 
     # TODO: modify this after adding folder support?
     def file_list(self, folder=None):
-        files = File.raw_select("""((files.room in (select memberships.room from memberships 
-                                                   where memberships.user = :self_id)) or
-                                    (files.room is NULL) or 
-                                    (files.owner = :self_id ) or 
-                                    (files.public = 1)) and 
-                                   (files.folder is :folder )""",
+        files = File.raw_select( (((File.room_, 'in', ('select', Membership.room_, 'from', (Membership,), 
+                                                   'where', Membership.user_, '=', ':self_id')) ,'or',
+                                   (File.room_, 'is', 'NULL') ,'or',
+                                   (File.owner_ ,'=', ':self_id' ) ,'or', 
+                                   (File.public_ ,'=', 1)) ,'and',
+                                  File.folder_, 'is', ':folder' ),
                                 {'self_id': self.id, 
                                  'folder':  folder},
                                 order_by = "files.id desc limit 100")
