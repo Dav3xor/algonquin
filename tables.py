@@ -84,11 +84,11 @@ class User(db.DBTable):
         return { file.id:file.public_fields() for file in files }
     
     def folder_list(self, folder=None):
-        folders = Folder.raw_select("""((folders.owner is NULL) or
-                                        (folders.owner = :self_id ) or
-                                        (folders.public = 1) or
-                                        (rooms.id = memberships.room and memberships.user = :self_id)) and 
-                                       (folders.parent is :folder)""",
+        folders = Folder.raw_select((((Folder.owner_, 'is', 'NULL'), 'or',
+                                        (Folder.owner_, '=', ':self_id' ), 'or',
+                                        (Folder.public_, '=', 1), 'or',
+                                        (Room.id_, '=', Membership.room_, 'and', Membership.user_, '=', ':self_id')), 'and',
+                                       (Folder.parent_, 'is', ':folder')),
                                     {'self_id': self.id, 
                                      'folder':  folder},
                                     order_by = "folders.id desc limit 100",
@@ -98,11 +98,11 @@ class User(db.DBTable):
         return { folder.id:folder.public_fields() for folder in folders }
 
     def card_list(self):
-        cards = Card.raw_select("""(cards.room in (select memberships.room from memberships 
-                                                    where memberships.user = :self_id)) or 
-                                    (cards.owner is NULL) or 
-                                    (cards.owner = :self_id) or
-                                    (cards.room is NULL)""",
+        cards = Card.raw_select(((Card.room_, 'in', ('select', Membership.room_, 'from', (Membership,),
+                                                    'where', Membership.user_, '=', ':self_id')), 'or', 
+                                    (Card.owner_, 'is', 'NULL'), 'or',
+                                    (Card.owner_, '=', ':self_id'), 'or',
+                                    (Card.room_, 'is', 'NULL')),
                                  {'self_id': self.id},
                                  order_by = "cards.id desc limit 100")
         return { card.id:card.public_fields() for card in cards }
