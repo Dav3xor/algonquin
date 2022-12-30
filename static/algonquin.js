@@ -763,7 +763,7 @@ class Cards {
     var card = this.get_card(card_id);
     if(card) {
       $('#display-card-body').empty();
-      this.render_card(card_id, '#display-card-body');
+      this.render_card(card_id, '#display-card-body', true);
     $('#display-card').modal('show');
     }
   }
@@ -827,10 +827,18 @@ class Cards {
     socket.emit('edit-card', card);
   }
 
-  render_card(card_id, container) {
+  render_card(card_id, container, closeable=false) {
     var card = this.get_card(card_id);
     if(card) {
       var edit_block = "";
+      var close_block = "";
+      if (closeable) {
+        close_block = `<span>
+                         <button onclick="cards.hide_display();"> 
+                           X
+                         </button>
+                       </span>`;
+      }
       if((card.owner == people.get_this_person().id)||
          (people.this_person_is_admin())) {
         var locked = 'unlocked';
@@ -840,6 +848,7 @@ class Cards {
         edit_block += `<button class="mr-1" onclick="cards.toggle_lock(${card.id}, '${locked}')">
                          ${icons[locked]}
                        </button>`;
+
       }
       if((!card.locked)||
          (card.owner == people.get_this_person().id)||
@@ -850,7 +859,11 @@ class Cards {
       }
       $(container).append(`<div class="card bg-light text-dark mt-4" id="card-${card.id}">
                               <h5 class="card-header d-flex justify-content-between 
-                                         align-items-center">${card.title}
+                                         align-items-center">
+                                ${close_block}
+                                <span>
+                                ${card.title}
+                                </span>
                                 <span>
                                   <button onclick="messages.insert_at_cursor('~card${card.id}~');">
                                     ${icons.chat_bubble_small} 
@@ -868,8 +881,8 @@ class Cards {
 
   render() {
     var counter=0;
-    $('#cards').empty();
-    $('#cards').append(`<div class="row mt-1">
+    $('#cards-display').empty();
+    $('#cards-display').append(`<div class="row mt-1">
                           <div class="col-lg-4" id="cards-col-1"></div>
                           <div class="col-lg-4" id="cards-col-2"></div>
                           <div class="col-lg-4" id="cards-col-3"></div>

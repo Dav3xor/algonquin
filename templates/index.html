@@ -157,14 +157,6 @@
          data-keyboard="false" data-backdrop="static" tabindex="-1">
       <div class="modal-body">
         <div id="display-card-body"></div>
-        <form "form-inline" onsubmit="return false;">
-          <div class="pb-2">
-            <button id="hide-display-card" onclick="cards.hide_display();" 
-                    type="button" class="btn btn-success btn-sm">
-              Hide
-            </button>
-          </div>
-        </form>
       </div>
     </div>
 
@@ -336,7 +328,31 @@
       </div>
 
       <div class="cards container-fluid d-none status-margin" id="cards">
+        <div class="row">
+          <div class="col-sm-8">
+            <div id="cards-path" class="alert alert-secondary"></div>
+          </div>
+          <div class="col-sm-4">
+            <div id="cards-new-card" class="alert alert-info p-2 m-0">
+              <form class="form-inline" autocomplete="off" onsubmit="return false;">
+                <div class="input-group">
+                  <div class="input-group-prepend mr-2">
+                    To create a new card, press this button -->
+                    <button onclick="cards.new();" 
+                            type="button" id="folder-add" 
+                            class="btn btn-success btn-sm ml-2">
+                      Add Card
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div id="cards-display">
+        </div>
       </div>
+
 
       <div class="container-fluid d-none status-margin" id="search">
         <div class="table-responsive">
