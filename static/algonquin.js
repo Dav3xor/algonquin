@@ -83,7 +83,6 @@ async function upload_file(file, url, room_id=null, folder_id=null) {
   var file_number = parseInt(cookie.read('file_number'));
   cookie.write('file_number', file_number + 1, 365);
   for(let start = 0; start < file.size; start += files.chunk_size) {
-    set_status(`${ file.name }: ${ parseInt((start/file.size)*100) }%`, 2000)
     const chunk = file.slice(start, start+files.chunk_size);
     var form        = new FormData();
 
@@ -108,6 +107,9 @@ async function upload_file(file, url, room_id=null, folder_id=null) {
     if (start + files.chunk_size >= file.size) {
       form.append('end', true);
       form.append('filename',file.name);
+      set_status(`${ file.name }: Done!`, 5000)
+    } else {
+      set_status(`${ file.name }: ${ parseInt((start/file.size)*100) }%`, 2000)
     }
     await fetch(url, { method: 'post', 
                        body: form }).then(res => res.text());
