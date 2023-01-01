@@ -83,20 +83,8 @@ async function upload_file(file, url, room_id=null, folder_id=null) {
   var file_number = parseInt(cookie.read('file_number'));
   cookie.write('file_number', file_number + 1, 365);
   for(let start = 0; start < file.size; start += files.chunk_size) {
-    const chunk = file.slice(start, start+files.chunk_size);
+    const chunk     = file.slice(start, start+files.chunk_size);
     var form        = new FormData();
-
-    
-    /*
-    if(folder_id != null) {
-      var room        = rooms.get_cur_room()
-      if(room) {
-        form.append('room', room.id);
-      }
-    } else {
-      form.append('folder', folder_id);
-    }
-    */
 
     form.append('sessionid', sessionid);
     form.append('chunk', start/files.chunk_size);
