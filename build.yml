@@ -13,6 +13,7 @@
     public_rooms: ['0 Day Warez', 'Poop', 'Dev/Test']
     default_room: 0 Day Warez
     file_root: /home/algonquin/algonquin/
+    chunk_size: 50000
   remote_user: root
 
   tasks:
