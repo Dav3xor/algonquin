@@ -82,16 +82,16 @@ def db_join(left, right, left_, right_):
     return f"{left.table_name} join {right.table_name} on {left.table_name}.{left_} = {right.table_name}.{right_}"
 
 def build_where(clause):
-    print(clause)
-    print(type(clause))
+    #print(clause)
+    #print(type(clause))
     if type(clause) in (str,int,float,bool):
-        print("1")
+        #print("1")
         return f" {clause} "
     elif type(clause) == tuple and inspect.isclass(clause[0]) and issubclass(clause[0], DBTable):
-        print(f"2 - {clause}")
+        #print(f"2 - {clause}")
         return f" {'.'.join((clause[0].table_name,)+clause[1:])} "
     else:
-        print("3")
+        #print("3")
         output = ''
         for i in clause:
             output += build_where(i)
@@ -206,6 +206,7 @@ class DBTable:
         print(stmt)
         DBTable.cursor.execute(stmt, args)
         rows = DBTable.cursor.fetchall()
+        print(rows)
         return [ cls(**dict(zip(cls.attrs.keys(), values))) for values in rows ]
 
     def select(table, columns, where_clause):
