@@ -11,6 +11,7 @@ config = {'database':         '{{ database_name }}',
           'public_rooms':     {{ public_rooms }},
           'file_root':        '{{ file_root }}',
           'chunk_size':       {{ chunk_size }},
+          'portrait_folder':  2,
           'portrait_types':   ['png', 'jpg', 'jpeg', 'gif', 'webp'],
           'default_portrait': 'default.png',
           'default_room':     '{{ default_room }}'}

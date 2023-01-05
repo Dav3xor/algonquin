@@ -24,7 +24,7 @@ build_tables([User, Session, Message, Room, File, Folder, Membership, Card, Card
 app = Flask(__name__, static_url_path='')
 app.config['SECRET_KEY'] = 'a very very sekrit sekrit key'
 
-socketio = SocketIO(app)
+socketio = SocketIO(app, logger=True, engineio_logger=True)
 
 differ = difflib.Differ()
 
@@ -305,6 +305,7 @@ def do_login(user, session, send_session_id=False):
         join_room('room-'+str(membership.room))
 
     response['userid']        = user.id
+    response['users']         = [user.public_fields()]
     response['authenticated'] = True
     response['result']        = 'Login Ok'
     response['__protocol__']    = __protocol__
@@ -314,6 +315,7 @@ def do_login(user, session, send_session_id=False):
     if '-token-' in session.sessionid:
         response['new-user'] = True
     emit('login-result', response, broadcast=False);
+    
 
     response = {}
     response['users']         = user.related_users()

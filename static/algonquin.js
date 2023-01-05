@@ -1534,12 +1534,16 @@ class Messages {
 
   clear_unread() {
     var room = rooms.get_cur_room();
-    var last_seen = room.message_index.slice(-1)[0];
+    if(room) {
+      var last_seen = room.message_index.slice(-1)[0];
 
-    if(last_seen) {
-      socket.emit('have-read', { room: room.id, last: last_seen });
+      if(last_seen) {
+        socket.emit('have-read', { room: room.id, last: last_seen });
+      }
+      room.unread = 0;
+    } else {
+      console.log("no room?!?");
     }
-    room.unread = 0;
   }
       
 }
@@ -2618,6 +2622,7 @@ function send_logout() {
     people.empty();
     files.empty();
     rooms.empty();
+    cards.empty();
     messages.empty();
     $('#navbar').addClass('d-none');
     $('#footer').addClass('d-none');
@@ -2764,6 +2769,7 @@ socket.on('bell', data => {
 socket.on('login-result', data => {
   if(data.authenticated) {
     people.set_this_person(data.userid);
+    getter.handle_stuff(data);
     if(url_parameters.has('token')) {
       // if it's a new user logging in, remove the arguments from the url
       window.history.pushState({}, '', '/');
@@ -2775,6 +2781,9 @@ socket.on('login-result', data => {
       cookie.write('sessionid', data.sessionid, 365);
     }
     if ('new-user' in data) {
+
+      var person = people.get_this_person();
+      $('#welcome-message').html(`Welcome ${person.handle}!`);
       $('#new-user').modal('show');
       $('#new-user-password').keyup(function () {
         regulate_password('#new-user-password', '#new-user-password2', '#new-user-ok')
@@ -2789,7 +2798,6 @@ socket.on('login-result', data => {
     if(cookie.read('file_number') == '') {
       cookie.write('file_number', '0', 365);
     }
-    getter.handle_stuff(data);
     lissajous.setb(4);
     settings.set_defaults();
   } else {

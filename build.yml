@@ -83,7 +83,14 @@
 #     owner: root
 #     group: root
 #     state: link
-  
+ 
+  - name: revert config.py
+    ansible.builtin.shell:
+      cmd: git checkout config.py
+      chdir: /home/algonquin/algonquin
+    become: yes
+    become_user: algonquin
+
   - name: get algonquin
     git:
       repo: 'https://github.com/Dav3xor/algonquin.git'
