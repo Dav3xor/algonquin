@@ -24,7 +24,7 @@ build_tables([User, Session, Message, Room, File, Folder, Membership, Card, Card
 app = Flask(__name__, static_url_path='')
 app.config['SECRET_KEY'] = 'a very very sekrit sekrit key'
 
-socketio = SocketIO(app, logger=True, engineio_logger=True)
+socketio = SocketIO(app)
 
 differ = difflib.Differ()
 
