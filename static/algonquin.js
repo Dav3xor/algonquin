@@ -884,6 +884,10 @@ class Cards {
     }
   }
 
+  empty() {
+    this.cards = {};
+    this.render();
+  }
 }
 
 
