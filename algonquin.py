@@ -296,24 +296,26 @@ def send_user(user, broadcast=False, **kwargs):
 
 def do_login(user, session, send_session_id=False):
     response = {'authenticated': False}
+
     if (not user) or (not session):
         response['result'] = 'Bad Email/Password'
-        return response
-    scoreboard.add(request.sid, user.id)
+    else:
+        scoreboard.add(request.sid, user.id)
 
-    for membership in user.memberships:
-        join_room('room-'+str(membership.room))
+        for membership in user.memberships:
+            join_room('room-'+str(membership.room))
 
-    response['userid']        = user.id
-    response['users']         = [user.public_fields()]
-    response['authenticated'] = True
-    response['result']        = 'Login Ok'
-    response['__protocol__']    = __protocol__
-    if send_session_id:
-        response['sessionid'] = session.sessionid
+        response['userid']        = user.id
+        response['users']         = [user.public_fields()]
+        response['authenticated'] = True
+        response['result']        = 'Login Ok'
+        response['__protocol__']    = __protocol__
+        if send_session_id:
+            response['sessionid'] = session.sessionid
+        
+        if '-token-' in session.sessionid:
+            response['new-user'] = True
     
-    if '-token-' in session.sessionid:
-        response['new-user'] = True
     emit('login-result', response, broadcast=False);
     
 

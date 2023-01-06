@@ -2732,6 +2732,8 @@ $('#messages').scroll(function() {
 
 $('#new-user-ok').click(function() {
   $('#new-user').modal('hide');
+  $('#navbar').removeClass('d-none');
+  $('#footer').removeClass('d-none');
   $('#contents').removeClass('d-none');
   var entered_password = $('#new-user-password').val();
   if (entered_password.length > 0) {
@@ -2778,9 +2780,8 @@ socket.on('login-result', data => {
       // if it's a new user logging in, remove the arguments from the url
       window.history.pushState({}, '', '/');
     }
-    $('#navbar').removeClass('d-none');
-    $('#footer').removeClass('d-none');
     $('#login').modal('hide');
+
     if ('sessionid' in data) {
       cookie.write('sessionid', data.sessionid, 365);
     }
@@ -2797,6 +2798,8 @@ socket.on('login-result', data => {
       });
 
     } else {
+      $('#navbar').removeClass('d-none');
+      $('#footer').removeClass('d-none');
       $('#contents').removeClass('d-none');
     }
     if(cookie.read('file_number') == '') {
