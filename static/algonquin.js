@@ -29,6 +29,9 @@ class Tabs {
       $('#goto-bottom').addClass('d-none');
     }            
 
+    $('#'+this.cur_tab).addClass('d-none'); 
+    $('#'+tab).removeClass('d-none'); 
+
     if(tab == 'people') {
       build_table(people);
     } else if(tab == 'search') {
@@ -36,9 +39,6 @@ class Tabs {
     } else if(tab == 'files') {
       build_table(files);
     }
-
-    $('#'+this.cur_tab).addClass('d-none'); 
-    $('#'+tab).removeClass('d-none'); 
 
     $('#'+this.cur_tab+"-nav").removeClass("active");
     $('#'+tab+"-nav").addClass("active");
@@ -230,6 +230,7 @@ class Files {
                               onmouseout="$('#${rowid}-button').addClass('disabled');" 
                               ondblclick="files.change_folder(${folder.id});" 
                               class="btn btn-info btn-sm btn-block text-left disabled"
+                              style="word-break: break-all;"
                               id="${rowid}-button">
                         ${icons.folder}
                         ${folder.name}
@@ -277,6 +278,7 @@ class Files {
                       ${icons.new_tab}
                     </button>`;
       var filename = `<button class="btn btn-secondary btn-sm btn-block text-left disabled"
+                              style="word-break: break-all;"
                               onmouseover="$('#${rowid}-button').removeClass('disabled');" 
                               onmouseout="$('#${rowid}-button').addClass('disabled');" 
                               ondblclick="console.log('double click');"
@@ -366,9 +368,9 @@ class People {
     this.table = null;
     this.table_def = { "rowId": "rowid",
                        "dom": "tip",
-                       "columns": [ { "data": 'online', 'orderData': [2,1], 'width': '50px'}, 
+                       "columns": [ { "data": 'online', 'orderData': [2,1], 'width': '68px'}, 
                                     { "data": 'name'}, 
-                                    { "data": 'buttons', "orderable": false, 'width': '122px'},
+                                    { "data": 'buttons', "orderable": false, 'width': '123px'},
                                     { "data": 'online_order', 'visible': false} ]};
     $('#ring-bell').append(icons.bell);
   }
@@ -429,16 +431,16 @@ class People {
 
   update_table_row(person) {
     var rowid    = this.table_row_name(person.id);
-    var online   = `<button class="btn btn-dark btn-sm" ${person.online ? "":"disabled"}>
+    var online   = `<button class="btn btn-dark btn-sm mr-2" ${person.online ? "":"disabled"}>
                       ${icons.person}
                     </button>
-                    <img src="/portraits/${person.portrait}" height="36" />`;
+                    <img src="/portraits/${person.portrait}" height="36px" />`;
     var name     = `<h4>${person.handle}</h4>`;
     
     var about = "";
     if(person.hasOwnProperty('about')) {
       about = `<a tabindex="0" role="button" 
-                  class="btn btn-sm btn-danger ml-2 pb-0" 
+                  class="btn btn-sm btn-danger ml-0 pb-0" 
                   title="About ${person.handle}"
                   data-placement="bottom"
                   data-bs-toggle="popover"
@@ -463,6 +465,10 @@ class People {
                            id="start-chat-${person.id}" type="button">
                      ${icons.bell}
                    </button>`;
+
+
+
+
     var rowdata = {'rowid':    rowid,
                    'online':   online, 
                    'online_order': person.online ? 1:0,
