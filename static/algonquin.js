@@ -116,9 +116,9 @@ class Files {
     this.table = null;
     this.table_def = {'rowId':   'rowid',
                       "dom": "tip",
-                      'columns': [ { 'data': 'play', 'width': '150px'},
+                      'columns': [ { 'data': 'play', 'width': '108px'},
                                    { 'data': 'filename'},
-                                   { 'data': 'buttons', 'width': '75px'} ]};
+                                   { 'data': 'buttons', 'width': '60px'} ]};
   }
 
   get_folder(id) {
@@ -260,12 +260,11 @@ class Files {
       if ((!file.deleted)&&(file.type in {'video':true, 'audio':true})){
         play_button = `
           <button class="btn btn-info btn-sm" id="${button_id}" 
-                  style="width:60px;"
                   onclick="jukebox.play_pause('${button_id}', '/files/${file.localname}'); ${deleted}">
             ${icons.play}
           </button>`;
       } else {
-        play_button = `<button class="btn btn-dark btn-sm" style="width:60px;" disabled>
+        play_button = `<button class="btn btn-dark btn-sm" disabled>
                          ${icons.blank}
                        </button>`;
       }
@@ -285,12 +284,12 @@ class Files {
                         ${file_icon}
                         ${file.name}
                       </button>`;
-      var buttons = `<button class="btn btn-success btn-sm ml-2" 
+      var buttons = `<button class="btn btn-success btn-sm" 
                                onclick="start_chat([${owner.id},people.get_this_person().id]);" 
                                id="start-chat-${owner.id}" type="button" ${deleted}>
                          ${icons.chat_bubble}
                      </button>
-                     <button class="btn btn-warning btn-sm" onclick="send_delete_file(${file.id});" ${deleted}>
+                     <button class="btn btn-warning btn-sm mr-0" onclick="send_delete_file(${file.id});" ${deleted}>
                        ${icons.trash}
                      </button>`;
       var rowdata = {'rowid':    rowid,
@@ -367,10 +366,9 @@ class People {
     this.table = null;
     this.table_def = { "rowId": "rowid",
                        "dom": "tip",
-                       "columns": [ { "data": 'portrait', 'orderable': false, 'width': '30px'}, 
-                                    { "data": 'online', 'orderData': [4,2], 'width': '25px'}, 
+                       "columns": [ { "data": 'online', 'orderData': [2,1], 'width': '50px'}, 
                                     { "data": 'name'}, 
-                                    { "data": 'buttons', "orderable": false, 'width': '150px'},
+                                    { "data": 'buttons', "orderable": false, 'width': '122px'},
                                     { "data": 'online_order', 'visible': false} ]};
     $('#ring-bell').append(icons.bell);
   }
@@ -433,9 +431,9 @@ class People {
     var rowid    = this.table_row_name(person.id);
     var online   = `<button class="btn btn-dark btn-sm" ${person.online ? "":"disabled"}>
                       ${icons.person}
-                    </button>`
+                    </button>
+                    <img src="/portraits/${person.portrait}" height="36" />`;
     var name     = `<h4>${person.handle}</h4>`;
-    var portrait = `<img src="/portraits/${person.portrait}" height="36" />`;
     
     var about = "";
     if(person.hasOwnProperty('about')) {
@@ -451,22 +449,21 @@ class People {
                 </a>`;
     }
 
-    var buttons = `<button class="btn btn-warning btn-sm ml-2" 
+    var buttons = `<button class="btn btn-warning btn-sm" 
                            type="button" id="new-file-${person.id}">
                      ${icons.paperclip}
                    </button>
-                   <button class="btn btn-success btn-sm ml-2" 
+                   <button class="btn btn-success btn-sm" 
                            onclick="start_chat([${person.id},people.get_this_person().id]);" 
                            id="start-chat-${person.id}" type="button">
                      ${icons.chat_bubble}
                    </button>
-                   <button class="btn btn-success btn-danger btn-sm ml-2" 
+                   <button class="btn btn-success btn-danger btn-sm" 
                            onclick="send_bell_user(${person.id});" 
                            id="start-chat-${person.id}" type="button">
                      ${icons.bell}
                    </button>`;
     var rowdata = {'rowid':    rowid,
-                   'portrait': portrait,
                    'online':   online, 
                    'online_order': person.online ? 1:0,
                    'name':     name, 
