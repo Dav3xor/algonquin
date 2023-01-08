@@ -6,7 +6,7 @@ import hashlib
 import os
 from formats import formats
 
-class User(db.DBTable):
+class Person(db.DBTable):
     attrs = {'id':       {'type': 'INTEGER PRIMARY KEY'},
              'email':    {'type': 'TEXT NOT NULL UNIQUE', 
                           'xss-filter': True, 
@@ -20,7 +20,7 @@ class User(db.DBTable):
                           'xss-filter': True,
                           'searchable': True},
              'pwhash':   {'type': 'TEXT', 'private': True}}
-    table_name = 'users'
+    table_name = 'persons'
 
     def __init__(self, **kwargs):
         db.DBTable.__init__(self, **kwargs)
@@ -37,23 +37,23 @@ class User(db.DBTable):
     def join_public(self):
         public_rooms = Room.raw_select("public = :public", {'public': 1})
         for room in public_rooms:
-            membership = Membership(user = self.id,
+            membership = Membership(person = self.id,
                                     room = room.id)
             membership.save()
 
-    def related_users(self):
-        tables = db_join(User, Membership, 'id', 'user')
-        where  = Membership.subquery_in('room', 'memberships.user = :self_id')
-        users = self.raw_select(where, 
+    def related_persons(self):
+        tables = db_join(Person, Membership, 'id', 'person')
+        where  = Membership.subquery_in('room', 'memberships.person = :self_id')
+        persons = self.raw_select(where, 
                                 {'self_id': self.id}, 
                                 tables=tables)
-        return { user.id:user.public_fields() for user in users } 
+        return { person.id:person.public_fields() for person in persons } 
 
     #( ((Room,'id'), '=', (Membership, 'room')), 'and'
     def membership_list(self):
-        #"rooms.id = memberships.room and memberships.user = :self_id",
+        #"rooms.id = memberships.room and memberships.person = :self_id",
         rooms = Room.raw_select((Room.id_, '=', Membership.room_, 'and',
-                                 Membership.user_, '=', ':self_id'),
+                                 Membership.person_, '=', ':self_id'),
                                 {'self_id': self.id},
                                 order_by      = "rooms.id",
                                 tables        = [Room, Membership],
@@ -72,7 +72,7 @@ class User(db.DBTable):
     # TODO: modify this after adding folder support?
     def file_list(self, folder=None):
         files = File.raw_select( (((File.room_, 'in', ('select', Membership.room_, 'from', (Membership,), 
-                                                   'where', Membership.user_, '=', ':self_id')) ,'or',
+                                                   'where', Membership.person_, '=', ':self_id')) ,'or',
                                    (File.room_, 'is', 'NULL') ,'or',
                                    (File.owner_ ,'=', ':self_id' ) ,'or', 
                                    (File.public_ ,'=', 1)) ,'and',
@@ -87,7 +87,7 @@ class User(db.DBTable):
         folders = Folder.raw_select((((Folder.owner_, 'is', 'NULL'), 'or',
                                         (Folder.owner_, '=', ':self_id' ), 'or',
                                         (Folder.public_, '=', 1), 'or',
-                                        (Room.id_, '=', Membership.room_, 'and', Membership.user_, '=', ':self_id')), 'and',
+                                        (Room.id_, '=', Membership.room_, 'and', Membership.person_, '=', ':self_id')), 'and',
                                        (Folder.parent_, 'is', ':folder')),
                                     {'self_id': self.id, 
                                      'folder':  folder},
@@ -99,7 +99,7 @@ class User(db.DBTable):
 
     def card_list(self):
         cards = Card.raw_select(((Card.room_, 'in', ('select', Membership.room_, 'from', (Membership,),
-                                                    'where', Membership.user_, '=', ':self_id')), 'or', 
+                                                    'where', Membership.person_, '=', ':self_id')), 'or', 
                                     (Card.owner_, 'is', 'NULL'), 'or',
                                     (Card.owner_, '=', ':self_id'), 'or',
                                     (Card.room_, 'is', 'NULL')),
@@ -107,7 +107,7 @@ class User(db.DBTable):
                                  order_by = "cards.id desc limit 100")
         return { card.id:card.public_fields() for card in cards }
 
-set_properties(User, User.attrs)
+set_properties(Person, Person.attrs)
 
 class Folder(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
@@ -115,7 +115,7 @@ class Folder(db.DBTable):
                            'searchable': True,
                            'xss-filter': True},
              'owner':     {'type': 'INTEGER NOT NULL',
-                           'fkey': ['user', 'id', 'User', 'folders']},
+                           'fkey': ['person', 'id', 'Person', 'folders']},
              'public':    {'type': 'BOOLEAN'},
              'parent':    {'type': 'INTEGER',
                            'fkey': ['folder', 'id', 'Folder', 'child_folders']}}
@@ -131,7 +131,7 @@ set_properties(Folder, Folder.attrs)
 class Room(db.DBTable):
     attrs = {'id':     {'type': 'INTEGER PRIMARY KEY'},
              'owner':  {'type': 'INTEGER NOT NULL',
-                       'fkey': ['user', 'id', 'User','rooms']},
+                       'fkey': ['person', 'id', 'Person','rooms']},
              'folder': {'type': 'INTEGER NOT NULL',
                         'fkey': ['folder', 'id', 'Folder','rooms']},
              'topic':  {'type': 'TEXT', 'xss-filter': True},
@@ -142,23 +142,23 @@ class Room(db.DBTable):
     table_name = 'rooms'
 
     @classmethod
-    def chat_name(cls, user_ids):
-        user_ids.sort()
-        user_ids = set(user_ids)
-        return '$%^&-' + '-'.join(str(i) for i in user_ids)
+    def chat_name(cls, person_ids):
+        person_ids.sort()
+        person_ids = set(person_ids)
+        return '$%^&-' + '-'.join(str(i) for i in person_ids)
     
     @classmethod
-    def get_or_set_chat(cls, owner, user_ids):
-        name = cls.chat_name(user_ids)
+    def get_or_set_chat(cls, owner, person_ids):
+        name = cls.chat_name(person_ids)
         chat = Room.get_where(name=name)
-        user_ids = set(user_ids)
+        person_ids = set(person_ids)
         if not chat:
             chat = Room(owner  = owner, 
                         public = False, 
                         name   = name)
             chat.save()
-            for user in user_ids:
-                Membership.join(user, chat.id)
+            for person in person_ids:
+                Membership.join(person, chat.id)
             chat.commit()
         return chat
 
@@ -170,7 +170,7 @@ set_properties(Room, Room.attrs)
 class Card(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'owner':     {'type': 'INTEGER NOT NULL',
-                           'fkey': ['owner', 'id', 'User', 'cards']},
+                           'fkey': ['owner', 'id', 'Person', 'cards']},
              'room':      {'type': 'INTEGER',
                            'fkey': ['room', 'id', 'Room', 'cards']},
              'title':     {'type': 'TEXT', 'xss-filter': True,
@@ -186,7 +186,7 @@ set_properties(Card, Card.attrs)
 class Card_Edit(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'editor':    {'type': 'INTEGER NOT NULL',
-                           'fkey': ['editor', 'id', 'User', 'card_edits']},
+                           'fkey': ['editor', 'id', 'Person', 'card_edits']},
              'diff':      {'type': 'TEXT',
                            'searchable': True}}
     table_name = 'card_edits'
@@ -198,7 +198,7 @@ set_properties(Card_Edit, Card_Edit.attrs)
 class File(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'owner':     {'type': 'INTEGER NOT NULL',
-                           'fkey': ['user', 'id', 'User', 'files']},
+                           'fkey': ['person', 'id', 'Person', 'files']},
              'room':      {'type': 'INTEGER',
                            'fkey': ['room', 'id', 'Room', 'files']},
              'folder':    {'type': 'INTEGER',
@@ -256,21 +256,21 @@ set_properties(File, File.attrs)
 
 class Session(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
-             'user':      {'type': 'INTEGER NOT NULL',
-                           'fkey': ['user','id', 'User', 'sessions']},
+             'person':      {'type': 'INTEGER NOT NULL',
+                           'fkey': ['person','id', 'Person', 'sessions']},
              'sessionid': {'type': 'INTEGER'}}
     table_name = 'sessions'
     def __init__(self, **kwargs):
         db.DBTable.__init__(self, **kwargs)
 
     @classmethod
-    def make_sessionid(cls, user):
-        return str(user.id) + '-' + str(int.from_bytes(os.urandom(32),'big'))
+    def make_sessionid(cls, person):
+        return str(person.id) + '-' + str(int.from_bytes(os.urandom(32),'big'))
 
     @classmethod
-    def make_token(cls, user):
-        return '%s-token-%s' % (str(user.id), str(int.from_bytes(os.urandom(8),'big')))
-        #return str(user.id) + "-token-" + str(int.from_bytes(os.urandom(8),'big'))
+    def make_token(cls, person):
+        return '%s-token-%s' % (str(person.id), str(int.from_bytes(os.urandom(8),'big')))
+        #return str(person.id) + "-token-" + str(int.from_bytes(os.urandom(8),'big'))
 
     @classmethod
     def make_token_url(cls, token, site):
@@ -281,8 +281,8 @@ set_properties(Session, Session.attrs)
 
 class Message(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
-             'user': {'type': 'INTEGER NOT NULL',
-                           'fkey': ['user', 'id', 'User', 'messages']},
+             'person': {'type': 'INTEGER NOT NULL',
+                           'fkey': ['person', 'id', 'Person', 'messages']},
              'room':      {'type': 'INTEGER NOT NULL',
                            'fkey': ['room', 'id', 'Room', 'messages']},
              'written':   {'type': "TIMESTAMP DATETIME DEFAULT (datetime('now', 'localtime'))"},
@@ -296,8 +296,8 @@ set_properties(Message, Message.attrs)
 
 class Membership(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
-             'user':      {'type': 'INTEGER NOT NULL',
-                           'fkey': ['user', 'id', 'User', 'memberships']},
+             'person':      {'type': 'INTEGER NOT NULL',
+                           'fkey': ['person', 'id', 'Person', 'memberships']},
              'last_seen': {'type': 'INTEGER DEFAULT 0'},
              'room':      {'type': 'INTEGER NOT NULL',
                            'fkey': ['room', 'id', 'Room', 'members']}}
@@ -305,9 +305,9 @@ class Membership(db.DBTable):
     def __init__(self, **kwargs):
         db.DBTable.__init__(self, **kwargs)
     @classmethod
-    def join(cls, user, room):
-        if Membership.count(user=user, room=room) == 0:
-            membership = Membership(user=user, room=room, last_seen=0)
+    def join(cls, person, room):
+        if Membership.count(person=person, room=room) == 0:
+            membership = Membership(person=person, room=room, last_seen=0)
             membership.save()
             membership.commit()
 

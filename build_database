@@ -3,15 +3,15 @@
 import tables
 from algonquin import config
 
-u = tables.User(email  = config['sysop_email'],
-                handle = config['sysop_handle'],
-                portrait = config['default_portrait'])
+u = tables.Person(email  = config['sysop_email'],
+                  handle = config['sysop_handle'],
+                  portrait = config['default_portrait'])
 u.save()
 
 token = tables.Session.make_token(u)
 url   = tables.Session.make_token_url(token, config['site_url'])
 
-s = tables.Session(user      = u.id,
+s = tables.Session(person    = u.id,
                    sessionid = token)
 s.save()
 

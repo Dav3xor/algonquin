@@ -1,5 +1,5 @@
 from db import DBTable, DBSearch, build_tables
-from tables import User, Session, Message, File, Folder, Room, Membership, Card, Card_Edit
+from tables import Person, Session, Message, File, Folder, Room, Membership, Card, Card_Edit
 from flask import Flask, render_template, send_from_directory, request
 from flask_socketio import SocketIO, emit, send, disconnect, join_room
 from urllib.parse import urlencode
@@ -19,7 +19,7 @@ pprint = pprint.PrettyPrinter()
 
 DBTable.set_db(config['database'])
 
-build_tables([User, Session, Message, Room, File, Folder, Membership, Card, Card_Edit])
+build_tables([Person, Session, Message, Room, File, Folder, Membership, Card, Card_Edit])
 
 app = Flask(__name__, static_url_path='')
 app.config['SECRET_KEY'] = 'a very very sekrit sekrit key'
@@ -34,35 +34,35 @@ pp = Flask(__name__)
 
 class Scoreboard:
     def __init__(self):
-        self.sid_to_user   = {}
-        self.user_to_sid   = {}
-    def add(self, sid, user):
-        self.sid_to_user[sid] = user
-        if user not in self.user_to_sid:
-            self.user_to_sid[user] = set()
-        self.user_to_sid[user].add(sid)
+        self.sid_to_person   = {}
+        self.person_to_sid   = {}
+    def add(self, sid, person):
+        self.sid_to_person[sid] = person
+        if person not in self.person_to_sid:
+            self.person_to_sid[person] = set()
+        self.person_to_sid[person].add(sid)
     def remove(self, sid):
-        if sid in self.sid_to_user:
-            user = self.sid_to_user[sid]
-            if user in self.user_to_sid and sid in self.user_to_sid[user]:
-                self.user_to_sid[user].discard(sid)
-            del self.sid_to_user[sid]
-    def get_user_from_sid(self,sid):
-        if sid not in self.sid_to_user:
+        if sid in self.sid_to_person:
+            person = self.sid_to_person[sid]
+            if person in self.person_to_sid and sid in self.person_to_sid[person]:
+                self.person_to_sid[person].discard(sid)
+            del self.sid_to_person[sid]
+    def get_person_from_sid(self,sid):
+        if sid not in self.sid_to_person:
             return False
         else:
-            return self.sid_to_user[sid]
-    def get_sids_from_user(self,user):
-        if user not in self.user_to_sid:
+            return self.sid_to_person[sid]
+    def get_sids_from_person(self,person):
+        if person not in self.person_to_sid:
             return set()
         else:
-            return self.user_to_sid[user]
-    def online_users(self):
-        return set(self.sid_to_user.values())
-    def user_online(self, id):
-        if id not in self.user_to_sid:
+            return self.person_to_sid[person]
+    def online_persons(self):
+        return set(self.sid_to_person.values())
+    def person_online(self, id):
+        if id not in self.person_to_sid:
             return False
-        return True if len(self.user_to_sid[id]) > 0 else False
+        return True if len(self.person_to_sid[id]) > 0 else False
 
 scoreboard=Scoreboard()
 
@@ -74,14 +74,14 @@ def valid_portrait(filename):
 
 def not_logged_in(f):
     def wrapper(*args, **kwargs):
-        if request.sid not in scoreboard.sid_to_user:
+        if request.sid not in scoreboard.sid_to_person:
             return f(*args, **kwargs)
         else:
             pass
 
-def user_logged_in(f):
+def person_logged_in(f):
     def wrapper(*args, **kwargs):
-        if request.sid in scoreboard.sid_to_user:
+        if request.sid in scoreboard.sid_to_person:
             return f(*args, **kwargs)
         else:
             pass
@@ -106,8 +106,8 @@ def json_has_keys(*keys):
 
 def admin_logged_in(f):
     def wrapper(*args, **kwargs):
-        if request.sid in scoreboard.sid_to_user and scoreboard.sid_to_user == 1:
-            # TODO: don't assume user id 1 is admin
+        if request.sid in scoreboard.sid_to_person and scoreboard.sid_to_person == 1:
+            # TODO: don't assume person id 1 is admin
             return f(*args, **kwargs)
         else:
             pass
@@ -137,14 +137,14 @@ def file_upload_common(req):
     if not session:
         return None, None, json.dumps({'error': 'bad sessionid'})
 
-    user = User.get(session.user)
+    person = Person.get(session.person)
     
     if 'folder' not in req.form or req.form['folder'] in ('null', None, 0, '0'):
         folder = 0
     else:
         folder = int(req.form['folder'])
 
-    tmp_dir = f'{ user.id }-{ session.id }-{ folder }-{ file_number }'
+    tmp_dir = f'{ person.id }-{ session.id }-{ folder }-{ file_number }'
     path = os.path.join(config['file_root'], 'files', 'tmp', tmp_dir)
 
     Path(path).mkdir(parents=True, exist_ok=True)
@@ -188,7 +188,7 @@ def file_upload_common(req):
             newfilename     = str(time.time()) + '.' + extension
             os.rename(outfile, os.path.join(config['file_root'], 'files', newfilename))
        
-        db_file = File(owner     = user.id,
+        db_file = File(owner     = person.id,
                        public    = True,
                        name      = filename,
                        folder    = folder if folder > 0 else None,
@@ -197,13 +197,13 @@ def file_upload_common(req):
                        type      = type,
                        localname = newfilename)
 
-        return db_file, user, None
+        return db_file, person, None
 
 
 
 @app.route('/upload-file', methods=['POST'])
 def upload_file():
-    db_file, user, errors = file_upload_common(request)
+    db_file, person, errors = file_upload_common(request)
 
     if (not errors) and (not db_file):
         # got a chunk, but not the last one
@@ -227,7 +227,7 @@ def upload_file():
                  namespace = None)
 
         #return json.dumps({'status': 'ok', 'files': [db_file.public_fields()]})
-        for sid in scoreboard.get_sids_from_user(user.id):
+        for sid in scoreboard.get_sids_from_person(person.id):
             emit('file-uploaded', 
                  {'status': 'ok', 'files': [db_file.public_fields()]}, 
                  room = sid,
@@ -238,7 +238,7 @@ def upload_file():
 
 @app.route('/upload-portrait', methods=['POST'])
 def upload_portrait():
-    db_file, user, errors = file_upload_common(request)
+    db_file, person, errors = file_upload_common(request)
     if (not errors) and (not db_file):
         # got a chunk, but not the last one
         return json.dumps({'status': 'ok'})
@@ -252,20 +252,20 @@ def upload_portrait():
         db_file.save()
         db_file.commit()
 
-        user.portrait = db_file.localname
-        user.save()
-        user.commit()
+        person.portrait = db_file.localname
+        person.save()
+        person.commit()
 
         
-        for sid in scoreboard.get_sids_from_user(user.id):
+        for sid in scoreboard.get_sids_from_person(person.id):
             emit('file-uploaded', 
                  {'status': 'ok',
                   'portrait': True,
-                  'user': user.public_fields(),
+                  'person': person.public_fields(),
                   'files': [db_file.public_fields()]}, 
                  room = sid,
                  namespace = None)
-        send_user(user, True, namespace=None)
+        send_person(person, True, namespace=None)
         return json.dumps({'status': 'ok'})
 
 
@@ -282,31 +282,31 @@ def send_files(path):
 def send_portraits(path):
     return send_from_directory('files', path)
 
-def online_users():
-    users = scoreboard.online_users()
-    return {user:User.get(user).public_fields() for user in users }
+def online_persons():
+    persons = scoreboard.online_persons()
+    return {person:Person.get(person).public_fields() for person in persons }
 
 
-def send_user(user, broadcast=False, **kwargs):
+def send_person(person, broadcast=False, **kwargs):
 
     if 'namespace' in kwargs:
         namespace = kwargs['namespace']
-    send_stuff(broadcast, users={user.id:user.public_fields()} )
+    send_stuff(broadcast, persons={person.id:person.public_fields()} )
 
 
-def do_login(user, session, send_session_id=False):
+def do_login(person, session, send_session_id=False):
     response = {'authenticated': False}
 
-    if (not user) or (not session):
+    if (not person) or (not session):
         response['result'] = 'Bad Email/Password'
     else:
-        scoreboard.add(request.sid, user.id)
+        scoreboard.add(request.sid, person.id)
 
-        for membership in user.memberships:
+        for membership in person.memberships:
             join_room('room-'+str(membership.room))
 
-        response['userid']        = user.id
-        response['users']         = [user.public_fields()]
+        response['personid']        = person.id
+        response['persons']         = [person.public_fields()]
         response['authenticated'] = True
         response['result']        = 'Login Ok'
         response['__protocol__']    = __protocol__
@@ -314,45 +314,45 @@ def do_login(user, session, send_session_id=False):
             response['sessionid'] = session.sessionid
         
         if '-token-' in session.sessionid:
-            response['new-user'] = True
+            response['new-person'] = True
     
     emit('login-result', response, broadcast=False);
     
 
     response = {}
-    response['users']         = user.related_users()
-    response['rooms']         = user.membership_list()
-    response['messages']      = user.message_list(response['rooms'].keys())
-    response['files']         = user.file_list()
-    response['folders']       = user.folder_list()
-    response['cards']         = user.card_list()
+    response['persons']         = person.related_persons()
+    response['rooms']         = person.membership_list()
+    response['messages']      = person.message_list(response['rooms'].keys())
+    response['files']         = person.file_list()
+    response['folders']       = person.folder_list()
+    response['cards']         = person.card_list()
     send_stuff(request.sid, **response)
 
-    send_user(user, True)
+    send_person(person, True)
 
 
     return response
 
-def disconnect_user(sid):
-    user = User.get_where(id=scoreboard.get_user_from_sid(sid))
+def disconnect_person(sid):
+    person = Person.get_where(id=scoreboard.get_person_from_sid(sid))
     scoreboard.remove(sid)
-    if user:
-        send_stuff(True, users={user.id: user.public_fields()})
+    if person:
+        send_stuff(True, persons={person.id: person.public_fields()})
 
 
-@user_logged_in
+@person_logged_in
 @socketio.on('logout')
 def handle_logout(json):
     #print("logging out: " + str(json['sessionid']))
     Session.delete_where(sessionid=json['sessionid'])
     Session.commit()
-    disconnect_user(request.sid)
+    disconnect_person(request.sid)
 
-@user_logged_in
+@person_logged_in
 @socketio.on('disconnect')
 def handle_disconnect():
     #print("client disconnecting: " + request.sid)
-    disconnect_user(request.sid)
+    disconnect_person(request.sid)
 
 @not_logged_in
 @socketio.on('login-email')
@@ -360,14 +360,14 @@ def handle_login_email(json):
     #print("email login: " + str(json))
     email    = json['email']
     password = json['password']
-    user     = User.get_where(email=email)
+    person     = Person.get_where(email=email)
     session = None
-    if user and user.verify_password(password):
-        session = Session(sessionid=Session.make_sessionid(user),
-                          user = user.id)
+    if person and person.verify_password(password):
+        session = Session(sessionid=Session.make_sessionid(person),
+                          person = person.id)
         session.save()
         session.commit()
-    do_login(user, session, True)
+    do_login(person, session, True)
 
 @not_logged_in
 @socketio.on('login-session')
@@ -379,55 +379,55 @@ def handle_login_session(json):
         # TODO: more bad sessionid handling?
         emit('login-result', {'authenticated': False}, broadcast=False)
     else:
-        user = User.get(int(sessionid.split('-')[0]))
-        do_login(user, session)
+        person = Person.get(int(sessionid.split('-')[0]))
+        do_login(person, session)
 
 
-stuff = {'users': {'class': User, 
-                   'tables': [User],
-                   'where': 'users.id in (%s)',
-                   'order_by': 'users.id'},
+stuff = {'persons': {'class': Person, 
+                   'tables': [Person],
+                   'where': 'persons.id in (%s)',
+                   'order_by': 'persons.id'},
          'files': {'class': File, 
                    'tables': [File, Membership],
-                   'where': 'files.id = memberships.room and memberships.user = ? and files.id in (%s)',
+                   'where': 'files.id = memberships.room and memberships.person = ? and files.id in (%s)',
                    'order_by': 'files.id'},
          'cards': {'class': Card, 
                    'tables': [Card, Membership],
-                   'where': 'cards.id = memberships.room and memberships.user = ? and cards.id in (%s)',
+                   'where': 'cards.id = memberships.room and memberships.person = ? and cards.id in (%s)',
                    'order_by': 'cards.id'},
          'rooms': {'class': Room, 
                    'tables': [Room, Membership],
-                   'where': 'rooms.id = memberships.room and memberships.user = ? and rooms.id in (%s)',
+                   'where': 'rooms.id = memberships.room and memberships.person = ? and rooms.id in (%s)',
                    'order_by': 'rooms.id'},
          'messages': {'class': Message, 
                       'tables': [Message, Membership],
-                      'where': 'messages.room = memberships.room and memberships.user = ? and messages.id in (%s)',
+                      'where': 'messages.room = memberships.room and memberships.person = ? and messages.id in (%s)',
                       'order_by': 'rooms.id'}}
 
 def send_stuff (room, **kwargs):
     kwargs['__protocol__'] = __protocol__
-    if 'users' in kwargs:
-        for user in [i for i in kwargs['users']]:
-           kwargs['users'][user]['online'] = scoreboard.user_online(user)
+    if 'persons' in kwargs:
+        for person in [i for i in kwargs['persons']]:
+           kwargs['persons'][person]['online'] = scoreboard.person_online(person)
     if type(room) == bool: # broadcast
         emit('stuff-list', kwargs, broadcast=room, namespace='/')
     else:
-        # send only to initiating user...
+        # send only to initiating person...
         emit('stuff-list', kwargs, to=room, namespace='/')
 
-@user_logged_in
+@person_logged_in
 @socketio.on('get-stuff')
 def handle_get_stuff(json):
-    user = scoreboard.get_user_from_sid(request.sid)
+    person = scoreboard.get_person_from_sid(request.sid)
     output = {}
     #print (json)
     for key, table in stuff.items():
         if key in json and len(json[key])>0:
             keys = []
-            if key == 'users':
+            if key == 'persons':
                 where = table['where'] % ','.join(['?' for i in json[key].keys()])
             else:
-                keys.append(user)
+                keys.append(person)
                 where = table['where'] % ','.join(['?' for i in json[key].keys()])
             extra_columns = stuff[key]['extra_columns'] if 'extra_columns' in stuff[key] else []
             keys += [*json[key].keys()] 
@@ -438,15 +438,15 @@ def handle_get_stuff(json):
             output[key] = { row.id:row.public_fields() for row in rows }
     send_stuff(request.sid, **output)
 
-@user_logged_in
+@person_logged_in
 @socketio.on('get-messages')
 @json_has_keys('room_id', 'before_id', 'count')
 def handle_get_messages(json):
-    user = scoreboard.get_user_from_sid(request.sid)
+    person = scoreboard.get_person_from_sid(request.sid)
     room = int(json['room_id'])
     output = {}
     membership = Membership.get_where(room = room,
-                                      user = user)
+                                      person = person)
     if membership:
         date   = int(json['before_id'])
         count  = int(json['count'])
@@ -468,15 +468,15 @@ def handle_get_messages(json):
                    room_id=room, 
                    messages=messages)
     
-@user_logged_in
+@person_logged_in
 @socketio.on('add-folder')
 @json_has_keys('parent_folder','name')
 def handle_add_folder(json):
-    user_id = scoreboard.get_user_from_sid(request.sid)
+    person_id = scoreboard.get_person_from_sid(request.sid)
     parent  = Folder.get(json['parent_folder'])
 
     folder  = Folder(name    = json['name'],
-                     owner   = user_id,
+                     owner   = person_id,
                      public  = parent.public if parent else True,
                      parent  = parent.id if parent else None)
 
@@ -486,18 +486,18 @@ def handle_add_folder(json):
 
 
 
-@user_logged_in
+@person_logged_in
 @socketio.on('get-folder')
 @json_has_keys('folder_id')
 def handle_get_folder(json):
-    user    = User.get(scoreboard.get_user_from_sid(request.sid))
-    files   = user.file_list(json['folder_id'])
-    folders = user.folder_list(json['folder_id'])
+    person    = Person.get(scoreboard.get_person_from_sid(request.sid))
+    files   = person.file_list(json['folder_id'])
+    folders = person.folder_list(json['folder_id'])
     send_stuff(request.sid, 
                files        = files, 
                folders      = folders)
 
-@user_logged_in
+@person_logged_in
 @socketio.on('delete-file')
 @json_has_keys('file_id')
 def handle_delete_file(json):
@@ -508,8 +508,8 @@ def handle_delete_file(json):
     if not file:
         emit('delete-file-result', {'error': "file doesn't exist"}, broadcast=False)
 
-    user_id = scoreboard.get_user_from_sid(request.sid)
-    membership = Membership.get_where(room=file.room, user=user_id)
+    person_id = scoreboard.get_person_from_sid(request.sid)
+    membership = Membership.get_where(room=file.room, person=person_id)
 
     if (not membership):       
         emit('delete-file-result', {'error': "no rights to delete"}, broadcast=False)
@@ -525,32 +525,32 @@ def handle_delete_file(json):
          room = 'room-'+str(file.room))
 
 
-@user_logged_in
-@socketio.on('send-bell-user')
-@json_has_keys('user')
-def handle_send_bell_user(json):
-    userid = json['user']
-    for sid in scoreboard.get_sids_from_user(userid):
+@person_logged_in
+@socketio.on('send-bell-person')
+@json_has_keys('person')
+def handle_send_bell_person(json):
+    personid = json['person']
+    for sid in scoreboard.get_sids_from_person(personid):
         emit('bell', {}, room = sid)
 
-@user_logged_in
+@person_logged_in
 @socketio.on('send-bell-room')
 @json_has_keys('room')
 def handle_send_bell_room(json):
-    emit('bell', {}, room = 'room-' +json['room'])
+    emit('bell', {}, room = f"room-{json['room']}")
 
-@user_logged_in
+@person_logged_in
 @socketio.on('have-read')
 @json_has_keys('room', 'last')
 def handle_have_read(json):
-    user = scoreboard.get_user_from_sid(request.sid)
-    membership = Membership.get_where(room = json['room'], user=user)
+    person = scoreboard.get_person_from_sid(request.sid)
+    membership = Membership.get_where(room = json['room'], person=person)
     if membership:
         #print(f"last seen: id:{membership.id} last:{json['last']}")
         membership.last_seen = json['last']
         membership.save()
         membership.commit()
-        for sid in scoreboard.get_sids_from_user(user):
+        for sid in scoreboard.get_sids_from_person(person):
             emit('has-read',
                  {'room': membership.room,
                   'last': json['last']},
@@ -560,23 +560,23 @@ def handle_have_read(json):
 
 
 
-@user_logged_in
+@person_logged_in
 @socketio.on('start-chat')
-@json_has_keys('users')
+@json_has_keys('persons')
 def handle_start_chat(json):
-    user         = scoreboard.get_user_from_sid(request.sid)
-    room         = Room.get_or_set_chat(user, json['users'])
-    online_users = scoreboard.online_users();
-    for member in json['users']:
-        sids = scoreboard.get_sids_from_user(member)
-        if user == member:
+    person         = scoreboard.get_person_from_sid(request.sid)
+    room         = Room.get_or_set_chat(person, json['persons'])
+    online_persons = scoreboard.online_persons();
+    for member in json['persons']:
+        sids = scoreboard.get_sids_from_person(member)
+        if person == member:
             for sid in sids:
                 join_room('room-'+str(room.id),
                           sid=sid)
             emit('goto_chat', 
                  {'room': room.public_fields()},
                  broadcast=False)
-        elif member in online_users:
+        elif member in online_persons:
             for sid in sids:
                 join_room('room-'+str(room.id), 
                           sid=sid)
@@ -584,15 +584,15 @@ def handle_start_chat(json):
                      {'room': room.public_fields()}, 
                      room=sid)
 
-# user has uploaded a message
-@user_logged_in
+# person has uploaded a message
+@person_logged_in
 @socketio.on('message')
 @json_has_keys('room', 'message')
 def handle_message(json):
     #print("message: sid="+str(request.sid))
-    user = scoreboard.get_user_from_sid(request.sid)
+    person = scoreboard.get_person_from_sid(request.sid)
     room = json['room']
-    message = Message(user    = user, 
+    message = Message(person    = person, 
                       room    = room, 
                       message = json['message'])
     message.save()
@@ -601,14 +601,14 @@ def handle_message(json):
     emit('stuff-list', {'messages': [ message.public_fields() ]}, 
          room = 'room-'+str(room))
 
-@user_logged_in
+@person_logged_in
 @socketio.on('card-toggle-lock')
 @json_has_keys('card_id')
 def handle_card_toggle_lock(json):
-    user = User.get(scoreboard.get_user_from_sid(request.sid))
+    person = Person.get(scoreboard.get_person_from_sid(request.sid))
     card = Card.get(json['card_id'])
     state = json['state']
-    if card and user and (card.owner == user.id or user.id == 1):
+    if card and person and (card.owner == person.id or person.id == 1):
         if state == 'locked' and card.locked == True:
             card.locked = False
             card.save()
@@ -621,12 +621,12 @@ def handle_card_toggle_lock(json):
 
 
 
-# user has submitted a card
-@user_logged_in
+# person has submitted a card
+@person_logged_in
 @socketio.on('edit-card')
 @json_has_keys('title', 'content', 'locked')
 def handle_edit_card(json):
-    user = scoreboard.get_user_from_sid(request.sid)
+    person = scoreboard.get_person_from_sid(request.sid)
     if 'id' in json:
         card          = Card.get(int(json['id']))
         if card:
@@ -634,14 +634,14 @@ def handle_edit_card(json):
                 diff = '\n'.join(differ.compare(json['content'].split('\n'),
                                                 card.contents.split('\n')))
                 
-                edit = Card_Edit(editor=user, diff=diff)
+                edit = Card_Edit(editor=person, diff=diff)
                 edit.save()
                 edit.commit()
             card.title    = json['title']
             card.contents = json['content']
             card.locked   = json['locked']
     else:
-        card = Card(owner     = user, 
+        card = Card(owner     = person, 
                     contents  = json['content'],
                     locked    = json['locked'],
                     title     = json['title'])
@@ -661,29 +661,29 @@ def handle_edit_card(json):
 
 
 
-@user_logged_in
-@socketio.on('invite-new-user')
+@person_logged_in
+@socketio.on('invite-new-person')
 @json_has_keys('password', 'email', 'handle', 'message')
-def handle_new_user(json):
+def handle_new_person(json):
     status     = 1
-    status_msg = 'User Successfully Created'
+    status_msg = 'Person Successfully Created'
 
-    user  = User(email=json['email'], 
-                 handle=json['handle'],
-                 portrait=config['default_portrait'])
+    person  = Person(email=json['email'], 
+                   handle=json['handle'],
+                   portrait=config['default_portrait'])
 
     if json['password'] != '':
-        user.set_password(json['password'])
+        person.set_password(json['password'])
     else:
-        user.password = str(int.from_bytes(os.urandom(32),'big'))
+        person.password = str(int.from_bytes(os.urandom(32),'big'))
     
     try:
-        user.save()
-        user.join_public()
-        token      = Session.make_token(user)
+        person.save()
+        person.join_public()
+        token      = Session.make_token(person)
         url        = Session.make_token_url(token, config['site_url'])
         session    = Session(sessionid=token,
-                             user = user.id)
+                             person = person.id)
         session.save()
         session.commit()
     except Exception as e:
@@ -693,10 +693,10 @@ def handle_new_user(json):
                 'url': url,
                 'status': status,
                 'status_msg': status_msg,
-                'users': {user.id:user.public_fields()}}
+                'persons': {person.id:person.public_fields()}}
     emit('invite-result', response, broadcast=False);
 
-@user_logged_in
+@person_logged_in
 @socketio.on('search-query')
 @json_has_keys('query')
 def handle_search(json):
@@ -706,11 +706,11 @@ def handle_search(json):
     print(results)
     emit('search-result', results)
 
-@user_logged_in
+@person_logged_in
 @socketio.on('settings')
 def handle_settings(json):
-    user_id = scoreboard.get_user_from_sid(request.sid)
-    user = User.get(user_id)
+    person_id = scoreboard.get_person_from_sid(request.sid)
+    person = Person.get(person_id)
     status_msg = "Settings Updated."
     status_code = 1
     #print('settings: ')
@@ -720,37 +720,37 @@ def handle_settings(json):
         #print(val)
         if key == 'email':
             #print("setting email")
-            user.email = val
+            person.email = val
         if key == 'handle':
             #print("setting handle")
-            user.handle = val
+            person.handle = val
         if key == 'new-password':
             #print("setting password")
-            if user.pwhash:
+            if person.pwhash:
                 if not 'old-password' in json:
                     status_msg = 'Must use have correct old password to change to a new one.'
                     status_code = 0
-                elif not user.verify_password(json['old-password']):
+                elif not person.verify_password(json['old-password']):
                     status_code = 0
                     status_msg = 'Old password was incorrect, new password not set.'
                 else:
-                    user.set_password(val)
+                    person.set_password(val)
             else:
-                user.set_password(val)
+                person.set_password(val)
         if key == 'about':
             #print("setting handle")
-            user.about = val
+            person.about = val
     if status_code == 1:
         #print("saving settings")
-        send_user(user, True)
-        user.save()
-        user.commit()
+        send_person(person, True)
+        person.save()
+        person.commit()
 
-    # it's a new user who used a token link.
+    # it's a new person who used a token link.
     if 'no-status' in json:
-        session = Session.raw_select(f"sessionid like '{user.id}-token-%' and user = :user_id",
-                                     {'user_id': user.id})[0]
-        session.sessionid = Session.make_sessionid(user)
+        session = Session.raw_select(f"sessionid like '{person.id}-token-%' and person = :person_id",
+                                     {'person_id': person.id})[0]
+        session.sessionid = Session.make_sessionid(person)
         session.save()
         session.commit()
         emit('password-set', 

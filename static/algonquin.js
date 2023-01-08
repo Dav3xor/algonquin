@@ -55,7 +55,7 @@ class Tabs {
 class Invite {
   constructor() { 
   }
-  create_user() {
+  create_person() {
     var email      = $('#invite-email').val();
     var password   = $('#invite-password').val();
     var message    = $('#invite-message').val();
@@ -67,12 +67,12 @@ class Invite {
                    handle: handle,
                    send_email: send_email};
 
-    socket.emit('invite-new-user', message);
-    $('#add-user').prop('disabled', true);
+    socket.emit('invite-new-person', message);
+    $('#add-person').prop('disabled', true);
   }
   allow_submission() {
     $('#invite-result').addClass('d-none'); 
-    $('#add-user').prop('disabled', false);
+    $('#add-person').prop('disabled', false);
   }
 }
 
@@ -389,7 +389,7 @@ class People {
     }
 
     if (! this.people.hasOwnProperty(id)) {
-      getter.add('users', id);
+      getter.add('persons', id);
       return null;
     } else {
       return this.people[id];
@@ -461,7 +461,7 @@ class People {
                      ${icons.chat_bubble}
                    </button>
                    <button class="btn btn-success btn-danger btn-sm" 
-                           onclick="send_bell_user(${person.id});" 
+                           onclick="send_bell_person(${person.id});" 
                            id="start-chat-${person.id}" type="button">
                      ${icons.bell}
                    </button>`;
@@ -575,7 +575,7 @@ class Search {
                           ${icons.card}
                         </button>`;
           break;
-        case 'users':
+        case 'persons':
           var person = people.get_person(result.row_id);
           var type   = `<button onclick='people.goto(${result.row_id});'
                                 class='btn btn-success btn-sm' 
@@ -1067,8 +1067,8 @@ class Messages {
   reset() {
     this.top_side    = 0;
     this.bottom_side = 0;
-    this.top_user    = 0;
-    this.bottom_user = -1;
+    this.top_person    = 0;
+    this.bottom_person = -1;
     this.top_id      = 0;
     this.bottom_id   = 0;
   }
@@ -1241,7 +1241,7 @@ class Messages {
                   </button>`;
           break;
         case 'audio':
-          var button_id = `msg-play-${this.cur_room}-${file.id}`;
+          var button_id = `msg-play-${rooms.get_cur_room()}-${file.id}`;
           return `<span class="badge badge-dark">
                     <button class="btn btn-info btn-sm" 
                             onclick="jukebox.play_pause('${button_id}', '/files/${file.localname}');">
@@ -1270,7 +1270,7 @@ class Messages {
   }
 
   expand_tildes(text) {
-    // TODO: add handling for ~user1~, etc...
+    // TODO: add handling for ~person1~, etc...
     var inline_files    = text.match(/~file(\d+)~/gm);
     var inline_cards    = text.match(/~card(\d+)~/gm);
     var inline_persons  = text.match(/~person(\d+)~/gm);
@@ -1351,24 +1351,24 @@ class Messages {
     }
   }
 
-  render_msg_footer(message, user, float) {
-    if(user) {
-      var username = this.bottom_side % 2 ? `<b class="text-white">${user.handle}</b> ${message.written}` :
-                                     `${message.written} <b class="text-white">${user.handle}</b>`;
+  render_msg_footer(message, person, float) {
+    if(person) {
+      var personname = this.bottom_side % 2 ? `<b class="text-white">${person.handle}</b> ${message.written}` :
+                                     `${message.written} <b class="text-white">${person.handle}</b>`;
     } else {
-      var username = "unknown";
+      var personname = "unknown";
     }
     return `<div class="row" id="msg-footer-${message.id}">
                     <div class="col-12${float} small-font-size">
                       <small>
-                        ${username}
+                        ${personname}
                       </small>
                     </div>
                   </div>`;
   }
 
   render_msg_portrait(message, portrait) {
-    return `<div class="col-1" id="user-info-${message.id}">
+    return `<div class="col-1" id="person-info-${message.id}">
               <img src="/portraits/${portrait}" class="img-fluid portrait" />
             </div>`;
   }
@@ -1388,7 +1388,7 @@ class Messages {
   }
 
   render_message(message, above) {
-    var user          = people.get_person(message.user);
+    var person          = people.get_person(message.person);
     var portrait      = "default.png";
     var handle        = "loading...";
     var switched_side = false;
@@ -1397,26 +1397,26 @@ class Messages {
     var side          = 0;
 
 
-    if(user) {
-      portrait = user.portrait;
-      handle   = user.handle;
+    if(person) {
+      portrait = person.portrait;
+      handle   = person.handle;
     } else {
-      console.log("???? "+message.user);
+      console.log("???? "+message.person);
     }
 
     if ((oldest) && (message.id < oldest)) {
       // backfill
-      if (this.top_user != message.user) {
+      if (this.top_person != message.person) {
         if(this.top_side > 0) {
           switched_side  = true;
         }
         this.top_side += 1;
-        this.top_user  = message.user;
+        this.top_person  = message.person;
       }
       backfill = true;
       side     = this.top_side;
     } else {
-      if (this.bottom_user != message.user) {
+      if (this.bottom_person != message.person) {
         this.bottom_side   += 1;
         switched_side       = true;
       } else if (this.prev_msg != null) {
@@ -1428,21 +1428,21 @@ class Messages {
     var empty    = `<div class="col-sm-1"></div>`;
     var classes   = "default-bubble";
     var float     = "";
-    var user_info = "";
+    var person_info = "";
     var footer = "";
 
     if(!(side % 2)) {
       float = " text-right";
       if((!backfill) || ((backfill) && (switched_side))) {
         classes += " tri-right btm-right-in";
-        user_info = this.render_msg_portrait(message, portrait);
-        footer = this.render_msg_footer(message, user, float); 
+        person_info = this.render_msg_portrait(message, portrait);
+        footer = this.render_msg_footer(message, person, float); 
       }
     } else {
       if((!backfill) || ((backfill) && (switched_side))) {
         classes += " tri-right btm-left-in";
-        user_info = this.render_msg_portrait(message, portrait);
-        footer = this.render_msg_footer(message, user, float); 
+        person_info = this.render_msg_portrait(message, portrait);
+        footer = this.render_msg_footer(message, person, float); 
       }
     }
 
@@ -1450,13 +1450,13 @@ class Messages {
 
     var output = "";
     if(side % 2) {
-      output = user_info + contents + empty;
+      output = person_info + contents + empty;
     } else {
-      output = empty + contents + user_info;
+      output = empty + contents + person_info;
     }
     
-    if((!(switched_side))&&(!(backfill))&&(this.bottom_user != -1)) {
-      $(`#user-info-${this.prev_msg}`).remove();
+    if((!(switched_side))&&(!(backfill))&&(this.bottom_person != -1)) {
+      $(`#person-info-${this.prev_msg}`).remove();
       $(`#msg-footer-${this.prev_msg}`).remove();
       $(`#msg-${message.room}-${this.prev_msg}`).parent().removeClass('col-10');
       $(`#msg-${message.room}-${this.prev_msg}`).parent().addClass('col-11');
@@ -1480,7 +1480,7 @@ class Messages {
    
     if(!(backfill)) {
       this.prev_msg    = message.id;
-      this.bottom_user = message.user;
+      this.bottom_person = message.person;
     }
 
 
@@ -1599,7 +1599,7 @@ class Getter {
     //console.log(stuff);
     var update_messages = false;
     var update_files = false;
-    var update_users = false;
+    var update_persons = false;
     var update_rooms = false;
     var update_cards = false;
 
@@ -1619,13 +1619,13 @@ class Getter {
       set_status(status);
     }
 
-    if ('users' in stuff) {
-      for(var user in stuff['users']) {
-        people.set_person(stuff['users'][user])
+    if ('persons' in stuff) {
+      for(var person in stuff['persons']) {
+        people.set_person(stuff['persons'][person])
       }
       update_messages = true;
       update_files = true;
-      update_users = true;
+      update_persons = true;
     }
 
     if ('files' in stuff) {
@@ -1691,7 +1691,7 @@ class Getter {
       files.render();
     }
 
-    if(update_users) {
+    if(update_persons) {
       people.render();
     }
 
@@ -1705,7 +1705,7 @@ class Getter {
   }
 
   reset() {
-    this.unknown = {'users': {},
+    this.unknown = {'persons': {},
                     'files': {},
                     'messages': {},
                     'cards': {},
@@ -2610,15 +2610,15 @@ function send_login_email() {
 }
 
 function start_chat(ids) {
-  socket.emit('start-chat', {users:ids});
+  socket.emit('start-chat', {persons:ids});
 }
 
-function send_bell_user(userid) {
-  socket.emit('send-bell-user', {user:userid});
+function send_bell_person(personid) {
+  socket.emit('send-bell-person', {person:personid});
 }
 
 function send_bell_room() {
-  socket.emit('send-bell-room', {room:messages.cur_room});
+  socket.emit('send-bell-room', {room:rooms.get_cur_room().id});
 }
 
 function send_message() {
@@ -2693,7 +2693,7 @@ function drop_handler(ev) {
 }
 
 function dragstart_handler(ev) {
-  // TODO: allow user to drag things out of the window...
+  // TODO: allow person to drag things out of the window...
   //alert('hi!');
   ev.dataTransfer.setData("text/plain", ev.target.id);
 }
@@ -2733,12 +2733,12 @@ $('#messages').scroll(function() {
   }
 });
 
-$('#new-user-ok').click(function() {
-  $('#new-user').modal('hide');
+$('#new-person-ok').click(function() {
+  $('#new-person').modal('hide');
   $('#navbar').removeClass('d-none');
   $('#footer').removeClass('d-none');
   $('#contents').removeClass('d-none');
-  var entered_password = $('#new-user-password').val();
+  var entered_password = $('#new-person-password').val();
   if (entered_password.length > 0) {
     settings.set_new_password(entered_password);
   }
@@ -2777,10 +2777,10 @@ socket.on('bell', data => {
 
 socket.on('login-result', data => {
   if(data.authenticated) {
-    people.set_this_person(data.userid);
+    people.set_this_person(data.personid);
     getter.handle_stuff(data);
     if(url_parameters.has('token')) {
-      // if it's a new user logging in, remove the arguments from the url
+      // if it's a new person logging in, remove the arguments from the url
       window.history.pushState({}, '', '/');
     }
     $('#login').modal('hide');
@@ -2788,16 +2788,16 @@ socket.on('login-result', data => {
     if ('sessionid' in data) {
       cookie.write('sessionid', data.sessionid, 365);
     }
-    if ('new-user' in data) {
+    if ('new-person' in data) {
 
       var person = people.get_this_person();
       $('#welcome-message').html(`Welcome ${person.handle}!`);
-      $('#new-user').modal('show');
-      $('#new-user-password').keyup(function () {
-        regulate_password('#new-user-password', '#new-user-password2', '#new-user-ok')
+      $('#new-person').modal('show');
+      $('#new-person-password').keyup(function () {
+        regulate_password('#new-person-password', '#new-person-password2', '#new-person-ok')
       });
-      $('#new-user-password2').keyup(function () {
-        regulate_password('#new-user-password', '#new-user-password2', '#new-user-ok')
+      $('#new-person-password2').keyup(function () {
+        regulate_password('#new-person-password', '#new-person-password2', '#new-person-ok')
       });
 
     } else {
@@ -2885,9 +2885,9 @@ socket.on('file-uploaded', data => {
   for(file in data.files) {
     file = data.files[file];
     if('portrait' in data) {
-      $('#portrait-image').attr('src', '/portraits/' + data.user.portrait);
-      $('#you-image').attr('src', '/portraits/' + data.user.portrait);
-      people.set_person(data.user);
+      $('#portrait-image').attr('src', '/portraits/' + data.person.portrait);
+      $('#you-image').attr('src', '/portraits/' + data.person.portrait);
+      people.set_person(data.person);
     } else if(cards.editor_open() == true) {
       cards.add_file(file.id);
     } else { 

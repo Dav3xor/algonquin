@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/static/algonquin.css">
     <link rel="stylesheet" href="/static/datatables.min.css">
     <link id="favicon" rel="icon" href="/static/favicon.svg" color="red">
+    <link rel="manifest" href="/static/manifest.json" />
 
     <title>{{ config.site_name }}</title>
   </head>
@@ -18,6 +19,10 @@
     <script>
       var __protocol__ = {{ config.protocol }};
       var __chunk_size__ = {{ config.chunk_size }};
+      
+      if (typeof navigator.serviceWorker !== 'undefined') {
+        navigator.serviceWorker.register('/static/sw.js')
+      }
     </script>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark d-none fixed-top" id="navbar">
       <a class="navbar-brand" href="#">
@@ -107,7 +112,7 @@
       </form>
     </div>
 
-    <div id="new-user" class="modal" data-keyboard="false" 
+    <div id="new-person" class="modal" data-keyboard="false" 
          data-backdrop="static" tabindex="-1">
       <div class="modal-dialog modal-light">
         <div class="modal-content">
@@ -130,14 +135,14 @@
             <form "form-inline" onsubmit="return false;">
               <div class="form-group">
                 <label for="new-password">Password:</label>
-                <input type="password" class="form-control" name="new-user-password" id="new-user-password" placeholder="Password" required>
+                <input type="password" class="form-control" name="new-person-password" id="new-person-password" placeholder="Password" required>
               </div>
               <div class="form-group">
                 <label for="new-password">Confirm Password:</label>
-                <input type="password" class="form-control" name="new-user-password2" id="new-user-password2" placeholder="Password" required>
+                <input type="password" class="form-control" name="new-person-password2" id="new-person-password2" placeholder="Password" required>
               </div>
               <div class="pb-2">
-                <button id="new-user-ok" type="button" class="btn btn-success btn-sm" disabled>Ok</button>
+                <button id="new-person-ok" type="button" class="btn btn-success btn-sm" disabled>Ok</button>
               </div>
             </form>
             <div class="modal-footer">
@@ -371,7 +376,7 @@
             <h1>Algonquin Chat:</h1>
             <p>
               Algonquin is a chat communication system with wiki-like features, allowing 
-              interconnection of user supplied content. It's designed to be user focused,
+              interconnection of your supplied content. It's designed to be community focused,
               in that it doesn't modify uploaded content, and is not supplied as a service,
               you need to run your own server/instance of the software.  
             </p>
@@ -389,7 +394,7 @@
             <div>
               <address>
                 <strong>Algonquin / David Case</strong><br>
-                901 6th Street SW #312A<br>
+                901 SW 6th Street #312A<br>
                 Washington, DC 20024<br>
                 <abbr title="Phone">Phone:</abbr> (971) 400-3715
               </address>
@@ -513,15 +518,15 @@
                 <input autocomplete="new-password" type="password" 
                        oninput="invite.allow_submission();"
                        class="form-control" name="invite-password" id="invite-password">
-                <div><b>Note:</b> You can leave the password blank, and the user can enter it in later.</div>
+                <div><b>Note:</b> You can leave the password blank, and you can enter it in later.</div>
               </div>
               <div class="form-check">
                 <input type="checkbox" class="form-check-input" id="invite-send-email">
                 <label class="form-check-label" for="send-email">Send Email Invite</label>
               </div>
               <div class="pb-2">
-                <button onclick="invite.create_user();" 
-                        type="button" id="add-user" 
+                <button onclick="invite.create_person();" 
+                        type="button" id="add-person" 
                         class="btn btn-success btn-lg" disabled>
                   Add User
                 </button>
