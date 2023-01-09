@@ -26,7 +26,8 @@
   ],
   "icons": [
     {
-      "src": "/static/icon.png"
+      "src": "/static/icon.png",
+      "sizes": "any"
     }
   ],
   "shortcuts": []
