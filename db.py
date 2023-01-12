@@ -101,6 +101,8 @@ class DBTable:
     insert_stmt          = "INSERT INTO %s(%s) VALUES(%s)"
     select_stmt          = "SELECT %s FROM %s WHERE %s"
     select_distinct_stmt = "SELECT distinct %s FROM %s WHERE %s"
+    select_first_stmt    = "SELECT %s FROM %s ORDER BY id LIMIT 1"
+    select_last_stmt     = "SELECT %s FROM %s ORDER BY id DESC LIMIT 1"
     update_stmt          = "UPDATE %s SET %s WHERE %s"
     create_stmt          = "CREATE TABLE IF NOT EXISTS %s (%s)"
     create_fts_stmt      = "CREATE VIRTUAL TABLE IF NOT EXISTS %s USING fts5(id, %s)"
@@ -251,6 +253,16 @@ class DBTable:
     def get_where(cls, **kwargs):
         columns = [i for i in cls.attrs if 'relative' not in cls.attrs[i]]
         values  = DBTable.select_one(cls.table_name, columns, **kwargs)
+        if values:
+            return cls(**dict(zip(columns, values)))
+        else:
+            return None
+
+    @classmethod
+    def last(cls):
+        columns = [i for i in cls.attrs if 'relative' not in cls.attrs[i]]
+        stmt    = DBTable.select_last_stmt % (','.join(columns), cls.table_name)
+        values  = DBTable.cursor.execute(stmt).fetchone()
         if values:
             return cls(**dict(zip(columns, values)))
         else:

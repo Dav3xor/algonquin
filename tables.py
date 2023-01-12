@@ -286,6 +286,7 @@ class Message(db.DBTable):
              'room':      {'type': 'INTEGER NOT NULL',
                            'fkey': ['room', 'id', 'Room', 'messages']},
              'written':   {'type': "TIMESTAMP DATETIME DEFAULT (datetime('now', 'localtime'))"},
+             'left':      { 'type': 'BOOL'},    # print message on the left if true
              'message':   {'type': 'TEXT', 
                            'searchable': True,
                            'xss-filter': True}}

@@ -97,7 +97,7 @@ async function upload_file(file, url, room_id=null, folder_id=null) {
       form.append('filename',file.name);
       set_status(`${ file.name }: Done!`, 5000)
     } else {
-      set_status(`${ file.name }: ${ parseInt((start/file.size)*100) }%`, 2000)
+      set_status(`${ file.name }: ${ parseInt((start/file.size)*100) }%`, 5000)
     }
     await fetch(url, { method: 'post', 
                        body: form }).then(res => res.text());
@@ -1067,10 +1067,6 @@ class Messages {
   reset() {
     this.top_side    = 0;
     this.bottom_side = 0;
-    this.top_person    = 0;
-    this.bottom_person = -1;
-    this.top_id      = 0;
-    this.bottom_id   = 0;
   }
 
   constructor() {
@@ -1394,7 +1390,7 @@ class Messages {
     var switched_side = false;
     var oldest        = rooms.oldest_msg(message.room);
     var backfill      = false;
-    var side          = 0;
+    var side          = message.left ? 1:0;
 
 
     if(person) {
@@ -1406,18 +1402,14 @@ class Messages {
 
     if ((oldest) && (message.id < oldest)) {
       // backfill
-      if (this.top_person != message.person) {
-        if(this.top_side > 0) {
-          switched_side  = true;
-        }
-        this.top_side += 1;
-        this.top_person  = message.person;
+      if (this.top_side != side) {
+        switched_side = true;
+        this.top_side = side;
       }
       backfill = true;
-      side     = this.top_side;
     } else {
-      if (this.bottom_person != message.person) {
-        this.bottom_side   += 1;
+      if (this.bottom_side != side) {
+        this.bottom_side    = side;
         switched_side       = true;
       } else if (this.prev_msg != null) {
         $(`#msg-${message.room}-${this.prev_msg}`).removeClass('tri-right btm-right-in');

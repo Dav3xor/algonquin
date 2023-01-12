@@ -590,11 +590,20 @@ def handle_start_chat(json):
 @json_has_keys('room', 'message')
 def handle_message(json):
     #print("message: sid="+str(request.sid))
-    person = scoreboard.get_person_from_sid(request.sid)
+
+    previous = Message.last()
+    person   = scoreboard.get_person_from_sid(request.sid)
+
     room = json['room']
     message = Message(person    = person, 
                       room    = room, 
                       message = json['message'])
+    print(f"{previous} - {previous.person} - {person} - {previous.data}")
+    if previous and previous.person == person:
+        message.left = previous.left
+    else:
+        message.left = not previous.left
+
     message.save()
     message.commit()
     message = Message.get(message.id)
