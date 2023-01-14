@@ -1065,8 +1065,9 @@ class Rooms {
   
 class Messages {
   reset() {
-    this.top_side    = 0;
-    this.bottom_side = 0;
+    this.top_side      = 0;
+    this.bottom_side   = 0;
+    this.bottom_person = -1;
   }
 
   constructor() {
@@ -1384,14 +1385,13 @@ class Messages {
   }
 
   render_message(message, above) {
-    var person          = people.get_person(message.person);
+    var person        = people.get_person(message.person);
     var portrait      = "default.png";
     var handle        = "loading...";
     var switched_side = false;
     var oldest        = rooms.oldest_msg(message.room);
     var backfill      = false;
     var side          = message.left ? 1:0;
-
 
     if(person) {
       portrait = person.portrait;
