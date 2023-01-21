@@ -2,6 +2,51 @@ function qsv(selector) {
   return document.querySelector(selector).value;
 }
 
+class Picker {
+  constructor() {
+    this.items = [];
+    this.selection = "";
+  }
+  
+  set_items(new_items) {
+    this.items = new_items;
+    this.update_list();
+  }
+
+  add_letter(letter) {
+    this.selection += letter.toLowerCase();
+    this.update_list();
+  }
+
+
+  update_list() {
+    //$('#select-list').empty();
+    for (var index in this.items) {
+      var item = this.items[index];
+      if((this.selection = "") || (item.indexOf(this.selection) != -1)) {
+        var list_id  = `#select-list`;
+        var item_id = `select-list-${index}`;
+        $(list_id).append(`<button class="list-group-item" id="${item_id}" 
+            onmouseover="$('#${item_id}').addClass('active');"
+            onmouseout="$('#${item_id}').removeClass('active');"
+            onclick="console.log('click ${item}');">
+          ${item}
+        </button>`);
+      }
+    }
+  }
+}
+
+
+
+
+    
+    
+
+
+
+
+
 class Tabs {
   constructor(tab) {
     $('#'+tab).removeClass('d-none'); 
@@ -395,7 +440,14 @@ class People {
       return this.people[id];
     }
   }
-   
+
+  get_handles() {
+    var handles = [];
+    for(var person in this.people) {
+      handles.push(this.people[person].handle);
+    }
+    return handles;
+  }
 
   get_this_person() {
     return this.get_person(this.this_person);
@@ -1078,7 +1130,12 @@ class Messages {
     this.label            = "messages"
 
 
-    $("#new-message").keyup(function(event) {
+  $("#new-message").keyup(function(event) {
+      if (event.key === '@') {
+        picker.set_items(people.get_handles());
+        console.log("picker");
+      }
+
       if (event.keyCode === 13) {
         if (!event.shiftKey) {
           $("#send-message").click();
@@ -1101,6 +1158,8 @@ class Messages {
     this.messages = {};
     this.render();
   }
+
+
 
   input_small() {
       $('#new-message').prop('rows', 1);
@@ -2520,6 +2579,7 @@ var rooms     = new Rooms();
 var cards     = new Cards();
 var people    = new People();
 var files     = new Files(__chunk_size__);
+var picker    = new Picker();
 var invite    = new Invite();
 var settings  = new Settings();
 var jukebox   = new Jukebox();
