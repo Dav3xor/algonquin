@@ -6,6 +6,7 @@ class Picker {
   constructor() {
     this.items = [];
     this.selection = "";
+    this.list_id  = `#select-list`;
   }
   
   set_items(new_items) {
@@ -13,24 +14,52 @@ class Picker {
     this.update_list();
   }
 
-  add_letter(letter) {
-    this.selection += letter.toLowerCase();
-    this.update_list();
+  close() {
+    this.items = [];
+    $(this.list_id).empty();
   }
 
+  pick_top() {
+    top = this.items[0];
+    this.close();
+    return top;
+  }
+
+  sort(input) {
+    console.log('sort');
+    for(var i in this.items) {
+      var start     = 0;
+      var score     = 0.0;
+      for (var j in input) {
+        var substring = this.items[i].string.substring(start);
+        var loc       = substring.indexOf(input[j]);
+        if(loc != -1) {
+          score += 1.0 / loc+1;
+          start += loc;
+        }
+      }
+      this.items[i].score = score;
+    }
+    this.items.sort(function(a,b) {
+      return ((a.score > b.score) ? -1 : ((a.score < b.score) ? 1: 0));
+      });
+  }
 
   update_list() {
-    //$('#select-list').empty();
+    $('#select-list').empty();
     for (var index in this.items) {
-      var item = this.items[index];
-      if((this.selection = "") || (item.indexOf(this.selection) != -1)) {
-        var list_id  = `#select-list`;
+      var item     = this.items[index];
+      if((this.selection = "") || (item.string.indexOf(this.selection) != -1)) {
         var item_id = `select-list-${index}`;
-        $(list_id).append(`<button class="list-group-item" id="${item_id}" 
-            onmouseover="$('#${item_id}').addClass('active');"
-            onmouseout="$('#${item_id}').removeClass('active');"
-            onclick="console.log('click ${item}');">
-          ${item}
+        var active   = ' active';
+
+        if (index != 0) {
+          active = '';
+        }
+
+        $(this.list_id).append(`<button class="button-light button-sm${active}" id="${item_id}" 
+            onclick="console.log('click ${item.string}');">
+          ${item.string}
         </button>`);
       }
     }
@@ -444,7 +473,9 @@ class People {
   get_handles() {
     var handles = [];
     for(var person in this.people) {
-      handles.push(this.people[person].handle);
+      person = this.people[person];
+      handles.push({ 'string': person.handle,
+                     'id':     person.id});
     }
     return handles;
   }
@@ -1128,21 +1159,66 @@ class Messages {
     this.expanded_input   = false;
     this.handling_unread  = false;
     this.label            = "messages"
-
+    this.picker_state     = null;
+    this.picker_start     = 0;
 
   $("#new-message").keyup(function(event) {
-      if (event.key === '@') {
-        picker.set_items(people.get_handles());
-        console.log("picker");
+      var cursor_pos   = $('#new-message').prop("selectionStart"); 
+      if(this.picker_state == null) {
+        switch(event.key) {
+          case '@':
+            picker.set_items(people.get_handles());
+            this.picker_state = 'user';
+            this.picker_start = cursor_pos;
+            console.log("user picker");
+            break;
+          case '#':
+            this.picker_state = 'room';
+            console.log("room picker");
+            break;
+          case '%':
+            this.picker_state = 'file';
+            console.log("file/folder picker");
+            break;
+        }
+      } else {
+        // we are currently in picker mode...
+
+        // kill the picker if the cursor moves behind the @/#/%...
+        if(cursor_pos < this.picker_start) {
+          picker.close();
+          this.picker_state = null;
+        }
+
+        switch(event.key) {
+          case 'Escape':
+            console.log("escape");
+            picker.close();
+            this.picker_state = null;
+            break;
+          case 'Tab':
+            console.log("tab");
+            picker.pick_top();
+            this.picker_state = null;
+            break;
+          default:
+            var substring = $('#new-message').val().substring(this.picker_start);
+            picker.sort(substring);
+            picker.update_list();
+            break;
+        }
       }
+
+
+
 
       if (event.keyCode === 13) {
         if (!event.shiftKey) {
           $("#send-message").click();
           // TODO: this seems dumb, fix
-          messages.input_small();
+          this.input_small();
         } else {
-          messages.input_large();
+          this.input_large();
         }
       }
     });
