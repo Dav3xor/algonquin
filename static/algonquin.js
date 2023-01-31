@@ -69,7 +69,9 @@ class Picker {
         }
 
         $(this.list_id).append(`<button class="btn btn-light btn-sm${active}" id="${item_id}" 
-            onclick="picker.finish(${item.id});">
+            onclick="picker.finish(${item.id});"
+            onmouseover="$('#${item_id}').removeClass('disabled');"
+            onmouseout="$('#${item_id}').addClass('disabled');">
           ${item.string}
         </button>`);
       }
@@ -1174,7 +1176,6 @@ class Messages {
     this.picker_start     = 0;
 
     $('#footer').on('keydown','#new-message', function(event) {
-      console.log("tab");
       if ((event.key == 'Tab')&&(messages.picker_state != null)) {
         picker.finish(picker.pick_top().id);
         messages.set_picker(null, 0);
@@ -1183,9 +1184,7 @@ class Messages {
 
     $("#new-message").keyup(function(event) {
         var cursor_pos   = $('#new-message').prop("selectionStart"); 
-        console.log(messages.picker_state);
         if(messages.picker_state == null) {
-          console.log("xxx");
           switch(event.key) {
             case '@':
               picker.set_items(people.get_handles(), function(id) {
@@ -1194,11 +1193,8 @@ class Messages {
                 var start       = text.substring(0, cursor_pos-1);
                 var end         = text.substring(last_pos);
                 var replacement = `~person${id}~`;
-                console.log(text);
                 text            = `${start}${replacement}${end}`;
-                console.log(text);
                 $('#new-message').val(text);
-                console.log(`loc: ${cursor_pos} ${replacement.length}`);
                 setTimeout(function() { 
                   $('#new-message').focus(); 
                   $('#new-message')[0].setSelectionRange(cursor_pos+replacement.length, 
@@ -1231,16 +1227,19 @@ class Messages {
 
           switch(event.key) {
             case 'Escape':
-              console.log("escape");
               picker.close();
               messages.set_picker(null, 0);
               break;
+            case 'Enter':
+              picker.finish(picker.pick_top().id);
+              messages.set_picker(null, 0);
+              break;
             default:
-              console.log('rrr');
               var substring = $('#new-message').val().substring(this.picker_start);
               picker.sort(substring);
               picker.update_list();
               break;
+
           }
         }
 
@@ -1555,7 +1554,11 @@ class Messages {
 
 
   render_dragon() {
-    $('#messages').append(`<div id='dragon' class="row"><div class="col-12" style="height:600px;">${icons.dragon}</div></div>`);
+    $('#messages').append(`<div id='dragon' class="row">
+                             <div class="col-12" style="height:600px;">
+                               ${icons.dragon}
+                             </div>
+                           </div>`);
     console.log('enter the dragon');
   }
 

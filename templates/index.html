@@ -87,7 +87,10 @@
     </nav>
 
 
-    <div id="select-box" class="fixed-bottom badge-dark p-2" style="left: 100px; bottom:45px; width:200px; display:none;">
+    <div id="select-box" class="fixed-bottom badge-dark p-2" 
+         style="left: 100px; bottom:45px; width:200px; display:none;"
+         onmouseenter="$('#select-list button:first-child').addClass('disabled');"
+         onmouseleave="$('#select-list button:first-child').removeClass('disabled');">
       <div id="select-list" class="list-group disabled">
       </div>
     </div>
@@ -97,7 +100,6 @@
         <textarea style="resize:none;" class="form-control mb-1" 
                   name="new-message" id="new-message" 
                   oninput="lissajous.dec();"
-                  tabindex="0"
                   cols="60" rows="1"></textarea>
         <button class="btn btn-success btn-sm ml-2" 
                 onclick="send_message();" 
