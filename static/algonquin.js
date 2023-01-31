@@ -1183,7 +1183,7 @@ class Messages {
 
     $("#new-message").keyup(function(event) {
         var cursor_pos   = $('#new-message').prop("selectionStart"); 
-        console.log(this.picker_state);
+        console.log(messages.picker_state);
         if(messages.picker_state == null) {
           console.log("xxx");
           switch(event.key) {
@@ -1198,7 +1198,12 @@ class Messages {
                 text            = `${start}${replacement}${end}`;
                 console.log(text);
                 $('#new-message').val(text);
-                $('#new-message').prop("selectionStart", cursor_pos+replacement.length); 
+                console.log(`loc: ${cursor_pos} ${replacement.length}`);
+                setTimeout(function() { 
+                  $('#new-message').focus(); 
+                  $('#new-message')[0].setSelectionRange(cursor_pos+replacement.length, 
+                                                         cursor_pos+replacement.length); 
+                }, 200);
                 messages.picker_state = null;
                 messages.picker_start = 0;
               });
@@ -1231,6 +1236,7 @@ class Messages {
               messages.set_picker(null, 0);
               break;
             default:
+              console.log('rrr');
               var substring = $('#new-message').val().substring(this.picker_start);
               picker.sort(substring);
               picker.update_list();
