@@ -3845,7 +3845,7 @@ showdown.subParser('images', function (text, options, globals) {
       .replace(showdown.helper.regexes.asteriskDashAndColon, showdown.helper.escapeCharactersCallback);
     //url = showdown.helper.escapeCharacters(url, '*_', false);
     url = url.replace(showdown.helper.regexes.asteriskDashAndColon, showdown.helper.escapeCharactersCallback);
-    var result = '<img src="' + url + '" alt="' + altText + '"';
+    var result = '<img height=200 src="' + url + '" alt="' + altText + '"';
 
     if (title && showdown.helper.isString(title)) {
       title = title

@@ -306,7 +306,7 @@ def do_login(person, session, send_session_id=False):
             join_room('room-'+str(membership.room))
 
         response['personid']        = person.id
-        response['persons']         = [person.public_fields()]
+        response['persons']         = {person.id: person.public_fields()}
         response['authenticated'] = True
         response['result']        = 'Login Ok'
         response['__protocol__']    = __protocol__
@@ -320,7 +320,7 @@ def do_login(person, session, send_session_id=False):
     
 
     response = {}
-    response['persons']         = person.related_persons()
+    response['persons']       = person.related_persons()
     response['rooms']         = person.membership_list()
     response['messages']      = person.message_list(response['rooms'].keys())
     response['files']         = person.file_list()

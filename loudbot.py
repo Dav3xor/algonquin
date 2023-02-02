@@ -31,6 +31,9 @@ common_words = ['the', 'be', 'to', 'of', 'and', 'a', 'in',
                 'us', 'are' 'aren\'t', 'haven\'t', 'you\'ve',
                 'is', 'got']
 
+def inline_image(alt, url):
+  return f'![{alt}]({url})'
+
 common_words = set([i.upper() for i in common_words])
 #print ("common words = " + str(common_words))
 class LoudHailer(object):
@@ -46,7 +49,7 @@ class LoudHailer(object):
            domain+'/'+channel, 
            response)
     return response
-    
+   
   def do_commands(self, command, user, domain, channel):
     def do_help(user, domain, channel, args):
       return "```" + \
@@ -117,7 +120,7 @@ class LoudHailer(object):
       'https://www.rd.com/wp-content/uploads/2018/02/01_Jaleel_Lessons-Jaleel-White-Learned-From-Playing-Urkel_5880798d_ABC-TV_WB-TV_Lorimar_Kobal_REX_Shutterstock.jpg',
       'https://vignette.wikia.nocookie.net/universe-of-smash-bros-lawl/images/7/70/Steve-urkel-e1323393883562.jpg/revision/latest?cb=20150628203838',
       'https://vignette.wikia.nocookie.net/disney/images/1/1c/Steven_Urkel.png/revision/latest?cb=20151031145238']
-      return random.choice(urkels)
+      return inline_image('urkel',random.choice(urkels))
 
     def do_muntz(user, domain, channel, args):
       muntzes = ['https://vignette.wikia.nocookie.net/simpsons/images/e/e9/Nelson_Ha-Ha.jpg/revision/latest?cb=20121205194057',
@@ -136,7 +139,7 @@ class LoudHailer(object):
       'https://static.comicvine.com/uploads/original/2/22757/450697-nelson.jpg',
       'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSRn_g4QFaDYx5hUNy-MjASToOOY1_i3kJO_lpbW3CRdqCA8h_eyg']
 
-      return random.choice(muntzes)
+      return inline_image('haha!', random.choice(muntzes))
 
     def do_gomer(user, domain, channel, args):
       gomers = ['https://i.pinimg.com/originals/71/f8/cc/71f8cceadc80914704321234a216707b.jpg',
@@ -144,7 +147,7 @@ class LoudHailer(object):
                 'https://memegenerator.net/img/instances/57050650.jpg',
                 'https://media.makeameme.org/created/surprise-surprise-uo72hv.jpg',
                 'https://media.makeameme.org/created/well-who-would-06cda4c5d1.jpg']
-      return random.choice(gomers)
+      return inline_image('surprise surprise surprise!', random.choice(gomers))
 
 
     def do_tarot(user, domain, channel, args):
@@ -171,7 +174,7 @@ class LoudHailer(object):
       'https://www.tarotcardmeanings.net/images/tarotcards/tarot-judgement.jpg',
       'https://www.tarotcardmeanings.net/images/tarotcards/tarot-world.jpg']
 
-      return random.choice(tarots)
+      return inline_image('the stars have aligned...', random.choice(tarots))
 
     def do_turtle(user, domain, channel, args):
       turtles = ['https://cdn-images-1.medium.com/max/1600/1*U0wtpXQySXfHwLjMs7m0jA.jpeg',
@@ -185,7 +188,7 @@ class LoudHailer(object):
       'https://images.axios.com/4Rqp1jAfNaeldeyt0XBUWtjZcHE=/1920x1080/smart/2018/10/20/1540068395334.jpg',
       'https://www.advocate.com/sites/advocate.com/files/2018/11/14/mitch-mcconnell750x422.jpg',
       'https://www.thenation.com/wp-content/uploads/2016/12/McConnell_Supreme-Court_2016_ap_img.jpg']
-      return random.choice(turtles)
+      return inline_image('Fucking.. Kentucky Nazis', random.choice(turtles))
 
 
     def do_loud_gif(user, domain, channel, args):
@@ -269,69 +272,3 @@ def get_dict_item(cur_dict, item, search_list):
     return "unknown"
   else:
     return cur_dict[item]
-'''
-with open('sekrit','r') as sekrit_file:
-  token = sekrit_file.readline().strip()
-
-print (token)
-
-louds     = LoudHailer()
-
-while True:
-  try:
-    sc = WebClient(token)
-
-
-
-    if sc.rtm_connect():
-      for i in range(0,10):
-        time.sleep(1)
-      team     = sc.api_call("team.info")['team']
-      users    = sc.api_call("users.list")
-      users    = convert_to_dict(users['members'])
-      channels = sc.api_call("conversations.list")
-      #print(users)
-      channels = convert_to_dict(channels['channels'])
-      #print(channels)
-      while True:
-        print("starting up (again?)")
-        for response in sc.rtm_read():
-          print("got response")
-          if 'type' in response and response['type'] == 'message':
-            #try:
-            if 'text' in response:
-              
-              message = response['text']
-              print (response)
-              if 'user' in response:
-                user    = users[response['user']]['profile']['display_name']
-                channel = channels[response['channel']]['name'] 
-                domain  = team['domain']
-                #print ("user: " + user + " channel: " + channel + " domain: " + domain)
-                #except:
-                #  continue 
-                #print ("%s (%s/%s) -- %s" % (user, domain, channel, message))
-
-                loud_response = louds.add(message, user, domain, channel)
-
-                if loud_response:
-                  sc.api_call('chat.postMessage',
-                              channel=response['channel'], 
-                              text=loud_response)
-                  print ("           -- %s" % loud_response)
-                  
-
-                command_response = louds.do_commands(message,user,domain,channel)
-                if command_response:
-                  sc.api_call("chat.postMessage",
-                              channel=response['channel'], 
-                              text=command_response)
-                  print ("           -- %s" % command_response)
-
-            
-        time.sleep(1)
-    else:
-      print ("Can't connect to  Slack?!?")
-  except:
-    time.sleep(20)
-'''

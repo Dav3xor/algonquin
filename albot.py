@@ -6,9 +6,10 @@ from os.path import exists
 
 settings_file = 'albot_sekrit'
 
-settings = { 'sessionid': '2-token-10747145167090777022',
+settings = { 'sessionid': '3-token-17494259491743097507',
              'password': 'ASFG#$TYsdfasg@#$BR#$!!&^1461',
-             'domain': 'Orgone Institute'}
+             'domain': 'Orgone Institute',
+             'url': 'http://localhost:8080'}
 
 louds = loudbot.LoudHailer()
 
@@ -18,35 +19,37 @@ if exists(settings_file):
 
 sio = socketio.Client()
 
-users = {}
+persons = {}
 rooms = {}
 
 
-def handle_users(u):
-    for user in u:
-        #print(user)
-        users[int(user)] = u[user]
+def handle_persons(p):
+    print("----")
+    print(p)
+    for person in p.values():
+        print(person)
+        persons[person['id']] = person
 
 def handle_messages(m):
     for msg in m:
-        #print(msg)
-        #print(users)
+        print(msg)
+        #print(personss)
         print(rooms)
-        username = users[msg['user']]['handle'] if msg['user'] in users else "(unknown)"
-        user_id  = msg['user'] if 'user' in msg else  None
+        personname = persons[msg['person']]['handle'] if msg['person'] in persons else "(unknown)"
+        person_id  = msg['person'] if 'person' in msg else  None
         room     = rooms[msg['room']]['name'] if msg['room'] in rooms else "(unknown)"
         room_id  = msg['room'] if 'room' in msg else None
         domain   = settings['domain'] if 'domain' in settings else "(unknown)"
         message  = msg['message']
-        print(f"{type(settings['bot_id'])}:{settings['bot_id']} -- {type(user_id)}:{user_id}")
-        if settings['bot_id'] != user_id:
-            response = louds.add(message, username, domain, room)
+        print(f"{type(settings['bot_id'])}:{settings['bot_id']} -- {type(person_id)}:{person_id}")
+        if settings['bot_id'] != person_id:
+            response = louds.add(message, personname, domain, room)
             if response:
                 response = response.decode()
                 #print(response)
                 sio.emit('message', {'message': response, 'room': int(room_id)})
             
-            command_response = louds.do_commands(message,username,domain,room)
+            command_response = louds.do_commands(message,personname,domain,room)
             if command_response:
                 sio.emit('message', {'message': command_response, 'room': int(room_id)})
                 
@@ -60,8 +63,8 @@ def connect():
     sio.emit('login-session', {'sessionid': settings['sessionid']})
 
 def handle_stuff(data):
-    if 'users' in data:
-        handle_users(data['users'])
+    if 'persons' in data:
+        handle_persons(data['persons'])
     if 'rooms' in data:
         handle_rooms(data['rooms'])
     if 'messages' in data:
@@ -72,15 +75,17 @@ def catch_all(event, data):
     print(f"handling: {event}")
     handle_stuff(data)
 
-@sio.on('stuff_list')
+@sio.on('stuff-list')
 def stuff_list(data):
+    print('x')
     handle_stuff(data)
 
 @sio.on('login-result')
 def login_result(data):
     if data['authenticated'] == True:
-        settings['bot_id'] = data['userid']
-        #print(f"userid:{data['userid']} bot_id:{sbot_id}")
+        print(data)
+        settings['bot_id'] = data['personid']
+        #print(f"personid:{data['personid']} bot_id:{sbot_id}")
         print("logged in")
     else:
         print("login failed")
@@ -88,8 +93,8 @@ def login_result(data):
     if 'token' in settings['sessionid']:
         sio.emit('settings', {'new-password': settings['password'], 'no-status':True})
     #handle_stuff(data)
-    if 'users' in data:
-        handle_users(data['users'])
+    if 'persons' in data:
+        handle_persons(data['persons'])
     if 'rooms' in data:
         handle_rooms(data['rooms'])
 
@@ -100,4 +105,4 @@ def password_set(data):
     with open(settings_file, 'w') as f:
         f.write(json.dumps(settings))
 
-sio.connect('https://orgone.institute')
+sio.connect(settings['url'])
