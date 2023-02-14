@@ -17,97 +17,107 @@ paths.sort()
 types = set()
 subtypes = set()
 
-slack_folder = Folder(name='Files From Slack') # no parent = directory off of root
-slack_folder.save()
-
-def handle_users(users):
-    db_users = {}
+def handle_persons(persons):
+    db_persons = {}
     db_bots  = {}
     db_rooms = {}
+    db_folders = {}
     
     # TODO: add an interface for this...
-    cat_facts = User(email = "catfacts@email.com",
+    cat_facts = Person(email = "catfacts@email.com",
                      handle = "Cat Facts",
                      portrait = config['default_portrait'])
     cat_facts.save()
     db_bots['B10RT6TU5']=cat_facts
     db_bots['B10QAQ2HH']=cat_facts
 
-    slackbot = User(email = "slackbot@email.com",
+    slackbot = Person(email = "slackbot@email.com",
                      handle = "Slackbot",
                      portrait = config['default_portrait'])
     slackbot.save()
     db_bots['USLACKBOT']=slackbot
 
-    seanbot = User(email = "seanbot@email.com",
+    seanbot = Person(email = "seanbot@email.com",
                    handle = "Seanbot",
                    portrait = config['default_portrait'])
     seanbot.save()
     db_bots['B6YNZBX6D'] = seanbot
     db_bots['B705QGTRU'] = seanbot
 
-    keyboardmaestro = User(email = "keyboardmaestro@email.com",
+    keyboardmaestro = Person(email = "keyboardmaestro@email.com",
                    handle = "KeyboardMaestrobot",
                    portrait = config['default_portrait'])
     keyboardmaestro.save()
     db_bots['B020041V0JJ'] = keyboardmaestro
    
 
-    for user in users:
-        username = user['name']
-        slack_id = user['id']
+    for person in persons:
+        personname = person['name']
+        slack_id = person['id']
         bot_id   = None
 
-        if 'bot_id' in user['profile']:
-            bot_id = user['profile']['bot_id']
+        if 'bot_id' in person['profile']:
+            bot_id = person['profile']['bot_id']
 
-        #print(user.keys())
-        image    = user['profile']['image_512']
-        if user['profile']['display_name']:
-            username = user['profile']['display_name']
-        #print(username)
-        #for key,value in user.items():
+        #print(person.keys())
+        image    = person['profile']['image_512']
+        if person['profile']['display_name']:
+            personname = person['profile']['display_name']
+        #print(personname)
+        #for key,value in person.items():
         #    print(key + ": " + str(value))
-        user = User(email   = slack_id+"@email.com",
-                    handle  = username,
+        person = Person(email   = slack_id+"@email.com",
+                    handle  = personname,
                     portrait = config['default_portrait'])
-        user.save()
+        person.save()
 
-        token      = Session.make_token(user)
+        token      = Session.make_token(person)
         url        = Session.make_token_url(token, config['site_url'])
         session    = Session(sessionid=token,
-                             user = user.id)
+                             person = person.id)
         session.save()
         session.commit()   
-        db_users[slack_id] = user
+        db_persons[slack_id] = person
         if bot_id:
-            db_bots[bot_id] = user
+            db_bots[bot_id] = person
 
-        print(user.handle + ' = ' + url)
-    return db_users, db_bots
+        print(person.handle + ' = ' + url)
+    return db_persons, db_bots
 
 def handle_channels(channels):
-    rooms = {}
+    rooms   = {}
+    folders = {}
     slack_id_rooms = {}
     for channel in channels:
         name    = channel['name']
         owner   = channel['creator']
         slack_id = channel['id']
-        room    = Room(owner    = users[owner].id,
+
+        folder = Folder(name=name, 
+                        owner=owner,
+                        parent=None,
+                        public=True) # no parent = directory off of root
+        folder.save()
+
+        room    = Room(owner    = persons[owner].id,
+                       folder   = folder.id,
                        public   = True,
                        name     = name)
         room.save()
+        room.left = False
+        room.last_user = None
         for member in channel['members']:
-            membership = Membership(user=users[member].id,
+            membership = Membership(person=persons[member].id,
                                     room=room.id)
             membership.save()
 
         rooms[name] = room
+        folders[name] = folder
         slack_id_rooms[slack_id] = room
         print ("room: " + name)
     
     room.commit()
-    return rooms, slack_id_rooms
+    return rooms, folders, slack_id_rooms
 
 
 
@@ -127,16 +137,16 @@ def convert_msg(message):
     mentions = re.findall(mention_regex, message)
     for mention in mentions:
         uid = mention[2:-1]
-        user = users[uid].id if uid in users else bots[uid].id
-        user = f"~person{user}~"
-        message = re.sub(mention,user,message)
+        person = persons[uid].id if uid in persons else bots[uid].id
+        person = f"~person{person}~"
+        message = re.sub(mention,person,message)
     
     mentions = re.findall(mention3_regex, message)
     for mention in mentions:
         uid = "U"+mention[2:-1]
-        user = users[uid].id if uid in users else bots[uid].id
-        user = f"~person{user}~"
-        message = re.sub(mention,user,message)
+        person = persons[uid].id if uid in persons else bots[uid].id
+        person = f"~person{person}~"
+        message = re.sub(mention,person,message)
    
 
 
@@ -145,13 +155,13 @@ def convert_msg(message):
     mentions = re.findall(mention2_regex, message)
     for mention in mentions:
         uid = mention[2:].split('|')[0]
-        user = users[uid].id if uid in users else bots[uid].id
-        user = f"~person{user}~"
+        person = persons[uid].id if uid in persons else bots[uid].id
+        person = f"~person{person}~"
         #print('-------')
         #print(mention)
-        #print(user)
+        #print(person)
         #print(message)
-        message = message.replace(mention, user) #re.sub(mention,user,message)
+        message = message.replace(mention, person) #re.sub(mention,person,message)
         #print(message)
         #print('-------')
 
@@ -192,9 +202,9 @@ def convert_msg(message):
 
     spotifies = re.findall(spotify2_regex, message)
     for spotify in spotifies:
-        user     = spotify[0]
+        person   = spotify[0]
         playlist = spotify[1]
-        message  = message.replace(f"<spotify:user:{user}:playlist:{playlist}>", f"~spotify.{user}.{playlist}~")
+        message  = message.replace(f"<spotify:user:{person}:playlist:{playlist}>", f"~spotify.{person}.{playlist}~")
 
 
 
@@ -222,16 +232,16 @@ def convert_msg(message):
 
 
 
-def handle_files(channel, files):
+def handle_files(channel, files, folders):
     filelist = "\n\n"
     for cur_file in files:
         if 'user' in cur_file:
-            owner = users[cur_file['user']].id
+            owner = persons[cur_file['user']].id
             filename  = cur_file['url_private']
             filetype  = File.file_type(filename.split('?')[0].split('/')[-1])
             timestamp = datetime.fromtimestamp(int(cur_file['timestamp']))
             file = File(owner     = owner,
-                        folder    = slack_folder.id,
+                        folder    = folders[channel].id,
                         room      = rooms[channel].id,
                         name      = filename,
                         public    = True,
@@ -252,50 +262,65 @@ def handle_messages(channel, messages):
         if 'subtype' in message:
             subtype = message['subtype']
         if subtype not in ('channel_join', 'channel_leave', 'channel_archive'):
-            user = None
+            person = None
             if subtype == 'bot_message':
-                user = message['bot_id']
+                person = message['bot_id']
                 bot  = True
             elif subtype == 'file_comment':
-                user = message['comment']['user']
+                #print(message)
+                person = message['comment']['user']
             else:
                 if 'user' not in message:
                     print(' ', end='')
                     #print(message)
                 else:
-                    user = message['user']
-            if user:
-                user    = users[user].id if user in users else bots[user].id
+                    person = message['user']
+            if person:
+                person  = persons[person].id if person in persons else bots[person].id
                 text    = convert_msg(message['text'])
                 bot     = False
                 time    = datetime.fromtimestamp(int(message['ts'].split('.')[0]))
                
                 if subtype == 'me_message':
                     text = f"*{text}*"
-                msg = Message(user    = user,
+
+
+                msg = Message(person    = person,
                               room    = rooms[channel].id,
                               written = time,
                               bot     = bot,
                               message = text)
+
+                if not rooms[channel].last_user:
+                    msg.left                 = False
+                    rooms[channel].left      = False
+                    rooms[channel].last_user = person
+                elif rooms[channel].last_user == person:
+                    msg.left = rooms[channel].left
+                else:
+                    rooms[channel].last_user = person
+                    rooms[channel].left      = not rooms[channel].left
+                    msg.left                 = rooms[channel].left
+
                 if 'files' in message:
-                    msg.message += handle_files(room, message['files'])
+                    msg.message += handle_files(room, message['files'], folders)
                 msg.save()
     Message.commit()
 
-top_level = {history_path + 'users.json':            handle_users,
+top_level = {history_path + 'users.json':            handle_persons,
              history_path + 'integration_logs.json': None,
              history_path + 'channels.json':         None}
 
-# first load users...
+# first load persons...
 with open(history_path+'users.json','r') as file:
     data = json.loads(file.read())
-    users, bots = handle_users(data)
-print(users.keys())
+    persons, bots = handle_persons(data)
+print(persons.keys())
 
 #then rooms...
 with open(history_path+'channels.json','r') as file:
     data = json.loads(file.read())
-    rooms, slack_id_rooms = handle_channels(data)
+    rooms, folders, slack_id_rooms = handle_channels(data)
 
 print(top_level)
 for path in paths:
@@ -305,7 +330,7 @@ for path in paths:
             data = json.loads(file.read())
             room = path.parts[0].split('/')[0]
             #print(f"room = {room} path = {path} parts = {path.parts}")
-            print("*",end="")
+            #print("*",end="")
             handle_messages(room, data)
 print(slack_id_rooms)
 print(types)

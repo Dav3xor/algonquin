@@ -66,7 +66,7 @@ class Person(db.DBTable):
         for room in rooms: 
             messages += Message.raw_select(((Message,'room'), '=', ':room'),
                                            {'room': room},
-                                           order_by = "messages.id desc limit 40")
+                                           order_by = "messages.id desc limit 20")
         return [ message.public_fields() for message in messages ]
 
     # TODO: modify this after adding folder support?

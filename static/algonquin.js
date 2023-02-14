@@ -34,14 +34,18 @@ class Picker {
   }
 
   sort(input) {
+    input = input.toLowerCase();
+    console.log(input);
     for(var i in this.items) {
+      var candidate = this.items[i].string.toLowerCase()
       var start     = 0;
       var score     = 0.0;
       for (var j in input) {
-        var substring = this.items[i].string.substring(start);
+        var substring = candidate.substring(start);
         var loc       = substring.indexOf(input[j]);
         if(loc != -1) {
-          score += 1.0 / loc+1;
+          console.log(loc);
+          score += 1.0 / (loc+1);
           start += loc;
         }
       }
@@ -59,6 +63,9 @@ class Picker {
   update_list() {
     $('#select-list').empty();
     for (var index in this.items) {
+      if(index >5) {
+        break;
+      }
       var item     = this.items[index];
       if((this.selection = "") || (item.string.indexOf(this.selection) != -1)) {
         var item_id = `select-list-${index}`;
@@ -72,7 +79,7 @@ class Picker {
             onclick="picker.finish(${item.id});"
             onmouseover="$('#${item_id}').removeClass('disabled');"
             onmouseout="$('#${item_id}').addClass('disabled');">
-          ${item.string}
+          ${item.string} - ${item.score}
         </button>`);
       }
     }
@@ -1234,16 +1241,21 @@ class Messages {
               picker.finish(picker.pick_top().id);
               messages.set_picker(null, 0);
               break;
+            case 'Backspace':
+            case 'Delete':
+              if ($('#new-message').val().indexOf('@') == -1) {
+                picker.close();
+                messages.set_picker(null, 0);
+              }
+              break;
             default:
-              var substring = $('#new-message').val().substring(this.picker_start);
+              var substring = $('#new-message').val().substring(messages.picker_start,cursor_pos);
               picker.sort(substring);
               picker.update_list();
               break;
 
           }
-        }
-
-
+        } 
 
 
         if (event.keyCode === 13) {

@@ -584,7 +584,7 @@ def handle_start_chat(json):
                      {'room': room.public_fields()}, 
                      room=sid)
 
-# person has uploaded a message
+# person has sent a message
 @person_logged_in
 @socketio.on('message')
 @json_has_keys('room', 'message')
@@ -598,8 +598,11 @@ def handle_message(json):
     message = Message(person    = person, 
                       room    = room, 
                       message = json['message'])
-    print(f"{previous} - {previous.person} - {person} - {previous.data}")
-    if previous and previous.person == person:
+    #print(f"{previous} - {previous.person} - {person} - {previous.data}")
+    print(previous)
+    if not previous:
+        message.left = False
+    elif previous.person == person:
         message.left = previous.left
     else:
         message.left = not previous.left
