@@ -1181,7 +1181,7 @@ class Messages {
     this.label            = "messages"
     this.picker_state     = null;
     this.picker_start     = 0;
-
+    this.height_adj       = 0;
     $('#footer').on('keydown','#new-message', function(event) {
       if ((event.key == 'Tab')&&(messages.picker_state != null)) {
         picker.finish(picker.pick_top().id);
@@ -1508,6 +1508,7 @@ class Messages {
 
 
   render(messages = null) {
+    var orig_height = $('#messages').prop('scrollHeight');
     var cur_room = rooms.get_cur_room();
     if(cur_room == null) {
       return;
@@ -1532,6 +1533,11 @@ class Messages {
         this.render_message(message);
       }
     }
+    var sT         = $('#messages').scrollTop();
+    var sH         = $('#messages').height();
+    var new_height = $('#messages').prop('scrollHeight');
+    console.log(`height change = ${new_height - orig_height}`);
+    this.height_adj = new_height - orig_height;
   }
 
   render_msg_footer(message, person, float) {
@@ -2204,6 +2210,11 @@ $('#messages').scroll(function() {
     $('#messages').scrollTop(0);
   }
 
+  if(messages.height_adj > 0) {
+    var cur_val = $('#messages').scrollTop();
+    $('#messages').scrollTop(cur_val+messages.height_adj);
+    messages.height_adj = 0;
+  }
 
   if($('#messages').scrollTop() >= 0) {
     $('#goto-bottom').addClass('d-none');
