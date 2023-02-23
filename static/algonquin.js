@@ -132,6 +132,8 @@ class Tabs {
       build_table(search);
     } else if(tab == 'files') {
       build_table(files);
+    } else if(tab == 'rooms') {
+      build_table(rooms);
     }
 
     $('#'+this.cur_tab+"-nav").removeClass("active");
@@ -464,8 +466,7 @@ class People {
                        "dom": "tip",
                        "columns": [ { "data": 'online', 'orderData': [2,1], 'width': '68px'}, 
                                     { "data": 'name'}, 
-                                    { "data": 'buttons', "orderable": false, 'width': '123px'},
-                                    { "data": 'online_order', 'visible': false} ]};
+                                    { "data": 'buttons', "orderable": false, 'width': '123px'} ]};
     $('#ring-bell').append(icons.bell);
   }
 
@@ -1016,11 +1017,17 @@ class Rooms {
     } else {
       this.cur_room = "1";
     }
+    this.table_name = "#rooms-list";
+    this.table = null;
+    this.table_def = { "rowId": "rowid",
+                       "dom": "tip",
+                       "columns": [ { "data": 'name'}, 
+                                    { "data": 'buttons', "orderable": false, 'width': '40px'} ]};
   }
 
   empty() {
     this.rooms = {};
-    //this.render();
+    this.render();
   }
   
   change_room(room) {
@@ -1162,6 +1169,41 @@ class Rooms {
       return null;
     } else {
       return this.rooms[room].message_index[0];
+    }
+  }
+  
+  table_row_name(id, type) {
+    return `room-id-${type}-${id}`;
+  }
+  update_table_row(room) {
+    var rowid    = this.table_row_name(room.id);
+    var name     = `<button class="btn btn-secondary" id="goto-room-${room.id}"
+                            onclick="rooms.change_room('${room.id}'); tabs.show('messages');">${room.name}</button>`;
+    
+    var about = "";
+    var buttons = `<button class="btn btn-warning btn-sm" 
+                           onclick="files.change_folder('${room.folder}'); tabs.show('files');"
+                           id="goto-folder-${room.id}">
+                     ${icons.folder}
+                   </button>`;
+
+
+
+
+    var rowdata = {'rowid':    rowid,
+                   'name':     name, 
+                   'buttons':  buttons}
+    add_table_row(this.table, rowid, rowdata);
+  }
+  render() {
+    if(this.table != null) {
+      for (var room in this.rooms) {
+        room = this.get_room(room);
+        if(room) {
+          this.update_table_row(room);
+        }
+      }
+      this.table.columns.adjust().draw(false);
     }
   }
 }
