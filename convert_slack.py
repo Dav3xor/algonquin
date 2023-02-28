@@ -94,7 +94,7 @@ def handle_channels(channels):
         slack_id = channel['id']
 
         folder = Folder(name=name, 
-                        owner=owner,
+                        owner=persons[owner].id,
                         parent=None,
                         public=True) # no parent = directory off of root
         folder.save()

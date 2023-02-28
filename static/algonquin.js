@@ -2194,7 +2194,7 @@ function handle_file_upload(file) {
   var room_id   = 0;
   switch(tabs.current_tab()) {
     case 'messages':
-      var room  = rooms.get_cur_room().id;
+      var room  = rooms.get_cur_room();
       room_id   = room ? room.id: 0;
       folder_id = room ? room.folder: 0;
       break;

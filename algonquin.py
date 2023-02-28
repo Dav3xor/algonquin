@@ -17,7 +17,7 @@ import difflib
 
 pprint = pprint.PrettyPrinter()
 
-DBTable.set_db(config['database'])
+DBTable.set_db(config['database'], debug=False)
 
 build_tables([Person, Session, Message, Room, File, Folder, Membership, Card, Card_Edit])
 

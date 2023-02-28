@@ -79,19 +79,21 @@ class Person(db.DBTable):
                                   File.folder_, 'is', ':folder' ),
                                 {'self_id': self.id, 
                                  'folder':  folder},
-                                order_by = "files.id desc limit 100")
+                                order_by = "files.id desc limit 100",
+                                distinct = True)
         #print(f"files = {files}")
         return { file.id:file.public_fields() for file in files }
     
     def folder_list(self, folder=None):
         folders = Folder.raw_select((((Folder.owner_, 'is', 'NULL'), 'or',
-                                        (Folder.owner_, '=', ':self_id' ), 'or',
-                                        (Folder.public_, '=', 1), 'or',
-                                        (Room.id_, '=', Membership.room_, 'and', Membership.person_, '=', ':self_id')), 'and',
-                                       (Folder.parent_, 'is', ':folder')),
+                                      (Folder.owner_, '=', ':self_id' ), 'or',
+                                      (Folder.public_, '=', 1), 'or',
+                                      (Room.id_, '=', Membership.room_, 'and', Membership.person_, '=', ':self_id')), 'and',
+                                     (Folder.parent_, 'is', ':folder')),
                                     {'self_id': self.id, 
                                      'folder':  folder},
                                     order_by = "folders.id desc limit 100",
+                                    distinct = True,
                                     tables = [left_join(Folder, Room, 'id', 'folder'),
                                               Membership])
         #print(f"folders = {folders}")

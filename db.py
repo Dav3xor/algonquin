@@ -204,11 +204,12 @@ class DBTable:
         #print("raw select2:")
         stmt = cls.expand_select(tables, where, 
                                  order_by=order_by, 
-                                 extra_columns=extra_columns)
-        print(stmt)
+                                 extra_columns=extra_columns,
+                                 distinct=distinct)
+        #print(stmt)
         DBTable.cursor.execute(stmt, args)
         rows = DBTable.cursor.fetchall()
-        print(rows)
+        #print(rows)
         return [ cls(**dict(zip(cls.attrs.keys(), values))) for values in rows ]
 
     def select(table, columns, where_clause):
