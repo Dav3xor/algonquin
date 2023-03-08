@@ -1,3 +1,5 @@
+import logging
+
 from db import DBTable, DBSearch, build_tables
 from tables import Person, Session, Message, File, Folder, Room, Membership, Card, Card_Edit
 from flask import Flask, render_template, send_from_directory, request
@@ -16,20 +18,28 @@ import difflib
 
 
 pprint = pprint.PrettyPrinter()
+logging.basicConfig(format='%(asctime)s %(levelname)s %(filename)s: %(lineno)d | %(message)s',
+                    datefmt='%m/%d/%Y %I:%M:%S %p',
+                    level=logging.INFO)
+logging.info(f"Algonquin IBBS startup.  {config['version']} protocol: {config['protocol']}")
 
 DBTable.set_db(config['database'], debug=False)
 
 build_tables([Person, Session, Message, Room, File, Folder, Membership, Card, Card_Edit])
 
+logging.info("Starting -- Flask App")
 app = Flask(__name__, static_url_path='')
 app.config['SECRET_KEY'] = 'a very very sekrit sekrit key'
 
+logging.info("Starting -- SocketIO App")
 socketio = SocketIO(app)
 
 differ = difflib.Differ()
 
 if __name__ == '__main__':
+    logging.info('Started')
     socketio.run(app, host='0.0.0.0')
+    logging.info('Finished')
 pp = Flask(__name__)
 
 class Scoreboard:
@@ -77,6 +87,7 @@ def not_logged_in(f):
         if request.sid not in scoreboard.sid_to_person:
             return f(*args, **kwargs)
         else:
+            logging.info(f'not_logged_in failed -- person id:{scoreboard.get_person_from_sid(request.sid)}')
             pass
 
 def person_logged_in(f):
@@ -84,6 +95,7 @@ def person_logged_in(f):
         if request.sid in scoreboard.sid_to_person:
             return f(*args, **kwargs)
         else:
+            logging.info(f'person_logged_in failed -- sid:{request.sid}')
             pass
 
 # decorator for making sure the json argument for socketio handler functions
@@ -94,7 +106,7 @@ def json_has_keys(*keys):
             success = True
             for key in keys:
                 if key not in args[0]:
-                    print ("missing json key: " + key)
+                    logging.info(f'missing json key: {key}')
                     success = False
             if success:
                 result = func(*args, **kwargs)
@@ -110,6 +122,7 @@ def admin_logged_in(f):
             # TODO: don't assume person id 1 is admin
             return f(*args, **kwargs)
         else:
+            logging.info(f'admin_logged_in failed -- sid:{request.sid} user id: {scoreboard.get_person_from_sid(sid)}.')
             pass
 
 
@@ -123,9 +136,7 @@ def file_upload_common(req):
 
     for field in fields:
         if field not in req.form:
-            error = f'no {field} in request'
-            # TODO: sigh, start using a logging framework?
-            print(error)
+            logging.info(f'request missing field: {field}')
             return None, None, json.dumps({'error': error})
 
     file        = req.files['file']
@@ -134,7 +145,10 @@ def file_upload_common(req):
     chunk       = req.form['chunk']
     file_number = req.form['file_number']
     
+    if int(chunk) == 0:
+        logging.info(f"Upload -- starting -- session: {str(session.id)[:20]} room: {str(room)[:20]}")
     if not session:
+        logging.info(f"Upload -- attempted with bad sessionid: {req.form['sessionid']}")
         return None, None, json.dumps({'error': 'bad sessionid'})
 
     person = Person.get(session.person)
@@ -152,11 +166,13 @@ def file_upload_common(req):
     if 'end' not in req.form:
         return None, None, None
     else:
+
         if 'filename' not in req.form:
             filename = 'unknown'
         else:
             filename = req.form['filename']
 
+        logging.info(f"Upload -- finishing: {filename}")
         
         # do it this way to give the interpreter a chance to switch threads
         # TODO: break this out into some sort of task queue deal
@@ -172,17 +188,17 @@ def file_upload_common(req):
             hash, size   = File.hash_file(f)
             type, extension = File.file_type(filename)
 
-        print ("hash = " + hash)
-        print ("size = " + str(size))
+        logging.info("Upload -- hash = " + hash)
+        logging.info("Upload -- size = " + str(size))
 
         # check for duplicates
         
         original_file = File.hash_exists(hash=hash, size=size)
         if original_file:
-            print("duplicate file upload -- " + 
-                  original_file.name + " - " + 
-                  filename + " - " + 
-                  original_file.localname)
+            logging.info("Upload -- duplicate file - " + 
+                         original_file.name + " - " + 
+                         filename + " - " + 
+                         original_file.localname)
             newfilename = original_file.localname
         else:
             newfilename     = str(time.time()) + '.' + extension
@@ -197,6 +213,7 @@ def file_upload_common(req):
                        type      = type,
                        localname = newfilename)
 
+        logging.info(f"Upload -- finished: {filename}")
         return db_file, person, None
 
 
@@ -356,8 +373,9 @@ def handle_disconnect():
 
 @not_logged_in
 @socketio.on('login-email')
+@json_has_keys('email', 'password')
 def handle_login_email(json):
-    #print("email login: " + str(json))
+    logging.info(f"Login -- email: {str(json['email'])}")
     email    = json['email']
     password = json['password']
     person     = Person.get_where(email=email)
@@ -367,20 +385,27 @@ def handle_login_email(json):
                           person = person.id)
         session.save()
         session.commit()
+        logging.info(f"Login -- email: success")
+    else:
+        logging.info(f"Login -- email: failure")
     do_login(person, session, True)
 
 @not_logged_in
 @socketio.on('login-session')
+@json_has_keys('sessionid')
 def handle_login_session(json):
     #print("session login: " + str(json))
+    logging.info(f"Login -- session: {str(json['sessionid'][:10])}...")
     sessionid = json['sessionid']
     session   = Session.get_where(sessionid=sessionid)
     if not session:
         # TODO: more bad sessionid handling?
         emit('login-result', {'authenticated': False}, broadcast=False)
+        logging.info(f"Login -- sessionid: failure")
     else:
         person = Person.get(int(sessionid.split('-')[0]))
         do_login(person, session)
+        logging.info(f"Login -- sessionid: success")
 
 
 stuff = {'persons': {'class': Person, 
@@ -479,8 +504,9 @@ def handle_add_folder(json):
                      owner   = person_id,
                      public  = parent.public if parent else True,
                      parent  = parent.id if parent else None)
-
     folder.save()
+    
+    logging.info(f'New Folder -- name: "{folder.name[:20]}" parent: "{parent.name[:20] if parent else "root"}"') 
     send_stuff(request.sid,
                folders      = [folder.public_fields()])
 
@@ -501,28 +527,27 @@ def handle_get_folder(json):
 @socketio.on('delete-file')
 @json_has_keys('file_id')
 def handle_delete_file(json):
-    if 'file_id' not in json:
-        emit('delete-file-result', {'error': 'invalid request'}, broadcast=False)
-
     file = File.get_where(id=json['file_id'])
     if not file:
         emit('delete-file-result', {'error': "file doesn't exist"}, broadcast=False)
+        logging.info(f"Delete File -- file_id does not exist ({json['file_id']})") 
 
     person_id = scoreboard.get_person_from_sid(request.sid)
     membership = Membership.get_where(room=file.room, person=person_id)
 
     if (not membership):       
         emit('delete-file-result', {'error': "no rights to delete"}, broadcast=False)
+        logging.info(f"Delete File -- no rights to delete ({json['file_id']})") 
    
-    #File.delete_where(id=file.id)
     file.deleted = 1
     file.save()
     file.commit()
 
     emit('delete-file-result', 
          {'stuff-list': {'files':[file.public_fields()]},
-          'status': 'ok' }, 
+         'status': 'ok' }, 
          room = 'room-'+str(file.room))
+    logging.info(f"Delete File -- deleted {file.name}") 
 
 
 @person_logged_in
@@ -532,12 +557,14 @@ def handle_send_bell_person(json):
     personid = json['person']
     for sid in scoreboard.get_sids_from_person(personid):
         emit('bell', {}, room = sid)
+    logging.info(f"Bell -- person ({personid})") 
 
 @person_logged_in
 @socketio.on('send-bell-room')
 @json_has_keys('room')
 def handle_send_bell_room(json):
     emit('bell', {}, room = f"room-{json['room']}")
+    logging.info(f"Bell -- room ({json['room']})") 
 
 @person_logged_in
 @socketio.on('have-read')
@@ -583,6 +610,7 @@ def handle_start_chat(json):
                 emit('add_room', 
                      {'room': room.public_fields()}, 
                      room=sid)
+    logging.info(f"Start Chat -- people {json['persons']}") 
 
 # person has sent a message
 @person_logged_in
@@ -612,6 +640,7 @@ def handle_message(json):
     message = Message.get(message.id)
     emit('stuff-list', {'messages': [ message.public_fields() ]}, 
          room = 'room-'+str(room))
+    logging.info(f"Msg -- room: {room}")
 
 @person_logged_in
 @socketio.on('card-toggle-lock')
@@ -625,10 +654,12 @@ def handle_card_toggle_lock(json):
             card.locked = False
             card.save()
             card.commit()
+            logging.info(f"Card Unlocked ({card.id})")
         elif state == 'unlocked' and card.locked == False:
             card.locked = True
             card.save()
             card.commit()
+            logging.info(f"Card Locked ({card.id})")
         emit('stuff-list', {'cards': { card.id:card.public_fields() }})
 
 
@@ -669,7 +700,7 @@ def handle_edit_card(json):
         card.save()
         card.commit()
         emit('stuff-list', {'cards': { card.id:card.public_fields() }})
-
+    logging.info(f"Card Edit -- ({card.id})")
 
 
 
@@ -707,16 +738,18 @@ def handle_new_person(json):
                 'status_msg': status_msg,
                 'persons': {person.id:person.public_fields()}}
     emit('invite-result', response, broadcast=False);
+    logging.info(f"User Created -- email: {person.email[:30]} handle: {person.handle[:30]}")
 
+
+#TODO: exclude content the user shouldn't see
 @person_logged_in
 @socketio.on('search-query')
 @json_has_keys('query')
 def handle_search(json):
     query = json['query']
-    print(f"search... ({query})")
     results = [ result.public_fields() for result in DBSearch.search(query) ]
-    print(results)
     emit('search-result', results)
+    logging.info(f"Search Query -- query: {query[:30]}")
 
 @person_logged_in
 @socketio.on('settings')
@@ -768,11 +801,14 @@ def handle_settings(json):
         emit('password-set', 
                 { 'status_msg': 'password set', 'sessionid': session.sessionid},
              broadcast=False)
+        logging.info(f"Settings -- new user password set: {person.handle[:30]}")
+
     else:
         emit('settings-result', 
              { 'status_msg':  status_msg, 
                'status_code': status_code },
              broadcast=False)
 
+        logging.info(f"Settings -- settings changed: {person.handle[:30]}")
         
 

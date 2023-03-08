@@ -1177,7 +1177,7 @@ class Rooms {
   }
   update_table_row(room) {
     var rowid    = this.table_row_name(room.id);
-    var name     = `<button class="btn btn-secondary" id="goto-room-${room.id}"
+    var name     = `<button class="btn btn-secondary btn-block" id="goto-room-${room.id}"
                             onclick="rooms.change_room('${room.id}'); tabs.show('messages');">${room.name}</button>`;
     
     var about = "";

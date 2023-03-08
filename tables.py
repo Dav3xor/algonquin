@@ -155,8 +155,15 @@ class Room(db.DBTable):
         chat = Room.get_where(name=name)
         person_ids = set(person_ids)
         if not chat:
+            folder = Folder(name = name,
+                            public = False,
+                            owner  = owner,
+                            parent = None)
+            folder.save()
+
             chat = Room(owner  = owner, 
                         public = False, 
+                        folder = folder.id,
                         name   = name)
             chat.save()
             for person in person_ids:

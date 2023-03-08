@@ -1,6 +1,8 @@
 import sqlite3
 import pprint
 import inspect
+import logging
+
 from pxfilter import XssHtml
 
 pprint = pprint.PrettyPrinter()
@@ -38,7 +40,6 @@ def set_properties(c, properties):
         setattr(c, i, Attr(i, attrs))
         setattr(c, i+'_', f"{c.table_name}.{i}")
         if 'fkey' in attrs:
-            #print(properties[i])
             from_table = DBTable.tables[attrs['fkey'][2]]
             to_table   = c
             setattr(from_table, 
@@ -47,9 +48,7 @@ def set_properties(c, properties):
 
 class DBChild:
     def __init__(self, table, key, related_column):
-        #print("-----------")
         self.table          = table
-        #self.columns        = [key for key in table.attrs.keys() if 'relative' not in table.attrs[key]]
         self.key            = key
         self.current        = 0
         self.related_column = related_column
@@ -61,14 +60,12 @@ class DBChild:
         new_row.save()
 
     def __iter__(self):
-        #print(f"iter: {self.table.table_name}")
         self.child_rows = self.table.raw_select(f"{self.related_column} = :key",
                                                 {'key': self.key})
                                                 
         return self
 
     def __next__(self):
-        #print(f"next: {self.table.table_name}")
         if self.current < len(self.child_rows):
             self.current += 1
             return self.child_rows[self.current-1]
@@ -82,16 +79,11 @@ def db_join(left, right, left_, right_):
     return f"{left.table_name} join {right.table_name} on {left.table_name}.{left_} = {right.table_name}.{right_}"
 
 def build_where(clause):
-    #print(clause)
-    #print(type(clause))
     if type(clause) in (str,int,float,bool):
-        #print("1")
         return f" {clause} "
     elif type(clause) == tuple and inspect.isclass(clause[0]) and issubclass(clause[0], DBTable):
-        #print(f"2 - {clause}")
         return f" {'.'.join((clause[0].table_name,)+clause[1:])} "
     else:
-        #print("3")
         output = ''
         for i in clause:
             output += build_where(i)
@@ -130,9 +122,10 @@ class DBTable:
 
     @classmethod
     def set_db(cls, database, debug=False): 
-        print(f"connecting to database: {database}")
+        logging.info(f'connecting to:      {database} ... ')
         DBTable.db = sqlite3.connect(database, check_same_thread=False)
         DBTable.cursor = DBTable.db.cursor()
+        logging.info(f'database connected: {database}')
         if debug:
             DBTable.db.set_trace_callback(print)
 
@@ -201,21 +194,19 @@ class DBTable:
         
         if type(tables) == list:
             tables = ','.join([i if type(i) == str else i.table_name for i in tables])
-        #print("raw select2:")
         stmt = cls.expand_select(tables, where, 
                                  order_by=order_by, 
                                  extra_columns=extra_columns,
                                  distinct=distinct)
-        #print(stmt)
+        logging.debug(stmt)
         DBTable.cursor.execute(stmt, args)
         rows = DBTable.cursor.fetchall()
-        #print(rows)
+        logging.debug(rows)
         return [ cls(**dict(zip(cls.attrs.keys(), values))) for values in rows ]
 
     def select(table, columns, where_clause):
         stmt = DBTable.select_stmt % (",".join(columns), table, where_clause)
-        #print("select:")
-        #print(stmt)
+        logging.debug(stmt)
         DBTable.cursor.execute(stmt)
         return DBTable.cursor.fetchall()
 
@@ -284,7 +275,7 @@ class DBTable:
     @classmethod
     def delete_where(cls, limit=1, **kwargs):
         stmt = DBTable.delete_stmt % (cls.table_name, DBTable.where_and(kwargs), str(limit))
-        #print(stmt+"-->"+str(where_values))
+        logging.debug(stmt)
         DBTable.cursor.execute(stmt, kwargs)
 
     def insert(self):
@@ -296,12 +287,12 @@ class DBTable:
             columns.append(col)
             values.append(val)
         columns = ','.join(columns)
-        #print(columns)
-        #print(values)
+        
         stmt = DBTable.insert_stmt % (self.table_name,
                                        columns,
                                        ("?,"*len(values))[:-1])
-        #print(stmt)
+
+        logging.debug(stmt)
         DBTable.cursor.execute(stmt, values)
         self.id = DBTable.cursor.lastrowid
 
@@ -319,8 +310,7 @@ class DBTable:
         stmt = DBTable.update_stmt % (self.table_name,
                                       columns,
                                       'id = ?')
-        #print(stmt)
-        #print(values)
+        logging.debug(stmt)
         DBTable.cursor.execute(stmt, values)
 
     @classmethod
@@ -328,7 +318,7 @@ class DBTable:
         query = f"select count(*) from {cls.table_name}"
         if len(kwargs) > 0:
             query += f" where {DBTable.where_and(kwargs)};"
-        #print("----- " + query + " ---- " + str(where_values))
+        logging.debug(query)
         DBTable.cursor.execute(query, kwargs)
         return DBTable.cursor.fetchone()[0]
 
@@ -398,7 +388,6 @@ def build_tables(tables):
                                                      "INSERT",
                                                      table_name,
                                                      terms)
-            # print(trigger)
             DBTable.cursor.execute(trigger)
 
             # on delete...
@@ -412,7 +401,6 @@ def build_tables(tables):
                                                      "DELETE",
                                                      table_name,
                                                      terms)
-            #print(trigger)
             DBTable.cursor.execute(trigger)
 
             # on update...
@@ -429,7 +417,6 @@ def build_tables(tables):
                                                      "UPDATE",
                                                      table_name,
                                                      terms)
-            # print(trigger)
             DBTable.cursor.execute(trigger)
 
 
