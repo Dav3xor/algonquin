@@ -1022,7 +1022,7 @@ class Rooms {
     this.table_def = { "rowId": "rowid",
                        "dom": "tip",
                        "columns": [ { "data": 'name'}, 
-                                    { "data": 'buttons', "orderable": false, 'width': '40px'} ]};
+                                    { "data": 'buttons', "orderable": false, 'width': '70px'} ]};
   }
 
   empty() {
@@ -1034,10 +1034,11 @@ class Rooms {
     this.cur_room = room;
     this.rooms[this.cur_room].unread = 0;
     cookie.write('cur_room', room, '365');
-    messages.clear_unread();
+    messages.handle_unread();
     $('#messages').empty();
     messages.render();
-    this.render_room_list();
+    this.render_room_list(room);
+    this.update_table_row(this.get_room(room));
   }
 
   get_room(room) {
@@ -1123,7 +1124,7 @@ class Rooms {
 
       var contents = room.name;
       if(room.unread > 0) {
-        unread += room.unread;
+        unread   += room.unread;
         contents += `<span class="ml-2 badge badge-info">${room.unread}</span>`;
       }
 
@@ -1179,13 +1180,20 @@ class Rooms {
     var rowid    = this.table_row_name(room.id);
     var name     = `<button class="btn btn-secondary btn-block" id="goto-room-${room.id}"
                             onclick="rooms.change_room('${room.id}'); tabs.show('messages');">${room.name}</button>`;
-    
-    var about = "";
-    var buttons = `<button class="btn btn-warning btn-sm" 
-                           onclick="files.change_folder('${room.folder}'); tabs.show('files');"
-                           id="goto-folder-${room.id}">
-                     ${icons.folder}
-                   </button>`;
+    var disabled = room.unread ? '' : ' disabled';
+    var new_msgs = room.unread ? room.unread : '';
+    var about    = "";
+    var buttons  = `
+      <button class="btn btn-info btn-sm mr-1" 
+              style="width:37px; height:37px;"
+              id="new-messages-${room.id}"${disabled}>
+       ${new_msgs}
+      </button>
+      <button class="btn btn-warning btn-sm" 
+              onclick="files.change_folder('${room.folder}'); tabs.show('files');"
+              id="goto-folder-${room.id}">
+        ${icons.folder}
+      </button>`;
 
 
 
@@ -1764,6 +1772,7 @@ class Messages {
           this.handling_unread = false;
           this.clear_unread();
           rooms.render_room_list();
+          rooms.update_table_row(room);
         }, 2000);
       }
     }
@@ -1927,6 +1936,7 @@ class Getter {
 
     if((update_rooms)||(update_messages)) {
       rooms.render_room_list();
+      rooms.render();
     }
 
     if(update_cards) {
