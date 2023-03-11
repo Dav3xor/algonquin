@@ -2278,6 +2278,11 @@ $('#messages').scroll(function() {
   }
 });
 
+$('#contents').click(function() {
+  console.log("contents click");
+  $('#navb').removeClass('show');
+});
+
 $('#new-person-ok').click(function() {
   $('#new-person').modal('hide');
   $('#navbar').removeClass('d-none');

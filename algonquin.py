@@ -732,6 +732,7 @@ def handle_new_person(json):
     except Exception as e:
         status = 0
         status_msg = str(e)
+        
     response = {'message': json['message'] + '\n\n' + url,
                 'url': url,
                 'status': status,
