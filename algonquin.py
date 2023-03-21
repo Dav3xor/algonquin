@@ -1,6 +1,6 @@
 import logging
 
-from db import DBTable, DBSearch, build_tables
+from db import DBTable, DBSearch, build_tables, left_join
 from tables import Person, Session, Message, File, Folder, Room, Membership, Card, Card_Edit
 from flask import Flask, render_template, send_from_directory, request
 from flask_socketio import SocketIO, emit, send, disconnect, join_room
@@ -20,10 +20,10 @@ import difflib
 pprint = pprint.PrettyPrinter()
 logging.basicConfig(format='%(asctime)s %(levelname)s %(filename)s: %(lineno)d | %(message)s',
                     datefmt='%m/%d/%Y %I:%M:%S %p',
-                    level=logging.INFO)
+                    level=logging.DEBUG)
 logging.info(f"Algonquin IBBS startup.  {config['version']} protocol: {config['protocol']}")
 
-DBTable.set_db(config['database'], debug=False)
+DBTable.set_db(config['database'], debug=True)
 
 build_tables([Person, Session, Message, Room, File, Folder, Membership, Card, Card_Edit])
 
@@ -267,7 +267,6 @@ def upload_portrait():
 
         db_file.folder = config['portrait_folder']
         db_file.save()
-        db_file.commit()
 
         person.portrait = db_file.localname
         person.save()
@@ -335,17 +334,17 @@ def do_login(person, session, send_session_id=False):
     
     emit('login-result', response, broadcast=False);
     
+    if person:
+        response = {}
+        response['persons']       = person.related_persons()
+        response['rooms']         = person.membership_list()
+        response['messages']      = person.message_list(response['rooms'].keys())
+        response['files']         = person.file_list()
+        response['folders']       = person.folder_list()
+        response['cards']         = person.card_list()
+        send_stuff(request.sid, **response)
 
-    response = {}
-    response['persons']       = person.related_persons()
-    response['rooms']         = person.membership_list()
-    response['messages']      = person.message_list(response['rooms'].keys())
-    response['files']         = person.file_list()
-    response['folders']       = person.folder_list()
-    response['cards']         = person.card_list()
-    send_stuff(request.sid, **response)
-
-    send_person(person, True)
+        send_person(person, True)
 
 
     return response
@@ -378,8 +377,8 @@ def handle_login_email(json):
     logging.info(f"Login -- email: {str(json['email'])}")
     email    = json['email']
     password = json['password']
-    person     = Person.get_where(email=email)
-    session = None
+    person   = Person.get_where(email=email)
+    session  = None
     if person and person.verify_password(password):
         session = Session(sessionid=Session.make_sessionid(person),
                           person = person.id)
@@ -505,6 +504,7 @@ def handle_add_folder(json):
                      public  = parent.public if parent else True,
                      parent  = parent.id if parent else None)
     folder.save()
+    folder.commit()
     
     logging.info(f'New Folder -- name: "{folder.name[:20]}" parent: "{parent.name[:20] if parent else "root"}"') 
     send_stuff(request.sid,
@@ -517,8 +517,8 @@ def handle_add_folder(json):
 @json_has_keys('folder_id')
 def handle_get_folder(json):
     person    = Person.get(scoreboard.get_person_from_sid(request.sid))
-    files   = person.file_list(json['folder_id'])
-    folders = person.folder_list(json['folder_id'])
+    files     = person.file_list(json['folder_id'])
+    folders   = person.folder_list(json['folder_id'])
     send_stuff(request.sid, 
                files        = files, 
                folders      = folders)
@@ -592,7 +592,7 @@ def handle_have_read(json):
 @json_has_keys('persons')
 def handle_start_chat(json):
     person         = scoreboard.get_person_from_sid(request.sid)
-    room         = Room.get_or_set_chat(person, json['persons'])
+    room           = Room.get_or_set_chat(person, json['persons'])
     online_persons = scoreboard.online_persons();
     for member in json['persons']:
         sids = scoreboard.get_sids_from_person(member)
@@ -742,13 +742,42 @@ def handle_new_person(json):
     logging.info(f"User Created -- email: {person.email[:30]} handle: {person.handle[:30]}")
 
 
+"""select db_table_search.* 
+     from db_table_search left join messages on db_table_search.row_id=messages.id 
+     where db_table_search.ftable="messages" and messages.room in 
+       (select room from memberships where person=5) and 
+       db_table_search.contents match "Yes definitely";"""
 #TODO: exclude content the user shouldn't see
 @person_logged_in
 @socketio.on('search-query')
 @json_has_keys('query')
 def handle_search(json):
     query = json['query']
-    results = [ result.public_fields() for result in DBSearch.search(query) ]
+    #TODO: implement union(...) for this
+    msg_results = DBSearch.raw_select( (DBSearch.ftable_, '=', '"messages"', 'and', 
+                                        (Message.room_, 'in', ('select', Membership.room_, 'from memberships where', 
+                                                               Membership.person_, '=', ':person'), 'and',
+                                                               DBSearch.contents_, 'match', ':query')),
+                                       {'person': 5, 'query': query},
+                                       tables = [left_join(DBSearch, Message, 'row_id', 'id')],
+                                       distinct = True)
+    folder_results = DBSearch.raw_select( (DBSearch.ftable_, '=', '"folders"', 'and', 
+                                        (Folder.room_, 'in', ('select', Membership.room_, 'from memberships where', 
+                                                               Membership.person_, '=', ':person'), 'and',
+                                                               DBSearch.contents_, 'match', ':query')),
+                                       {'person': 5, 'query': query},
+                                       tables = [left_join(DBSearch, Folder, 'row_id', 'id')],
+                                       distinct = True)
+    person_results = DBSearch.raw_select( (DBSearch.ftable_, '=', '"persons"', 'and', 
+                                           DBSearch.contents_, 'match', ':query'),
+                                          {'person': 5, 'query': query},
+                                          tables = [left_join(DBSearch, Message, 'row_id', 'id')],
+                                          distinct = True)
+    print(msg_results)
+    print(person_results)
+    print(folder_results)
+    results = msg_results + person_results + folder_results
+    results = [ result.public_fields() for result in results ]
     emit('search-result', results)
     logging.info(f"Search Query -- query: {query[:30]}")
 

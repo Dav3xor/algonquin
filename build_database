@@ -34,11 +34,13 @@ for room in config['public_rooms']:
                       public = True,
                       parent = None)
     f.save()
-    r = tables.Room(owner  = u.id,
-                    folder = f.id,
-                    public = True,
-                    name   = room)
+    r = tables.Room(owner       = u.id,
+                    root_folder = f.id,
+                    public      = True,
+                    name        = room)
     r.save()
+    f.room = r.id
+    f.save()
 
 u.join_public()
 u.commit()

@@ -1190,7 +1190,7 @@ class Rooms {
        ${new_msgs}
       </button>
       <button class="btn btn-warning btn-sm" 
-              onclick="files.change_folder('${room.folder}'); tabs.show('files');"
+              onclick="files.change_folder('${room.root_folder}'); tabs.show('files');"
               id="goto-folder-${room.id}">
         ${icons.folder}
       </button>`;
@@ -2206,7 +2206,7 @@ function handle_file_upload(file) {
     case 'messages':
       var room  = rooms.get_cur_room();
       room_id   = room ? room.id: 0;
-      folder_id = room ? room.folder: 0;
+      folder_id = room ? room.root_folder: 0;
       break;
     case 'files':
       folder_id = files.get_cur_folder();

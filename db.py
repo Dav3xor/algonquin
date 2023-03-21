@@ -7,45 +7,6 @@ from pxfilter import XssHtml
 
 pprint = pprint.PrettyPrinter()
 
-def set_properties(c, properties):
-    class Attr(object):
-        def __init__(self, attr, attr_attrs):
-            self.attr = attr
-            self.attr_attrs = attr_attrs
-        def __get__(self, obj, objtype):
-            if self.attr in obj.data:
-                return obj.data[self.attr]
-            else:
-                return None
-        def __set__(self, obj, value):
-            if ('xss-filter' in self.attr_attrs) and (value != None):
-                parser = XssHtml()
-                parser.feed(value)
-                parser.close()
-                value = parser.getHtml()
-            obj.data[self.attr] = value
-
-    class ChildAttr(object):
-        def __init__(self, table, related_column):
-            self.table = table
-            self.key   = None
-            self.related_column = related_column
-        def __get__(self, obj, objtype):
-            return DBChild(self.table, obj.id, self.related_column)
-
-    DBTable.add_table(c)
-
-    # add an attribute for every table column
-    for i, attrs in properties.items(): 
-        setattr(c, i, Attr(i, attrs))
-        setattr(c, i+'_', f"{c.table_name}.{i}")
-        if 'fkey' in attrs:
-            from_table = DBTable.tables[attrs['fkey'][2]]
-            to_table   = c
-            setattr(from_table, 
-                    attrs['fkey'][3],
-                    ChildAttr(to_table, i))
-
 class DBChild:
     def __init__(self, table, key, related_column):
         self.table          = table
@@ -121,13 +82,65 @@ class DBTable:
         DBTable.tables[table_class.__name__] = table_class
 
     @classmethod
-    def set_db(cls, database, debug=False): 
+    def set_db(cls, database, debug=False):
+        DBTable.set_properties()
         logging.info(f'connecting to:      {database} ... ')
         DBTable.db = sqlite3.connect(database, check_same_thread=False)
         DBTable.cursor = DBTable.db.cursor()
         logging.info(f'database connected: {database}')
         if debug:
             DBTable.db.set_trace_callback(print)
+            
+    @classmethod
+    def set_properties(cls):
+        print("-----")
+        print("-----")
+        print("-----")
+        print("-----")
+        print(DBTable.__subclasses__())
+        print("-----")
+        print("-----")
+        print("-----")
+        print("-----")
+        class Attr(object):
+            def __init__(self, attr, attr_attrs):
+                self.attr = attr
+                self.attr_attrs = attr_attrs
+            def __get__(self, obj, objtype):
+                if self.attr in obj.data:
+                    return obj.data[self.attr]
+                else:
+                    return None
+            def __set__(self, obj, value):
+                if ('xss-filter' in self.attr_attrs) and (value != None):
+                    parser = XssHtml()
+                    parser.feed(value)
+                    parser.close()
+                    value = parser.getHtml()
+                obj.data[self.attr] = value
+
+        class ChildAttr(object):
+            def __init__(self, table, related_column):
+                self.table = table
+                self.key   = None
+                self.related_column = related_column
+            def __get__(self, obj, objtype):
+                return DBChild(self.table, obj.id, self.related_column)
+
+        for c in DBTable.__subclasses__():
+            DBTable.add_table(c)
+
+        for c in DBTable.__subclasses__():
+            # add an attribute for every table column
+            for i, attrs in c.attrs.items(): 
+                setattr(c, i, Attr(i, attrs))
+                setattr(c, i+'_', f"{c.table_name}.{i}")
+                if 'fkey' in attrs:
+                    from_table = DBTable.tables[attrs['fkey'][2]]
+                    to_table   = c
+                    setattr(from_table, 
+                            attrs['fkey'][3],
+                            ChildAttr(to_table, i))
 
     @classmethod
     def commit(cls):
@@ -343,7 +356,6 @@ class DBSearch(DBTable):
     def __init__(self, **kwargs):
         DBTable.__init__(self, **kwargs)
 
-set_properties(DBSearch, DBSearch.attrs)
 
 def build_tables(tables):
     # build the full text search table

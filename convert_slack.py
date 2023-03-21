@@ -99,10 +99,10 @@ def handle_channels(channels):
                         public=True) # no parent = directory off of root
         folder.save()
 
-        room    = Room(owner    = persons[owner].id,
-                       folder   = folder.id,
-                       public   = True,
-                       name     = name)
+        room    = Room(owner         = persons[owner].id,
+                       root_folder   = folder.id,
+                       public        = True,
+                       name          = name)
         room.save()
         room.left = False
         room.last_user = None

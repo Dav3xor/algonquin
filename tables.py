@@ -1,5 +1,5 @@
 import db
-from db import set_properties, build_tables, left_join, db_join 
+from db import build_tables, left_join, db_join 
 from passlib.hash import pbkdf2_sha256
 from urllib.parse import urlencode
 import hashlib
@@ -88,13 +88,14 @@ class Person(db.DBTable):
         folders = Folder.raw_select((((Folder.owner_, 'is', 'NULL'), 'or',
                                       (Folder.owner_, '=', ':self_id' ), 'or',
                                       (Folder.public_, '=', 1), 'or',
-                                      (Room.id_, '=', Membership.room_, 'and', Membership.person_, '=', ':self_id')), 'and',
+                                      (Room.id_, '=', Membership.room_, 'and', 
+                                       Membership.person_, '=', ':self_id')), 'and',
                                      (Folder.parent_, 'is', ':folder')),
                                     {'self_id': self.id, 
                                      'folder':  folder},
                                     order_by = "folders.id desc limit 100",
                                     distinct = True,
-                                    tables = [left_join(Folder, Room, 'id', 'folder'),
+                                    tables = [left_join(Folder, Room, 'id', 'root_folder'),
                                               Membership])
         #print(f"folders = {folders}")
         return { folder.id:folder.public_fields() for folder in folders }
@@ -109,13 +110,14 @@ class Person(db.DBTable):
                                  order_by = "cards.id desc limit 100")
         return { card.id:card.public_fields() for card in cards }
 
-set_properties(Person, Person.attrs)
 
 class Folder(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
              'name':      {'type': 'TEXT',
                            'searchable': True,
                            'xss-filter': True},
+             'room':      {'type': 'INTEGER',
+                           'fkey': ['room', 'id', 'Room', 'folders']},
              'owner':     {'type': 'INTEGER NOT NULL',
                            'fkey': ['person', 'id', 'Person', 'folders']},
              'public':    {'type': 'BOOLEAN'},
@@ -126,21 +128,23 @@ class Folder(db.DBTable):
         db.DBTable.__init__(self, **kwargs)
 
 
-set_properties(Folder, Folder.attrs)
              
 
 
 class Room(db.DBTable):
-    attrs = {'id':     {'type': 'INTEGER PRIMARY KEY'},
-             'owner':  {'type': 'INTEGER NOT NULL',
-                       'fkey': ['person', 'id', 'Person','rooms']},
-             'folder': {'type': 'INTEGER NOT NULL',
-                        'fkey': ['folder', 'id', 'Folder','rooms']},
-             'topic':  {'type': 'TEXT', 'xss-filter': True},
-             'about':  {'type': 'TEXT', 'xss-filter': True},
-             'public': {'type': 'BOOLEAN'},
-             'name':   {'type': 'TEXT NOT NULL', 'xss-filter': True},
-             'last_seen': {'relative': 'memberships'}}
+    attrs = {'id':          {'type': 'INTEGER PRIMARY KEY'},
+             'owner':       {'type': 'INTEGER NOT NULL',
+                             'fkey': ['person', 'id', 'Person','rooms']},
+             'root_folder': {'type': 'INTEGER NOT NULL',
+                             'fkey': ['folder', 'id', 'Folder','rooms']},
+             'topic':       {'type': 'TEXT', 'xss-filter': True,
+                             'searchable': True},
+             'about':       {'type': 'TEXT', 'xss-filter': True,
+                             'searchable': True},
+             'public':      {'type': 'BOOLEAN'},
+             'name':        {'type': 'TEXT NOT NULL', 'xss-filter': True,
+                             'searchable': True},
+             'last_seen':   {'relative': 'memberships'}}
     table_name = 'rooms'
 
     @classmethod
@@ -161,10 +165,10 @@ class Room(db.DBTable):
                             parent = None)
             folder.save()
 
-            chat = Room(owner  = owner, 
-                        public = False, 
-                        folder = folder.id,
-                        name   = name)
+            chat = Room(owner       = owner, 
+                        public      = False, 
+                        root_folder = folder.id,
+                        name        = name)
             chat.save()
             for person in person_ids:
                 Membership.join(person, chat.id)
@@ -174,7 +178,6 @@ class Room(db.DBTable):
     def __init__(self, **kwargs):
         db.DBTable.__init__(self, **kwargs)
 
-set_properties(Room, Room.attrs)
 
 class Card(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
@@ -190,7 +193,6 @@ class Card(db.DBTable):
     table_name = 'cards'
     def __init__(self, **kwargs):
         db.DBTable.__init__(self, **kwargs)
-set_properties(Card, Card.attrs)
 
 class Card_Edit(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
@@ -201,7 +203,6 @@ class Card_Edit(db.DBTable):
     table_name = 'card_edits'
     def __init__(self, **kwargs):
         db.DBTable.__init__(self, **kwargs)
-set_properties(Card_Edit, Card_Edit.attrs)
 
 
 class File(db.DBTable):
@@ -261,7 +262,6 @@ class File(db.DBTable):
         original_file = File.get_where(hash=hash, size=size)
         return original_file
 
-set_properties(File, File.attrs)
 
 class Session(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
@@ -286,7 +286,6 @@ class Session(db.DBTable):
         return 'https://%s/?%s' % (site, urlencode({'token': token}))
         #return 'https://' + config['site_url'] + '/?' + urlencode({'token': token})
         
-set_properties(Session, Session.attrs)
 
 class Message(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
@@ -302,7 +301,6 @@ class Message(db.DBTable):
     table_name = 'messages'
     def __init__(self, **kwargs):
         db.DBTable.__init__(self, **kwargs)
-set_properties(Message, Message.attrs)
 
 class Membership(db.DBTable):
     attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
@@ -321,6 +319,5 @@ class Membership(db.DBTable):
             membership.save()
             membership.commit()
 
-set_properties(Membership, Membership.attrs)
 
 
