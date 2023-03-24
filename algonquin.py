@@ -762,9 +762,10 @@ def handle_search(json):
                                        tables = [left_join(DBSearch, Message, 'row_id', 'id')],
                                        distinct = True)
     folder_results = DBSearch.raw_select( (DBSearch.ftable_, '=', '"folders"', 'and', 
-                                        (Folder.room_, 'in', ('select', Membership.room_, 'from memberships where', 
+                                          ((Folder.room_, 'in', ('select', Membership.room_, 'from memberships where', 
                                                                Membership.person_, '=', ':person'), 'and',
-                                                               DBSearch.contents_, 'match', ':query')),
+                                                               DBSearch.contents_, 'match', ':query')), 'or',
+                                           ((Folder.room_, 'is', 'NULL'), 'and', (DBSearch.contents_, 'is', 'not null'))),
                                        {'person': 5, 'query': query},
                                        tables = [left_join(DBSearch, Folder, 'row_id', 'id')],
                                        distinct = True)
@@ -778,6 +779,7 @@ def handle_search(json):
     print(folder_results)
     results = msg_results + person_results + folder_results
     results = [ result.public_fields() for result in results ]
+    print(results)
     emit('search-result', results)
     logging.info(f"Search Query -- query: {query[:30]}")
 

@@ -657,6 +657,14 @@ class Search {
           break;
         case 'files':
           var file   = files.get_file(result.row_id);
+          console.log(file);
+          console.log(result);
+          var ftype  = this.file_icon(file.type);
+
+          if (!(ftype)) {
+            ftype = icons.unknown;
+          }
+
           var type   = `<button class='btn btn-success btn-sm' 
                           onclick='files.goto(${result.row_id},1);'
                           type='button'${file ? '':'disabled'}>
@@ -664,11 +672,11 @@ class Search {
                         </button>`;
           break;
         case 'folders':
-          var folder   = folders.get_file(result.row_id);
+          var folder   = files.get_folder(result.row_id);
           var type   = `<button class='btn btn-success btn-sm' 
                           onclick='files.goto(${result.row_id},2);'
                           type='button'${file ? '':'disabled'}>
-                          ${ this.file_icon(file.type) }
+                          ${ icons.folder }
                         </button>`;
           break;
         case 'cards':
@@ -687,9 +695,17 @@ class Search {
                           ${icons.person}
                         </button>`;
           break;
+        case 'rooms':
+          var room = rooms.get_room(result.row_id);
+          var type   = `<button onclick='room.goto(${result.row_id});'
+                                class='btn btn-success btn-sm' 
+                                type='button'${room ? '':'disabled'}>
+                          ${icons.flower}
+                        </button>`;
+          break;
         default :
           var type    = `<button class='btn btn-success btn-sm' type='button' disabled>
-                           ?
+                           ${result.ftable}?
                          </button>`;
           break;
       }
