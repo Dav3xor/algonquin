@@ -269,13 +269,16 @@ class Files {
   get_file(id) {
     // sigh, javascript...
     if(id==undefined) {
+      console.log("gf1");
       return null;
     }
 
     if (! this.files.hasOwnProperty(id)) {
       getter.add('files', id);
+      console.log("gf2");
       return null;
     } else {
+      console.log("gf3");
       return this.files[id];
     }
   }
@@ -642,11 +645,15 @@ class Search {
     }
   }
 
-  render(results) {
+  render(results=null) {
+    if(results) {
+      this.cur_results = results;
+    }
     this.table.clear();
     var contents = "";
-    for(var result in results) {
-      var result = results[result];
+    for(var result in this.cur_results) {
+      var result = this.cur_results[result];
+      console.log(result.ftable);
       switch (result.ftable) {
         case 'messages':
           var message = messages.get_message(result.row_id);
@@ -659,19 +666,24 @@ class Search {
           var file   = files.get_file(result.row_id);
           console.log(file);
           console.log(result);
-          var ftype  = this.file_icon(file.type);
+          if(file == null) {
+            var type = `<button class='btn btn-warning btn-sm'>loading...</button>`;
+          } else {
+            var ftype  = this.file_icon(file.type);
 
-          if (!(ftype)) {
-            ftype = icons.unknown;
+            if (!(ftype)) {
+              ftype = icons.unknown;
+            }
+
+            var type   = `<button class='btn btn-success btn-sm' 
+                            onclick='files.goto(${result.row_id},1);'
+                            type='button'${file ? '':'disabled'}>
+                            ${ this.file_icon(file.type) }
+                          </button>`;
           }
-
-          var type   = `<button class='btn btn-success btn-sm' 
-                          onclick='files.goto(${result.row_id},1);'
-                          type='button'${file ? '':'disabled'}>
-                          ${ this.file_icon(file.type) }
-                        </button>`;
           break;
         case 'folders':
+
           var folder   = files.get_folder(result.row_id);
           var type   = `<button class='btn btn-success btn-sm' 
                           onclick='files.goto(${result.row_id},2);'
@@ -711,7 +723,7 @@ class Search {
       }
 
       var row    = `${result.row}`;
-      var rowid  = `${result.row_id}`;
+      var rowid  = `${result.ftable}-${result.row_id}`;
       var result = `${markdown.makeHtml(messages.expand_tildes(result.contents))}`;
       var rowdata = {'type':   type,
                      'row':    row,
@@ -1957,6 +1969,9 @@ class Getter {
 
     if(update_cards) {
       cards.render();
+    }
+    if(tabs.current_tab() == 'search') {
+      search.render();
     }
   }
 
