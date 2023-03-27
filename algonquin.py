@@ -742,42 +742,52 @@ def handle_new_person(json):
     logging.info(f"User Created -- email: {person.email[:30]} handle: {person.handle[:30]}")
 
 
-"""select db_table_search.* 
-     from db_table_search left join messages on db_table_search.row_id=messages.id 
-     where db_table_search.ftable="messages" and messages.room in 
-       (select room from memberships where person=5) and 
-       db_table_search.contents match "Yes definitely";"""
+search_messages = (DBSearch.ftable_, '=', '"messages"', 'and', 
+                   (Message.room_, 'in', ('select', Membership.room_, 'from memberships where', 
+                     Membership.person_, '=', ':person'), 'and',
+                     DBSearch.contents_, 'match', ':query'))
+
+search_folders  = (DBSearch.ftable_, '=', '"folders"', 'and', 
+                   (Folder.parent_, '=', 'NULL', 'or',
+                    Folder.room_, 'in', ('select', Membership.room_, 'from memberships where', 
+                     Membership.person_, '=', ':person')), 'and',
+                     DBSearch.contents_, 'match', ':query')
+search_files    = (DBSearch.ftable_, '=', '"files"', 'and', 
+                   (File.folder_, '=', 'NULL', 'or',
+                    File.room_, 'in', ('select', Membership.room_, 'from memberships where', 
+                     Membership.person_, '=', ':person')), 'and',
+                     DBSearch.contents_, 'match', ':query')
+
 #TODO: exclude content the user shouldn't see
 @person_logged_in
 @socketio.on('search-query')
 @json_has_keys('query')
 def handle_search(json):
-    query = json['query']
+    query     = json['query']
+    person_id = scoreboard.get_person_from_sid(request.sid)
+
     #TODO: implement union(...) for this
-    msg_results = DBSearch.raw_select( (DBSearch.ftable_, '=', '"messages"', 'and', 
-                                        (Message.room_, 'in', ('select', Membership.room_, 'from memberships where', 
-                                                               Membership.person_, '=', ':person'), 'and',
-                                                               DBSearch.contents_, 'match', ':query')),
-                                       {'person': 5, 'query': query},
-                                       tables = [left_join(DBSearch, Message, 'row_id', 'id')],
+    msg_results = DBSearch.raw_select(search_messages,
+                                      {'person': person_id, 'query': query},
+                                      tables = [left_join(DBSearch, Message, 'row_id', 'id')],
+                                      distinct = True)
+    folder_results = DBSearch.raw_select(search_folders,
+                                         {'person': person_id, 'query': query},
+                                         tables = [left_join(DBSearch, Folder, 'row_id', 'id')],
+                                         distinct = True)
+    file_results = DBSearch.raw_select(search_files,
+                                       {'person': person_id, 'query': query},
+                                       tables = [left_join(DBSearch, File, 'row_id', 'id')],
                                        distinct = True)
-    folder_results = DBSearch.raw_select( (DBSearch.ftable_, '=', '"folders"', 'and', 
-                                          ((Folder.room_, 'in', ('select', Membership.room_, 'from memberships where', 
-                                                               Membership.person_, '=', ':person'), 'and',
-                                                               DBSearch.contents_, 'match', ':query')), 'or',
-                                           ((Folder.room_, 'is', 'NULL'), 'and', (DBSearch.contents_, 'is', 'not null'))),
-                                       {'person': 5, 'query': query},
-                                       tables = [left_join(DBSearch, Folder, 'row_id', 'id')],
-                                       distinct = True)
-    person_results = DBSearch.raw_select( (DBSearch.ftable_, '=', '"persons"', 'and', 
-                                           DBSearch.contents_, 'match', ':query'),
-                                          {'person': 5, 'query': query},
-                                          tables = [left_join(DBSearch, Message, 'row_id', 'id')],
-                                          distinct = True)
+    person_results = DBSearch.raw_select((DBSearch.ftable_, '=', '"persons"', 'and', 
+                                          DBSearch.contents_, 'match', ':query'),
+                                         {'person': person_id, 'query': query},
+                                         tables = [left_join(DBSearch, Message, 'row_id', 'id')],
+                                         distinct = True)
     print(msg_results)
     print(person_results)
     print(folder_results)
-    results = msg_results + person_results + folder_results
+    results = msg_results + person_results + folder_results + file_results
     results = [ result.public_fields() for result in results ]
     print(results)
     emit('search-result', results)
