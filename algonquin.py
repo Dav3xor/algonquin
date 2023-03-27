@@ -758,6 +758,11 @@ search_files    = (DBSearch.ftable_, '=', '"files"', 'and',
                      Membership.person_, '=', ':person')), 'and',
                      DBSearch.contents_, 'match', ':query')
 
+search_cards    = (DBSearch.ftable_, '=', '"cards"', 'and', 
+                   (Card.room_, 'is', 'NULL', 'or',
+                    Card.room_, 'in', ('select', Membership.room_, 'from memberships where', 
+                     Membership.person_, '=', ':person')), 'and',
+                     DBSearch.contents_, 'match', ':query')
 #TODO: exclude content the user shouldn't see
 @person_logged_in
 @socketio.on('search-query')
@@ -771,15 +776,19 @@ def handle_search(json):
                                       {'person': person_id, 'query': query},
                                       tables = [left_join(DBSearch, Message, 'row_id', 'id')],
                                       distinct = True)
-    folder_results = DBSearch.raw_select(search_folders,
-                                         {'person': person_id, 'query': query},
-                                         tables = [left_join(DBSearch, Folder, 'row_id', 'id')],
-                                         distinct = True)
-    file_results = DBSearch.raw_select(search_files,
-                                       {'person': person_id, 'query': query},
-                                       tables = [left_join(DBSearch, File, 'row_id', 'id')],
-                                       distinct = True)
-    person_results = DBSearch.raw_select((DBSearch.ftable_, '=', '"persons"', 'and', 
+    folder_results  = DBSearch.raw_select(search_folders,
+                                          {'person': person_id, 'query': query},
+                                          tables = [left_join(DBSearch, Folder, 'row_id', 'id')],
+                                          distinct = True)
+    file_results    = DBSearch.raw_select(search_files,
+                                          {'person': person_id, 'query': query},
+                                          tables = [left_join(DBSearch, File, 'row_id', 'id')],
+                                          distinct = True)
+    card_results    = DBSearch.raw_select(search_cards,
+                                          {'person': person_id, 'query': query},
+                                          tables = [left_join(DBSearch, Card, 'row_id', 'id')],
+                                          distinct = True)
+    person_results  = DBSearch.raw_select((DBSearch.ftable_, '=', '"persons"', 'and', 
                                           DBSearch.contents_, 'match', ':query'),
                                          {'person': person_id, 'query': query},
                                          tables = [left_join(DBSearch, Message, 'row_id', 'id')],
@@ -787,7 +796,9 @@ def handle_search(json):
     print(msg_results)
     print(person_results)
     print(folder_results)
-    results = msg_results + person_results + folder_results + file_results
+    print(file_results)
+    print(card_results)
+    results = msg_results + person_results + folder_results + file_results + card_results
     results = [ result.public_fields() for result in results ]
     print(results)
     emit('search-result', results)
