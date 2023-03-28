@@ -748,12 +748,13 @@ search_messages = (DBSearch.ftable_, '=', '"messages"', 'and',
                      DBSearch.contents_, 'match', ':query'))
 
 search_folders  = (DBSearch.ftable_, '=', '"folders"', 'and', 
-                   (Folder.parent_, '=', 'NULL', 'or',
+                   (Folder.parent_, 'is', 'NULL', 'or',
                     Folder.room_, 'in', ('select', Membership.room_, 'from memberships where', 
                      Membership.person_, '=', ':person')), 'and',
                      DBSearch.contents_, 'match', ':query')
+
 search_files    = (DBSearch.ftable_, '=', '"files"', 'and', 
-                   (File.folder_, '=', 'NULL', 'or',
+                   (File.folder_, 'is' 'NULL', 'or',
                     File.room_, 'in', ('select', Membership.room_, 'from memberships where', 
                      Membership.person_, '=', ':person')), 'and',
                      DBSearch.contents_, 'match', ':query')
@@ -763,6 +764,14 @@ search_cards    = (DBSearch.ftable_, '=', '"cards"', 'and',
                     Card.room_, 'in', ('select', Membership.room_, 'from memberships where', 
                      Membership.person_, '=', ':person')), 'and',
                      DBSearch.contents_, 'match', ':query')
+
+search_rooms    = (DBSearch.ftable_, '=', '"rooms"', 'and', 
+                   (Room.public_, '=', '1', 'or',
+                    Room.id_, 'in', ('select', Membership.room_, 'from memberships where', 
+                     Membership.person_, '=', ':person')), 'and',
+                     DBSearch.contents_, 'match', ':query')
+
+
 #TODO: exclude content the user shouldn't see
 @person_logged_in
 @socketio.on('search-query')
@@ -772,10 +781,10 @@ def handle_search(json):
     person_id = scoreboard.get_person_from_sid(request.sid)
 
     #TODO: implement union(...) for this
-    msg_results = DBSearch.raw_select(search_messages,
-                                      {'person': person_id, 'query': query},
-                                      tables = [left_join(DBSearch, Message, 'row_id', 'id')],
-                                      distinct = True)
+    msg_results     = DBSearch.raw_select(search_messages,
+                                          {'person': person_id, 'query': query},
+                                          tables = [left_join(DBSearch, Message, 'row_id', 'id')],
+                                          distinct = True)
     folder_results  = DBSearch.raw_select(search_folders,
                                           {'person': person_id, 'query': query},
                                           tables = [left_join(DBSearch, Folder, 'row_id', 'id')],
@@ -788,17 +797,21 @@ def handle_search(json):
                                           {'person': person_id, 'query': query},
                                           tables = [left_join(DBSearch, Card, 'row_id', 'id')],
                                           distinct = True)
+    room_results    = DBSearch.raw_select(search_rooms,
+                                          {'person': person_id, 'query': query},
+                                          tables = [left_join(DBSearch, Room, 'row_id', 'id')],
+                                          distinct = True)
     person_results  = DBSearch.raw_select((DBSearch.ftable_, '=', '"persons"', 'and', 
                                           DBSearch.contents_, 'match', ':query'),
-                                         {'person': person_id, 'query': query},
-                                         tables = [left_join(DBSearch, Message, 'row_id', 'id')],
-                                         distinct = True)
+                                          {'person': person_id, 'query': query},
+                                          tables = [left_join(DBSearch, Person, 'row_id', 'id')],
+                                          distinct = True)
     print(msg_results)
     print(person_results)
     print(folder_results)
     print(file_results)
     print(card_results)
-    results = msg_results + person_results + folder_results + file_results + card_results
+    results = msg_results + person_results + folder_results + file_results + card_results + room_results
     results = [ result.public_fields() for result in results ]
     print(results)
     emit('search-result', results)
