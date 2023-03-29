@@ -322,7 +322,7 @@ class Files {
   }
 
   update_table_row_folder(folder) {
-    var rowid    = this.table_row_name(folder.id, 2);
+    var rowid    = this.table_row_name(folder.id, 'folder');
     var owner = people.get_person(folder.owner);
     if(owner) {
       var filename = `<button onmouseover="$('#${rowid}-button').removeClass('disabled');" 
@@ -344,7 +344,7 @@ class Files {
 
 
   update_table_row_file(file) {
-    var rowid    = this.table_row_name(file.id, 1);
+    var rowid    = this.table_row_name(file.id, 'file');
     //alert(JSON.stringify(file));
     var owner = people.get_person(file.owner);
     if(owner) {
@@ -676,7 +676,7 @@ class Search {
             }
 
             var type   = `<button class='btn btn-success btn-sm' 
-                            onclick='files.goto(${result.row_id},1);'
+                            onclick='files.goto(${result.row_id},"file");'
                             type='button'${file ? '':'disabled'}>
                             ${ this.file_icon(file.type) }
                           </button>`;
@@ -686,7 +686,7 @@ class Search {
 
           var folder   = files.get_folder(result.row_id);
           var type   = `<button class='btn btn-success btn-sm' 
-                          onclick='files.goto(${result.row_id},2);'
+                          onclick='files.goto(${result.row_id},"folder");'
                           type='button'${file ? '':'disabled'}>
                           ${ icons.folder }
                         </button>`;
@@ -1201,8 +1201,8 @@ class Rooms {
     }
   }
   
-  table_row_name(id, type) {
-    return `room-id-${type}-${id}`;
+  table_row_name(id) {
+    return `room-id-${id}`;
   }
   update_table_row(room) {
     var rowid    = this.table_row_name(room.id);
@@ -1229,6 +1229,9 @@ class Rooms {
     var rowdata = {'rowid':    rowid,
                    'name':     name, 
                    'buttons':  buttons}
+    if(this.table == null) {
+      build_table(rooms);
+    }
     add_table_row(this.table, rowid, rowdata);
   }
   render() {
@@ -1267,7 +1270,7 @@ class Messages {
       }
     });
 
-    $("#new-message").keyup(function(event) {
+    $("#new-message").keyup((event) => {
         var cursor_pos   = $('#new-message').prop("selectionStart"); 
         if(messages.picker_state == null) {
           switch(event.key) {
@@ -1614,7 +1617,7 @@ class Messages {
     var sT         = $('#messages').scrollTop();
     var sH         = $('#messages').height();
     var new_height = $('#messages').prop('scrollHeight');
-    console.log(`height change = ${new_height - orig_height}`);
+    //console.log(`height change = ${new_height - orig_height}`);
     this.height_adj = new_height - orig_height;
   }
 
