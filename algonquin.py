@@ -231,7 +231,7 @@ def upload_file():
             room = Room.get_where(id=request.form['room'])
             if room:
                 db_file.room = room.id
-                db_file.folder = room.folder
+                db_file.folder = room.root_folder
 
 
         db_file.save()

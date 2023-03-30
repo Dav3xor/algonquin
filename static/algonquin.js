@@ -269,16 +269,13 @@ class Files {
   get_file(id) {
     // sigh, javascript...
     if(id==undefined) {
-      console.log("gf1");
       return null;
     }
 
     if (! this.files.hasOwnProperty(id)) {
       getter.add('files', id);
-      console.log("gf2");
       return null;
     } else {
-      console.log("gf3");
       return this.files[id];
     }
   }
@@ -467,7 +464,7 @@ class People {
     this.table = null;
     this.table_def = { "rowId": "rowid",
                        "dom": "tip",
-                       "columns": [ { "data": 'online', 'orderData': [2,1], 'width': '68px'}, 
+                       "columns": [ { "data": 'online', 'orderData': [2,1], 'width': '80px'}, 
                                     { "data": 'name'}, 
                                     { "data": 'buttons', "orderable": false, 'width': '123px'} ]};
     $('#ring-bell').append(icons.bell);
