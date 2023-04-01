@@ -188,6 +188,7 @@ class Card(db.DBTable):
              'title':     {'type': 'TEXT', 'xss-filter': True,
                            'searchable': True},
              'locked':    {'type': 'BOOLEAN'},
+             'public':    {'type': 'BOOLEAN'},
              'contents':  {'type': 'TEXT', 'xss-filter': True,
                            'searchable': True}}
     table_name = 'cards'

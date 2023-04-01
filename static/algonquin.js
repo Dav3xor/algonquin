@@ -609,8 +609,8 @@ class Search {
     this.table = null;
     this.table_def = { "rowId": "rowid",
                        "dom": "tip",
-                       "columns": [ { "data": 'type', 'width': '25px'}, 
-                                    { "data": 'row'}, 
+                       "columns": [ { "data": 'row', 'width': '25px'}, 
+                                    { "data": 'type'}, 
                                     { "data": 'result'} ]};
   }
 
@@ -671,12 +671,14 @@ class Search {
             if (!(ftype)) {
               ftype = icons.unknown;
             }
-
+            var type   = messages.render_inline_file(file, 100, true);
+            /*
             var type   = `<button class='btn btn-success btn-sm' 
                             onclick='files.goto(${result.row_id},"file");'
                             type='button'${file ? '':'disabled'}>
                             ${ this.file_icon(file.type) }
                           </button>`;
+                          */
           }
           break;
         case 'folders':
@@ -690,11 +692,14 @@ class Search {
           break;
         case 'cards':
           var card   = cards.get_card(result.row_id);
+          var type   = messages.render_inline_card(card, true);
+          /*
           var type   = `<button class='btn btn-success btn-sm' 
                                 onclick='cards.goto(${result.row_id});'
                                 type='button'${card ? '':'disabled'}>
                           ${icons.card}
                         </button>`;
+                        */
           break;
         case 'persons':
           var person = people.get_person(result.row_id);
@@ -1442,34 +1447,46 @@ class Messages {
   }
 
 
-  render_inline_card(card) {
+  render_inline_card(card, block=false) {
+    var btnblock="";
+    if(block==true){
+      btnblock="btn-block text-left";
+    }
     if (!card) {
       return `<span class='btn btn-danger'> <b> loading... </b> </span>`;
     } else {
-      return `<button class="btn btn-dark btn-sm" 
+      return `<button class="btn btn-dark btn-sm mx-2 ${btnblock}" 
                       onclick="cards.show(${card.id});">
                 ${icons.card}
                 ${card.title}
               </button>`;
     }
   }
-  render_inline_person(person) {
+  render_inline_person(person, block=false) {
+    var btnblock="";
+    if(block==true){
+      btnblock="btn-block text-left";
+    }
     if (!person) {
       return `<span class='btn btn-danger'> <b> loading... </b> </span>`;
     } else {
       return `<button onclick="people.goto(${person.id});" 
-                      class="btn btn-dark btn-sm">
+                      class="btn btn-dark btn-sm mx-2 ${btnblock}">
                 ${icons.person_small}
                 @${person.handle}
               </button>`;
     }
   }
  
-  render_inline_room(room) {
+  render_inline_room(room, block=false) {
+    var btnblock="";
+    if(block==true){
+      btnblock="btn-block text-left";
+    }
     if (!room) {
       return `<span class='btn btn-danger'> <b> loading... </b> </span>`;
     } else {
-      return `<button class="btn btn-dark btn-sm"
+      return `<button class="btn btn-dark btn-sm mx-2 ${btnblock}"
                       onclick="rooms.change_room('${room.id}');">
                 ${icons.flower}
                 #${room.name}
@@ -1477,41 +1494,59 @@ class Messages {
     }
   }
 
-  render_inline_phone(phone) {
+  render_inline_phone(phone, block=false) {
+    var btnblock="";
+    if(block=true){
+      btnblock="btn-block text-left";
+    }
     var number1 = "5035352342";
     var number2 = "(503) 535-2342";
-    return `<button class="btn btn-dark btn-sm">
+    return `<button class="btn btn-dark btn-sm mx-2 ${btnblock}">
               ${icons.telephone}
-              <a href="tel:${number1}">${number2}</a>
+              <a href="tel:${number1}" style="color:white;">${number2}</a>
             </button>`;
     
   }
 
-  render_inline_file(file) {
+  render_inline_file(file, height=200, block=false) {
+    var btnblock="";
+    if(block==true){
+      btnblock="btn-block text-left";
+    }
     if (!file) {
-      return `<span class='btn btn-danger ml-2 mr-2 disabled'> <b> loading... </b> </span>`;
+      return `<span class='btn btn-danger ml-2 mr-2 disabled ${btnblock}'> <b> loading... </b> </span>`;
     } else if (file.deleted == true) {
-      return `<span class='btn btn-danger disabled ml-2 mr-2'> <b>${file.name}</b> (deleted) </span>`;
+      return `<span class='btn btn-danger disabled mx-2 ${btnblock}'> <b>${file.name}</b> (deleted) </span>`;
     } else {
 
       switch(file.type) {
         case 'image': 
-          return `<button class="btn btn-light btn-sm p-1 m-1">
-                    <img height=200 src="/files/${file.localname}"
-                         onclick="window.open('/files/${file.localname}','_blank');"/>
-                  </button>`;
+          if(block) {
+            return `<button onclick="window.open('/files/${file.localname}','_blank');"
+                            class="btn btn-dark btn-sm p-1 mx-1 btn-block text-left text-bottom">
+                      <img height=${height} src="/files/${file.localname}"
+                           />
+                      ${file.name}
+                    </button>`;
+
+          } else {
+            return `<button class="btn btn-light btn-sm p-1 m-1">
+                      <img height=${height} src="/files/${file.localname}"
+                           onclick="window.open('/files/${file.localname}','_blank');"/>
+                    </button>`;
+          }
           break;
         case 'audio':
           var button_id = `msg-play-${rooms.get_cur_room()}-${file.id}`;
           return `<span class="badge badge-dark">
-                    <button class="btn btn-info btn-sm" 
+                    <button class="btn btn-info btn-sm ${btnblock}" 
                             onclick="jukebox.play_pause('${button_id}', '/files/${file.localname}');">
                       ${icons.play}
                     </button>
                     ${file.name}
                   </span>`;
         case 'archive':
-          return `<button class="btn btn-light btn-sm" 
+          return `<button class="btn btn-light btn-sm ${btnblock} mx-2" 
                           onclick="window.open('/files/${file.localname}','_blank');">
                     ${icons.archive} ${file.name}
                   </button>`;
@@ -1519,7 +1554,7 @@ class Messages {
           break;
 
         default:
-          return `<button class="btn btn-light btn-sm" 
+          return `<button class="btn btn-light btn-sm ${btnblock} mx-2" 
                           onclick="window.open('/files/${file.localname}','_blank');">
                     ${icons.new_tab} ${file.name}
                   </button>`;

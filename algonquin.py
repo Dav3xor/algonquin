@@ -413,19 +413,19 @@ stuff = {'persons': {'class': Person,
                    'order_by': 'persons.id'},
          'files': {'class': File, 
                    'tables': [File, Membership],
-                   'where': 'files.id = memberships.room and memberships.person = ? and files.id in (%s)',
+                   'where': '(files.public = 1) or (files.owner  = ?) or (files.room = memberships.room and memberships.person = ? and files.id in (%s))',
                    'order_by': 'files.id'},
          'cards': {'class': Card, 
                    'tables': [Card, Membership],
-                   'where': 'cards.id = memberships.room and memberships.person = ? and cards.id in (%s)',
+                   'where': '(cards.public = 1) or (cards.owner = ?) or (cards.room = memberships.room and memberships.person = ? and cards.id in (%s))',
                    'order_by': 'cards.id'},
          'rooms': {'class': Room, 
                    'tables': [Room, Membership],
-                   'where': 'rooms.id = memberships.room and memberships.person = ? and rooms.id in (%s)',
+                   'where': '(rooms.public = 1) or (rooms.owner  = ?) or (rooms.id = memberships.room and memberships.person = ? and rooms.id in (%s))',
                    'order_by': 'rooms.id'},
          'messages': {'class': Message, 
                       'tables': [Message, Membership],
-                      'where': 'messages.room = memberships.room and memberships.person = ? and messages.id in (%s)',
+                      'where': '(message.person = ?) or (messages.room = memberships.room and memberships.person = ? and messages.id in (%s))',
                       'order_by': 'rooms.id'}}
 
 def send_stuff (room, **kwargs):
@@ -451,6 +451,7 @@ def handle_get_stuff(json):
             if key == 'persons':
                 where = table['where'] % ','.join(['?' for i in json[key].keys()])
             else:
+                keys.append(person)
                 keys.append(person)
                 where = table['where'] % ','.join(['?' for i in json[key].keys()])
             extra_columns = stuff[key]['extra_columns'] if 'extra_columns' in stuff[key] else []
