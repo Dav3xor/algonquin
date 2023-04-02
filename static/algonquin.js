@@ -654,10 +654,12 @@ class Search {
       switch (result.ftable) {
         case 'messages':
           var message = messages.get_message(result.row_id);
-          var type   = `<button onclick='messages.goto(${result.row_id});' 
+          /*var type   = `<button onclick='messages.goto(${result.row_id});' 
                                 class='btn btn-success btn-sm' type='button'${message ? '':'disabled'}>
                           ${icons.chat_bubble}
                         </button>`;
+                        */
+          var type = messages.render_inline_message(message, true)
           break;
         case 'files':
           var file   = files.get_file(result.row_id);
@@ -1507,6 +1509,22 @@ class Messages {
             </button>`;
     
   }
+
+  render_inline_message(msg, block=false) {
+    var btnblock="";
+    if(block==true){
+      btnblock="btn-block text-left";
+    }
+    if (!msg) {
+      return `<span class='btn btn-danger ml-2 mr-2 disabled ${btnblock}'> <b> loading... </b> </span>`;
+    }
+    return `<button class="btn btn-dark btn-sm mx-2 ${btnblock}">
+              ${icons.chat_bubble}
+              ${msg.message}
+            </button>`;
+  }
+
+
 
   render_inline_file(file, height=200, block=false) {
     var btnblock="";
