@@ -1515,12 +1515,23 @@ class Messages {
     if(block==true){
       btnblock="btn-block text-left";
     }
+    var room = rooms.get_room(msg.room);
+    var room_name = "";
+    console.log(1);
+    if(room != null) {
+    console.log(2);
+      room_name = `(${room.name})`;
+    } else {
+    console.log(3);
+      room_name = "(unknown)";
+    }
+      
     if (!msg) {
       return `<span class='btn btn-danger ml-2 mr-2 disabled ${btnblock}'> <b> loading... </b> </span>`;
     }
     return `<button class="btn btn-dark btn-sm mx-2 ${btnblock}">
               ${icons.chat_bubble}
-              ${msg.message}
+              ${room_name} ${msg.message}
             </button>`;
   }
 

@@ -755,7 +755,8 @@ search_folders  = (DBSearch.ftable_, '=', '"folders"', 'and',
                      DBSearch.contents_, 'match', ':query')
 
 search_files    = (DBSearch.ftable_, '=', '"files"', 'and', 
-                   (File.folder_, 'is' 'NULL', 'or',
+                   (File.folder_, 'is NULL', 'or',
+                    File.room_, 'is NULL', 'or',
                     File.room_, 'in', ('select', Membership.room_, 'from memberships where', 
                      Membership.person_, '=', ':person')), 'and',
                      DBSearch.contents_, 'match', ':query')
