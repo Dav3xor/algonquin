@@ -609,9 +609,8 @@ class Search {
     this.table = null;
     this.table_def = { "rowId": "rowid",
                        "dom": "tip",
-                       "columns": [ { "data": 'row', 'width': '25px'}, 
-                                    { "data": 'type'}, 
-                                    { "data": 'result'} ]};
+                       "columns": [ { "data": 'row'}, 
+                                    { "data": 'type'}  ]};
   }
 
   send_query(query) {
@@ -725,14 +724,73 @@ class Search {
                          </button>`;
           break;
       }
+      var row = "";
+      switch (result.ftable) {
+        case 'person':
+          switch (result.row) {
+            case 'email':
+              row = "Person's Email Address";
+              break;
+            case 'handle':
+              row = "Person's Handle";
+              break;
+            case 'about':
+              row = "About Person";
+              break;
+          }
+          break;
+        case 'messages':
+            row = "Message Contents";
+            break;
+        case 'rooms':
+            switch (result.row) {
+              case 'topic':
+                row = "Room Topic";
+                break;
+              case 'about':
+                row = "About Room";
+                break;
+              case 'name':
+                row = "Room Name";
+                break;
+            }
+            break;
+        case 'cards':
+            switch (result.row) {
+              case 'title':
+                row = "Card Title";
+                break;
+              case 'contents':
+                row = "Card Contents";
+                break;
+            }
+            break;
 
-      var row    = `${result.row}`;
+        case 'files':
+            switch (result.row) {
+              case 'name':
+                row = "File Name";
+                break;
+              case 'comment':
+                row = "File Comment";
+                break;
+              case 'type':
+                row = "File Type";
+                break;
+            }
+            break;
+        case 'folders':
+            return "Folder Name";
+            break;
+        case 'card_edits':
+            return "Card Change";
+            break;
+      }
+
       var rowid  = `${result.ftable}-${result.row_id}`;
-      var result = `${markdown.makeHtml(messages.expand_tildes(result.contents))}`;
       var rowdata = {'type':   type,
                      'row':    row,
-                     'rowid':   rowid, 
-                     'result': result }
+                     'rowid':   rowid }
       add_table_row(this.table, rowid, rowdata);
     }
   }
