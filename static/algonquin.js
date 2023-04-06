@@ -2,6 +2,7 @@ function qsv(selector) {
   return document.querySelector(selector).value;
 }
 
+
 class Picker {
   constructor() {
     this.items = [];
@@ -1594,7 +1595,6 @@ class Messages {
   }
 
 
-
   render_inline_file(file, height=200, block=false) {
     var btnblock="";
     if(block==true){
@@ -1605,15 +1605,26 @@ class Messages {
     } else if (file.deleted == true) {
       return `<span class='btn btn-danger disabled mx-2 ${btnblock}'> <b>${file.name}</b> (deleted) </span>`;
     } else {
-
       switch(file.type) {
         case 'image': 
           if(block) {
+            console.log(file.localname);
             return `<button onclick="window.open('/files/${file.localname}','_blank');"
                             class="btn btn-dark btn-sm p-1 mx-1 btn-block text-left text-bottom">
-                      <img height=${height} src="/files/${file.localname}"
-                           />
-                      ${file.name}
+                      <span class="mx-2" style="float:left;">
+                        <img height=${height} src="/files/${file.localname}" />
+                      </span>
+                      <span>
+                        <div>
+                          Filename: ${file.name}
+                        </div>
+                        <div>
+                          Comment: ${file.comment}
+                        </div>
+                        <div>
+                          Size: ${file.size/1024}kb
+                        </div>
+                      </span>
                     </button>`;
 
           } else {
