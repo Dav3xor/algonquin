@@ -18,12 +18,17 @@ import difflib
 
 
 pprint = pprint.PrettyPrinter()
+
+log_level = logging.INFO
+if config['debug_logging']:
+    log_level = logging.DEBUG
+
 logging.basicConfig(format='%(asctime)s %(levelname)s %(filename)s: %(lineno)d | %(message)s',
                     datefmt='%m/%d/%Y %I:%M:%S %p',
-                    level=logging.INFO)
+                    level=log_level)
 logging.info(f"Algonquin IBBS startup.  {config['version']} protocol: {config['protocol']}")
 
-DBTable.set_db(config['database'], debug=False)
+DBTable.set_db(config['database'], debug=config['debug_logging'])
 
 build_tables([Person, Session, Message, Room, File, Folder, Membership, Card, Card_Edit])
 

@@ -4,6 +4,7 @@ __protocol__   = 1
 config = {'database':         '{{ database_name }}',
           'protocol':         __protocol__,
           'version':          __version__,
+          'debug_logging':    False,
           'site_name':        '{{ site_name }}',
           'site_url':         '{{ site_url }}',
           'sysop_handle':     '{{ sysop_handle }}',

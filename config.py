@@ -6,6 +6,7 @@ __protocol__   = 1
 config = {'database':         'algonquin.db',
           'protocol':         __protocol__,
           'version':          __version__,
+          'debug_logging':    False,
           'site_name':        'Orgone Accumulator',
           'site_url':         'orgone.institute',
           'sysop_handle':     'sysop',
