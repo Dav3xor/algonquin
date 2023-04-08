@@ -20,10 +20,10 @@ import difflib
 pprint = pprint.PrettyPrinter()
 logging.basicConfig(format='%(asctime)s %(levelname)s %(filename)s: %(lineno)d | %(message)s',
                     datefmt='%m/%d/%Y %I:%M:%S %p',
-                    level=logging.DEBUG)
+                    level=logging.INFO)
 logging.info(f"Algonquin IBBS startup.  {config['version']} protocol: {config['protocol']}")
 
-DBTable.set_db(config['database'], debug=True)
+DBTable.set_db(config['database'], debug=False)
 
 build_tables([Person, Session, Message, Room, File, Folder, Membership, Card, Card_Edit])
 

@@ -93,15 +93,6 @@ class DBTable:
             
     @classmethod
     def set_properties(cls):
-        print("-----")
-        print("-----")
-        print("-----")
-        print("-----")
-        print(DBTable.__subclasses__())
-        print("-----")
-        print("-----")
-        print("-----")
-        print("-----")
         class Attr(object):
             def __init__(self, attr, attr_attrs):
                 self.attr = attr
