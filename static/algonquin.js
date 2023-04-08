@@ -1605,6 +1605,10 @@ class Messages {
     } else if (file.deleted == true) {
       return `<span class='btn btn-danger disabled mx-2 ${btnblock}'> <b>${file.name}</b> (deleted) </span>`;
     } else {
+      var comment = "";
+      if (file.comment) {
+        comment = `<div>Comment: {$file.comment}`;
+      }
       switch(file.type) {
         case 'image': 
           if(block) {
@@ -1618,11 +1622,12 @@ class Messages {
                         <div>
                           Filename: ${file.name}
                         </div>
-                        <div>
-                          Comment: ${file.comment}
-                        </div>
+                        ${comment}
                         <div>
                           Size: ${file.size/1024}kb
+                        </div>
+                        <div>
+                          Uploaded: ${file.uploaded}
                         </div>
                       </span>
                     </button>`;
