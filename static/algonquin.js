@@ -36,7 +36,7 @@ class Picker {
 
   sort(input) {
     input = input.toLowerCase();
-    console.log(input);
+    //console.log(input);
     for(var i in this.items) {
       var candidate = this.items[i].string.toLowerCase()
       var start     = 0;
@@ -45,7 +45,7 @@ class Picker {
         var substring = candidate.substring(start);
         var loc       = substring.indexOf(input[j]);
         if(loc != -1) {
-          console.log(loc);
+          //console.log(loc);
           score += 1.0 / (loc+1);
           start += loc;
         }
@@ -293,7 +293,7 @@ class Files {
   }
   change_folder(folder_id) {
     if(! this.folders.hasOwnProperty(folder_id)) {
-      console.log(`invalid change_folder -- ${folder_id}`);
+      //console.log(`invalid change_folder -- ${folder_id}`);
     } else {
       this.path.push(folder_id);
       socket.emit('get-folder', {'folder_id': folder_id});
@@ -642,15 +642,74 @@ class Search {
     }
   }
 
-  render(results=null) {
-    if(results) {
-      this.cur_results = results;
-    }
-    this.table.clear();
-    var contents = "";
-    for(var result in this.cur_results) {
-      var result = this.cur_results[result];
-      console.log(result.ftable);
+  row_name(result) {
+      switch (result.ftable) {
+        case 'person':
+          switch (result.row) {
+            case 'email':
+              return "Person's Email Address";
+              break;
+            case 'handle':
+              return "Person's Handle";
+              break;
+            case 'about':
+              return "About Person";
+              break;
+          }
+          break;
+        case 'messages':
+            return "Message Contents";
+            break;
+        case 'rooms':
+            switch (result.row) {
+              case 'topic':
+                return "Room Topic";
+                break;
+              case 'about':
+                return "About Room";
+                break;
+              case 'name':
+                return "Room Name";
+                break;
+            }
+            break;
+        case 'cards':
+            switch (result.row) {
+              case 'title':
+                return "Card Title";
+                break;
+              case 'contents':
+                return "Card Contents";
+                break;
+            }
+            break;
+
+        case 'files':
+            switch (result.row) {
+              case 'name':
+                return "File Name";
+                break;
+              case 'comment':
+                return "File Comment";
+                break;
+              case 'type':
+                return "File Type";
+                break;
+            }
+            break;
+        case 'folders':
+            return "Folder Name";
+            break;
+        case 'card_edits':
+            return "Card Change";
+            break;
+      }
+    return "?";
+  }
+
+
+  update_table_row(result) {
+      //console.log(result.ftable);
       switch (result.ftable) {
         case 'messages':
           var message = messages.get_message(result.row_id);
@@ -659,12 +718,14 @@ class Search {
                           ${icons.chat_bubble}
                         </button>`;
                         */
-          var type = messages.render_inline_message(message, true)
+          if(message == null) {
+            var type = `<button class='btn btn-warning btn-sm'>loading...</button>`;
+          } else {
+            var type = messages.render_inline_message(message, true)
+          }
           break;
         case 'files':
           var file   = files.get_file(result.row_id);
-          console.log(file);
-          console.log(result);
           if(file == null) {
             var type = `<button class='btn btn-warning btn-sm'>loading...</button>`;
           } else {
@@ -686,15 +747,23 @@ class Search {
         case 'folders':
 
           var folder   = files.get_folder(result.row_id);
-          var type   = `<button class='btn btn-success btn-sm' 
-                          onclick='files.goto(${result.row_id},"folder");'
-                          type='button'${file ? '':'disabled'}>
-                          ${ icons.folder }
-                        </button>`;
+          if(folder == null) {
+            var type = `<button class='btn btn-warning btn-sm'>loading...</button>`;
+          } else {
+            var type   = `<button class='btn btn-success btn-sm' 
+                            onclick='files.goto(${result.row_id},"folder");'
+                            type='button'${file ? '':'disabled'}>
+                            ${ icons.folder }
+                          </button>`;
+          }
           break;
         case 'cards':
           var card   = cards.get_card(result.row_id);
-          var type   = messages.render_inline_card(card, true);
+          if(card == null) {
+            var type = `<button class='btn btn-warning btn-sm'>loading...</button>`;
+          } else {
+            var type   = messages.render_inline_card(card, true);
+          }
           /*
           var type   = `<button class='btn btn-success btn-sm' 
                                 onclick='cards.goto(${result.row_id});'
@@ -705,19 +774,27 @@ class Search {
           break;
         case 'persons':
           var person = people.get_person(result.row_id);
-          var type   = `<button onclick='people.goto(${result.row_id});'
-                                class='btn btn-success btn-sm' 
-                                type='button'${person ? '':'disabled'}>
-                          ${icons.person}
-                        </button>`;
+          if(person == null) {
+            var type = `<button class='btn btn-warning btn-sm'>loading...</button>`;
+          } else {
+            var type   = `<button onclick='people.goto(${result.row_id});'
+                                  class='btn btn-success btn-sm' 
+                                  type='button'${person ? '':'disabled'}>
+                            ${icons.person}
+                          </button>`;
+          }
           break;
         case 'rooms':
           var room = rooms.get_room(result.row_id);
-          var type   = `<button onclick='room.goto(${result.row_id});'
-                                class='btn btn-success btn-sm' 
-                                type='button'${room ? '':'disabled'}>
-                          ${icons.flower}
-                        </button>`;
+          if(room == null) {
+            var type = `<button class='btn btn-warning btn-sm'>loading...</button>`;
+          } else {
+            var type   = `<button onclick='room.goto(${result.row_id});'
+                                  class='btn btn-success btn-sm' 
+                                  type='button'${room ? '':'disabled'}>
+                            ${icons.flower}
+                          </button>`;
+          }
           break;
         default :
           var type    = `<button class='btn btn-success btn-sm' type='button' disabled>
@@ -725,75 +802,34 @@ class Search {
                          </button>`;
           break;
       }
-      var row = "";
-      switch (result.ftable) {
-        case 'person':
-          switch (result.row) {
-            case 'email':
-              row = "Person's Email Address";
-              break;
-            case 'handle':
-              row = "Person's Handle";
-              break;
-            case 'about':
-              row = "About Person";
-              break;
-          }
-          break;
-        case 'messages':
-            row = "Message Contents";
-            break;
-        case 'rooms':
-            switch (result.row) {
-              case 'topic':
-                row = "Room Topic";
-                break;
-              case 'about':
-                row = "About Room";
-                break;
-              case 'name':
-                row = "Room Name";
-                break;
-            }
-            break;
-        case 'cards':
-            switch (result.row) {
-              case 'title':
-                row = "Card Title";
-                break;
-              case 'contents':
-                row = "Card Contents";
-                break;
-            }
-            break;
+      var row = this.row_name(result);
+      //console.log(row);
 
-        case 'files':
-            switch (result.row) {
-              case 'name':
-                row = "File Name";
-                break;
-              case 'comment':
-                row = "File Comment";
-                break;
-              case 'type':
-                row = "File Type";
-                break;
-            }
-            break;
-        case 'folders':
-            return "Folder Name";
-            break;
-        case 'card_edits':
-            return "Card Change";
-            break;
-      }
-
-      var rowid  = `${result.ftable}-${result.row_id}`;
+      var rowid  = `search-${result.ftable}-${result.row_id}`;
       var rowdata = {'type':   type,
                      'row':    row,
                      'rowid':   rowid }
       add_table_row(this.table, rowid, rowdata);
+  
+  }
+
+
+
+  render(results=null) {
+    //console.log("search render");
+    if(results) {
+      this.cur_results = results;
     }
+    if(this.table == null) {
+      build_table(search);
+    }
+
+    this.table.clear();
+    for(var result in this.cur_results) {
+      var result = this.cur_results[result];
+      this.update_table_row(result);
+    }
+    getter.request();
   }
 }
 
@@ -1133,7 +1169,17 @@ class Rooms {
   }
 
   get_room(room) {
-    return this.rooms[room];
+    // sigh, javascript...
+    if(room==undefined) {
+      return null;
+    }
+
+    if (! this.rooms.hasOwnProperty(room)) {
+      getter.add('rooms', room);
+      return null;
+    } else {
+      return this.rooms[room];
+    }
   }
   
   get_cur_room() {
@@ -1356,15 +1402,15 @@ class Messages {
               });
               picker.show();
               messages.set_picker('person', cursor_pos);
-              console.log("user picker");
+              //console.log("user picker");
               break;
             case '#':
               messages.set_picker('room', cursor_pos);
-              console.log("room picker");
+              //console.log("room picker");
               break;
             case '%':
               messages.set_picker('file', cursor_pos);
-              console.log("file/folder picker");
+              //console.log("file/folder picker");
               break;
           }
         } else {
@@ -1574,14 +1620,15 @@ class Messages {
     if(block==true){
       btnblock="btn-block text-left";
     }
+    //console.log(msg);
     var room = rooms.get_room(msg.room);
     var room_name = "";
-    console.log(1);
+    //console.log(1);
     if(room != null) {
-    console.log(2);
+    //console.log(2);
       room_name = `(${room.name})`;
     } else {
-    console.log(3);
+    //console.log(3);
       room_name = "(unknown)";
     }
       
@@ -1612,7 +1659,7 @@ class Messages {
       switch(file.type) {
         case 'image': 
           if(block) {
-            console.log(file.localname);
+            //console.log(file.localname);
             return `<button onclick="window.open('/files/${file.localname}','_blank');"
                             class="btn btn-dark btn-sm p-1 mx-1 btn-block text-left text-bottom">
                       <span class="mx-2" style="float:left;">
@@ -1890,7 +1937,7 @@ class Messages {
 
   }
  
-  add(new_messages) {
+  add(new_messages, block) {
     for (var message in new_messages) {
       message = new_messages[message];
 
@@ -1899,7 +1946,9 @@ class Messages {
         console.log("duplicate message: " + message.id);
       } else {
         this.messages[message.id] = message;
-        rooms.add_message(message);
+        if(block) {
+          rooms.add_message(message);
+        }
       }
     }
   }
@@ -1909,6 +1958,7 @@ class Messages {
     if((room.at_end == false) &&
        ((room.scrollback_state == Scrollback_States.Ready) ||
        ((room.scrollback_state == Scrollback_States.Loading2))))  {
+      console.log(room);
       socket.emit('get-messages', {'room_id':   room.id,
                                    'before_id': room.message_index[0],
                                    'count':     10} );
@@ -1989,14 +2039,42 @@ class Getter {
     console.log(`getter protocol: ${protocol}`);
     this.protocol = protocol
     this.reset();
-    this.requested = false;
+    this.requested = {'persons': {},
+                      'files': {},
+                      'messages': {},
+                      'cards': {},
+                      'rooms': {} };   
   }
 
   add(type, id) {
-    this.unknown[type][id] = 1;
-    if (!this.requested) {
-      setTimeout(() => { this.request(); }, 250);
-      this.requested = true;
+    //console.log(1);
+    if(this.requested[type].hasOwnProperty(id) == false) {
+      //console.log(2);
+      this.unknown[type][id] = 1;
+      this.requested[type][id] = 1;
+      this.newrequest=true;
+    }
+  }
+  
+  reset() {
+    this.newrequest = false;
+    this.unknown    = {'persons': {},
+                       'files': {},
+                       'messages': {},
+                       'cards': {},
+                       'rooms': {} }
+
+  }
+
+  request() {
+    //console.log("request");
+    //console.log(this.newrequest);
+    //console.log(this.requested);
+
+    if(this.newrequest == true) {
+      //console.log(this.unknown);
+      socket.emit('get-stuff', this.unknown);
+      this.reset();
     }
   }
 
@@ -2009,7 +2087,7 @@ class Getter {
     var update_cards = false;
 
     if(stuff.__protocol__ > this.protocol) {
-      console.log('----------- new version');
+      //console.log('----------- new version');
       var status = `
                       <div class="badge badge-danger" style="font-size:1.3em;">
                         ${icons.bug}
@@ -2080,8 +2158,10 @@ class Getter {
       }
       $('#favicon').attr('href','/static/favicon2.svg');
       if('messages' in stuff) {
+        console.log(stuff);
+        var block = stuff.hasOwnProperty('block') ? stuff['block'] : false;
         messages.render(stuff.messages);
-        messages.add(stuff.messages);
+        messages.add(stuff.messages, block);
         if(('at_end' in stuff) && 
            (stuff.at_end == true) && 
            ($('#dragon').length)) {
@@ -2111,19 +2191,7 @@ class Getter {
     if(tabs.current_tab() == 'search') {
       search.render();
     }
-  }
-
-  reset() {
-    this.unknown = {'persons': {},
-                    'files': {},
-                    'messages': {},
-                    'cards': {},
-                    'rooms': {} }
-  }
-
-  request() {
-    socket.emit('get-stuff', this.unknown);
-    this.reset();
+  this.request();
   }
 
 };
@@ -2448,7 +2516,7 @@ $('#messages').scroll(function() {
 });
 
 $('#contents').click(function() {
-  console.log("contents click");
+  //console.log("contents click");
   $('#navb').removeClass('show');
 });
 

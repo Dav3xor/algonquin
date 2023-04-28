@@ -111,7 +111,7 @@ def json_has_keys(*keys):
             success = True
             for key in keys:
                 if key not in args[0]:
-                    logging.info(f'missing json key: {key}')
+                    logging.info(f'missing json key: {key} from: {args}')
                     success = False
             if success:
                 result = func(*args, **kwargs)
@@ -312,7 +312,7 @@ def send_person(person, broadcast=False, **kwargs):
 
     if 'namespace' in kwargs:
         namespace = kwargs['namespace']
-    send_stuff(broadcast, persons={person.id:person.public_fields()} )
+    send_stuff(broadcast, persons=[ person.public_fields() ] )
 
 
 def do_login(person, session, send_session_id=False):
@@ -327,7 +327,7 @@ def do_login(person, session, send_session_id=False):
             join_room('room-'+str(membership.room))
 
         response['personid']        = person.id
-        response['persons']         = {person.id: person.public_fields()}
+        response['persons']         = [ person.public_fields() ]
         response['authenticated'] = True
         response['result']        = 'Login Ok'
         response['__protocol__']    = __protocol__
@@ -343,10 +343,11 @@ def do_login(person, session, send_session_id=False):
         response = {}
         response['persons']       = person.related_persons()
         response['rooms']         = person.membership_list()
-        response['messages']      = person.message_list(response['rooms'].keys())
+        response['messages']      = person.message_list([i['id'] for i in response['rooms']])
         response['files']         = person.file_list()
         response['folders']       = person.folder_list()
         response['cards']         = person.card_list()
+        response['block']         = True
         send_stuff(request.sid, **response)
 
         send_person(person, True)
@@ -358,7 +359,7 @@ def disconnect_person(sid):
     person = Person.get_where(id=scoreboard.get_person_from_sid(sid))
     scoreboard.remove(sid)
     if person:
-        send_stuff(True, persons={person.id: person.public_fields()})
+        send_stuff(True, persons=[ person.public_fields() ])
 
 
 @person_logged_in
@@ -418,30 +419,31 @@ stuff = {'persons': {'class': Person,
                    'order_by': 'persons.id'},
          'files': {'class': File, 
                    'tables': [File, Membership],
-                   'where': '(files.public = 1) or (files.owner  = ?) or (files.room = memberships.room and memberships.person = ? and files.id in (%s))',
+                   'where': 'files.id in (%s) and ((files.public = 1) or (files.owner  = ?) or (files.room = memberships.room and memberships.person = ?))',
                    'order_by': 'files.id'},
          'cards': {'class': Card, 
                    'tables': [Card, Membership],
-                   'where': '(cards.public = 1) or (cards.owner = ?) or (cards.room = memberships.room and memberships.person = ? and cards.id in (%s))',
+                   'where': 'cards.id in (%s) and ((cards.public = 1) or (cards.owner = ?) or (cards.room = memberships.room and memberships.person = ?))',
                    'order_by': 'cards.id'},
          'rooms': {'class': Room, 
                    'tables': [Room, Membership],
-                   'where': '(rooms.public = 1) or (rooms.owner  = ?) or (rooms.id = memberships.room and memberships.person = ? and rooms.id in (%s))',
+                   'where': 'rooms.id in (%s) and ((rooms.public = 1) or (rooms.owner  = ?) or (rooms.id = memberships.room and memberships.person = ?))',
                    'order_by': 'rooms.id'},
          'messages': {'class': Message, 
                       'tables': [Message, Membership],
-                      'where': '(message.person = ?) or (messages.room = memberships.room and memberships.person = ? and messages.id in (%s))',
-                      'order_by': 'rooms.id'}}
+                      'where': 'messages.id in (%s) and ((messages.person = ?) or (messages.room = memberships.room and memberships.person = ?))',
+                      'order_by': 'messages.id'}}
 
 def send_stuff (room, **kwargs):
     kwargs['__protocol__'] = __protocol__
     if 'persons' in kwargs:
-        for person in [i for i in kwargs['persons']]:
-           kwargs['persons'][person]['online'] = scoreboard.person_online(person)
+        for person in kwargs['persons']:
+           person['online'] = scoreboard.person_online(person['id'])
     if type(room) == bool: # broadcast
         emit('stuff-list', kwargs, broadcast=room, namespace='/')
     else:
         # send only to initiating person...
+        logging.debug(f'Send Stuff -- kwargs: {kwargs}')
         emit('stuff-list', kwargs, to=room, namespace='/')
 
 @person_logged_in
@@ -449,10 +451,10 @@ def send_stuff (room, **kwargs):
 def handle_get_stuff(json):
     person = scoreboard.get_person_from_sid(request.sid)
     output = {}
-    #print (json)
+    logging.debug(f'Get Stuff -- stuff: {json}')
     for key, table in stuff.items():
         if key in json and len(json[key])>0:
-            keys = []
+            keys = [*json[key].keys()] 
             if key == 'persons':
                 where = table['where'] % ','.join(['?' for i in json[key].keys()])
             else:
@@ -460,12 +462,14 @@ def handle_get_stuff(json):
                 keys.append(person)
                 where = table['where'] % ','.join(['?' for i in json[key].keys()])
             extra_columns = stuff[key]['extra_columns'] if 'extra_columns' in stuff[key] else []
-            keys += [*json[key].keys()] 
+            print(keys)
             rows = stuff[key]['class'].raw_select(where, 
                                                   keys, 
                                                   order_by = table['order_by'],
-                                                  tables   = table['tables'])
-            output[key] = { row.id:row.public_fields() for row in rows }
+                                                  tables   = table['tables'],
+                                                  distinct = True)
+            output[key] = [ row.public_fields() for row in rows ]
+    #logging.debug(f'Get Stuff -- output: {output}')
     send_stuff(request.sid, **output)
 
 @person_logged_in
@@ -494,9 +498,10 @@ def handle_get_messages(json):
         #print(messages)
         #time.sleep(5)
         send_stuff(request.sid, 
-                   at_end=at_end, 
-                   room_id=room, 
-                   messages=messages)
+                   at_end   = at_end, 
+                   block    = True, 
+                   room_id  = membership.room, 
+                   messages = messages)
     
 @person_logged_in
 @socketio.on('add-folder')
@@ -513,6 +518,7 @@ def handle_add_folder(json):
     folder.commit()
     
     logging.info(f'New Folder -- name: "{folder.name[:20]}" parent: "{parent.name[:20] if parent else "root"}"') 
+    # TODO: send to all people in room
     send_stuff(request.sid,
                folders      = [folder.public_fields()])
 
@@ -666,7 +672,7 @@ def handle_card_toggle_lock(json):
             card.save()
             card.commit()
             logging.info(f"Card Locked ({card.id})")
-        emit('stuff-list', {'cards': { card.id:card.public_fields() }})
+        emit('stuff-list', {'cards': [ card.public_fields() ]})
 
 
 
@@ -699,13 +705,13 @@ def handle_edit_card(json):
         card.room = int(json['room'])
         card.save()
         card.commit()
-        emit('stuff-list', {'cards': { card.id:card.public_fields() }}, 
+        emit('stuff-list', {'cards': [ card.public_fields() ]}, 
              room = 'room-'+str(json['room']))
     else:
         card.room = None
         card.save()
         card.commit()
-        emit('stuff-list', {'cards': { card.id:card.public_fields() }})
+        emit('stuff-list', {'cards': [ card.public_fields() ]})
     logging.info(f"Card Edit -- ({card.id})")
 
 
@@ -791,26 +797,32 @@ def handle_search(json):
     msg_results     = DBSearch.raw_select(search_messages,
                                           {'person': person_id, 'query': query},
                                           tables = [left_join(DBSearch, Message, 'row_id', 'id')],
+                                          order_by = "rank desc limit 100",
                                           distinct = True)
     folder_results  = DBSearch.raw_select(search_folders,
                                           {'person': person_id, 'query': query},
                                           tables = [left_join(DBSearch, Folder, 'row_id', 'id')],
+                                          order_by = "rank desc limit 100",
                                           distinct = True)
     file_results    = DBSearch.raw_select(search_files,
                                           {'person': person_id, 'query': query},
                                           tables = [left_join(DBSearch, File, 'row_id', 'id')],
+                                          order_by = "rank desc limit 100",
                                           distinct = True)
     card_results    = DBSearch.raw_select(search_cards,
                                           {'person': person_id, 'query': query},
                                           tables = [left_join(DBSearch, Card, 'row_id', 'id')],
+                                          order_by = "rank desc limit 100",
                                           distinct = True)
     room_results    = DBSearch.raw_select(search_rooms,
                                           {'person': person_id, 'query': query},
                                           tables = [left_join(DBSearch, Room, 'row_id', 'id')],
+                                          order_by = "rank desc limit 100",
                                           distinct = True)
     person_results  = DBSearch.raw_select((DBSearch.ftable_, '=', '"persons"', 'and', 
                                           DBSearch.contents_, 'match', ':query'),
                                           {'person': person_id, 'query': query},
+                                          order_by = "rank desc limit 100",
                                           tables = [left_join(DBSearch, Person, 'row_id', 'id')],
                                           distinct = True)
     print(msg_results)

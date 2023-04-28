@@ -47,7 +47,7 @@ class Person(db.DBTable):
         persons = self.raw_select(where, 
                                 {'self_id': self.id}, 
                                 tables=tables)
-        return { person.id:person.public_fields() for person in persons } 
+        return [ person.public_fields() for person in persons ]
 
     #( ((Room,'id'), '=', (Membership, 'room')), 'and'
     def membership_list(self):
@@ -59,14 +59,16 @@ class Person(db.DBTable):
                                 tables        = [Room, Membership],
                                 extra_columns = ["last_seen"])
 
-        return { room.id:room.public_fields() for room in rooms }
+        return [ room.public_fields() for room in rooms ]
         
+    # TODO: add better filtering
     def message_list(self, rooms):
         messages = []
         for room in rooms: 
             messages += Message.raw_select(((Message,'room'), '=', ':room'),
                                            {'room': room},
-                                           order_by = "messages.id desc limit 20")
+                                           order_by = "messages.id desc limit 20",
+                                           distinct = True)
         return [ message.public_fields() for message in messages ]
 
     # TODO: modify this after adding folder support?
@@ -82,7 +84,7 @@ class Person(db.DBTable):
                                 order_by = "files.id desc limit 100",
                                 distinct = True)
         #print(f"files = {files}")
-        return { file.id:file.public_fields() for file in files }
+        return [ file.public_fields() for file in files ]
     
     def folder_list(self, folder=None):
         folders = Folder.raw_select((((Folder.owner_, 'is', 'NULL'), 'or',
@@ -98,7 +100,7 @@ class Person(db.DBTable):
                                     tables = [left_join(Folder, Room, 'id', 'root_folder'),
                                               Membership])
         #print(f"folders = {folders}")
-        return { folder.id:folder.public_fields() for folder in folders }
+        return [ folder.public_fields() for folder in folders ]
 
     def card_list(self):
         cards = Card.raw_select(((Card.room_, 'in', ('select', Membership.room_, 'from', (Membership,),
@@ -108,7 +110,7 @@ class Person(db.DBTable):
                                     (Card.room_, 'is', 'NULL')),
                                  {'self_id': self.id},
                                  order_by = "cards.id desc limit 100")
-        return { card.id:card.public_fields() for card in cards }
+        return [ card.public_fields() for card in cards ]
 
 
 class Folder(db.DBTable):
