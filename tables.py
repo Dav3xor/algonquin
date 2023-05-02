@@ -73,12 +73,13 @@ class Person(db.DBTable):
 
     # TODO: modify this after adding folder support?
     def file_list(self, folder=None):
+        cur_folder = int(folder) if folder else 1
         files = File.raw_select( (((File.room_, 'in', ('select', Membership.room_, 'from', (Membership,), 
                                                    'where', Membership.person_, '=', ':self_id')) ,'or',
                                    (File.room_, 'is', 'NULL') ,'or',
                                    (File.owner_ ,'=', ':self_id' ) ,'or', 
                                    (File.public_ ,'=', 1)) ,'and',
-                                  File.folder_, 'is', ':folder' ),
+                                  File.folder_, 'is', ':folder'),
                                 {'self_id': self.id, 
                                  'folder':  folder},
                                 order_by = "files.id desc limit 100",
@@ -87,12 +88,13 @@ class Person(db.DBTable):
         return [ file.public_fields() for file in files ]
     
     def folder_list(self, folder=1):
+        cur_folder = int(folder) if folder else 1
         folders = Folder.raw_select((((Folder.owner_, 'is', 'NULL'), 'or',
                                       (Folder.owner_, '=', ':self_id' ), 'or',
                                       (Folder.public_, '=', 1), 'or',
                                       (Room.id_, '=', Membership.room_, 'and', 
                                        Membership.person_, '=', ':self_id')), 'and',
-                                     (Folder.parent_, 'is', ':folder')),
+                                     (Folder.parent_, 'is', ':folder', 'or', Folder.id_, '=', cur_folder)),
                                     {'self_id': self.id, 
                                      'folder':  folder},
                                     order_by = "folders.id desc limit 100",
