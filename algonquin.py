@@ -178,7 +178,7 @@ def file_upload_common(req):
             filename = req.form['filename']
 
         logging.info(f"Upload -- finishing: {filename}")
-        
+       
         # do it this way to give the interpreter a chance to switch threads
         # TODO: break this out into some sort of task queue deal
         
@@ -209,6 +209,12 @@ def file_upload_common(req):
             newfilename     = str(time.time()) + '.' + extension
             os.rename(outfile, os.path.join(config['file_root'], 'files', newfilename))
        
+        if 'to_user' in req.form:
+            to_folder = person.send_file_to(int(req.form['to_user']))
+            if to_folder:
+                folder = to_folder
+            
+
         db_file = File(owner     = person.id,
                        public    = True,
                        name      = filename,
@@ -516,7 +522,8 @@ def handle_add_folder(json):
                      parent  = parent.id if parent else None)
     folder.save()
     folder.commit()
-    
+    folder.last_seen_file = 0
+
     logging.info(f'New Folder -- name: "{folder.name[:20]}" parent: "{parent.name[:20] if parent else "root"}"') 
     # TODO: send to all people in room
     send_stuff(request.sid,

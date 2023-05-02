@@ -206,7 +206,7 @@ class Files {
   constructor(chunk_size) {
     this.files = {};
     this.folders = {};
-    this.path = [null];
+    this.path = [1];
     this.chunk_size = chunk_size;
     
     this.table_name = "#files-list";
@@ -238,10 +238,13 @@ class Files {
   
   get_path_index(index) {
     if (index > this.path.length) {
+      console.log("a");
       return null;
-    } else if (index <= 0) {
+    } else if (index < 0) {
+      console.log("b");
       return null;
     } else {
+      console.log("c");
       return this.get_folder(this.path[index]);
     }
   }
@@ -253,10 +256,25 @@ class Files {
 
   add_update_file(file) {
     this.files[file.id] = file;
+    console.log(this.folders);
+    console.log(file);
+    if(file.id > this.folders[file.folder].last_seen_file) {
+      this.folders[file.folder].unread += 1;
+      if((document.visibilityState == 'visible') && 
+         (file.folder == this.get_cur_folder())){
+        this.folders[file.folder].last_seen_file = file.id;
+      } 
+    }
   }
 
   add_update_folder(folder) {
     this.folders[folder.id] = folder;
+    //if(!(folder.hasOwnProperty('last_seen_file'))) {
+    //  this.folders[folder.id].last_seen_file = 0;
+    // }
+    //if((folder.hasOwnProperty('last_seen_file')) && (folder.last_seen_file > this.folders[folder.id].last_seen)) {
+    //  this.folders[folder.id].last_seen_file = room.last_seen;
+    //}
   }
 
   get_latest() {
@@ -403,17 +421,18 @@ class Files {
     var contents = 'Path:';
     for (var i in this.path) {
       var folder = this.get_path_index(i);
-      if (folder == null) {
-        contents += `<button class="btn btn-dark btn-sm mr-2"
-                             onclick="files.change_folder_by_level(${i});">
-                       Root 
-                     </button>`;
-      } else {
+      console.log(folder);
+      if (folder) {
         contents += `<button class="btn btn-dark btn-sm"
                              onclick="files.change_folder_by_level(${i});">
                        ${folder.name} 
                      </button>`;
+      } else {
+        contents += `<button class="btn btn-dark btn-sm" >
+                       Loading... 
+                     </button>`;
       }
+
     }
     $('#files-path').html(contents);
   }
@@ -2041,6 +2060,7 @@ class Getter {
     this.reset();
     this.requested = {'persons': {},
                       'files': {},
+                      'folders': {},
                       'messages': {},
                       'cards': {},
                       'rooms': {} };   
@@ -2060,6 +2080,7 @@ class Getter {
     this.newrequest = false;
     this.unknown    = {'persons': {},
                        'files': {},
+                       'folders': {},
                        'messages': {},
                        'cards': {},
                        'rooms': {} }
@@ -2111,14 +2132,6 @@ class Getter {
       update_persons = true;
     }
 
-    if ('files' in stuff) {
-      for(var file in stuff['files']) {
-        files.add_update_file(stuff['files'][file])
-      }
-      update_messages = true;
-      update_files    = true;
-    }
-    
     if ('folders' in stuff) {
       for(var folder in stuff['folders']) {
         files.add_update_folder(stuff['folders'][folder])
@@ -2127,6 +2140,14 @@ class Getter {
       update_files    = true;
     }
 
+    if ('files' in stuff) {
+      for(var file in stuff['files']) {
+        files.add_update_file(stuff['files'][file])
+      }
+      update_messages = true;
+      update_files    = true;
+    }
+    
     if ('rooms' in stuff) {
       for (var room in stuff['rooms']) {
         rooms.add_room(stuff['rooms'][room]);

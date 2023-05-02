@@ -86,7 +86,7 @@ class Person(db.DBTable):
         #print(f"files = {files}")
         return [ file.public_fields() for file in files ]
     
-    def folder_list(self, folder=None):
+    def folder_list(self, folder=1):
         folders = Folder.raw_select((((Folder.owner_, 'is', 'NULL'), 'or',
                                       (Folder.owner_, '=', ':self_id' ), 'or',
                                       (Folder.public_, '=', 1), 'or',
@@ -98,7 +98,8 @@ class Person(db.DBTable):
                                     order_by = "folders.id desc limit 100",
                                     distinct = True,
                                     tables = [left_join(Folder, Room, 'id', 'root_folder'),
-                                              Membership])
+                                              Membership],
+                                    extra_columns = ['last_seen_file'])
         #print(f"folders = {folders}")
         return [ folder.public_fields() for folder in folders ]
 
@@ -111,20 +112,24 @@ class Person(db.DBTable):
                                  {'self_id': self.id},
                                  order_by = "cards.id desc limit 100")
         return [ card.public_fields() for card in cards ]
+    
+    def send_file_to(self, recipient_id):
+        return Room.get_or_set_chat(self.id, [self.id, recipient_id]).root_folder
 
 
 class Folder(db.DBTable):
-    attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
-             'name':      {'type': 'TEXT',
-                           'searchable': True,
-                           'xss-filter': True},
-             'room':      {'type': 'INTEGER',
-                           'fkey': ['room', 'id', 'Room', 'folders']},
-             'owner':     {'type': 'INTEGER NOT NULL',
-                           'fkey': ['person', 'id', 'Person', 'folders']},
-             'public':    {'type': 'BOOLEAN'},
-             'parent':    {'type': 'INTEGER',
-                           'fkey': ['folder', 'id', 'Folder', 'child_folders']}}
+    attrs = {'id':             {'type': 'INTEGER PRIMARY KEY'},
+             'name':           {'type': 'TEXT',
+                                'searchable': True,
+                                'xss-filter': True},
+             'room':           {'type': 'INTEGER',
+                                'fkey': ['room', 'id', 'Room', 'folders']},
+             'owner':          {'type': 'INTEGER NOT NULL',
+                                'fkey': ['person', 'id', 'Person', 'folders']},
+             'public':         {'type': 'BOOLEAN'},
+             'parent':         {'type': 'INTEGER',
+                                'fkey': ['folder', 'id', 'Folder', 'child_folders']},
+             'last_seen_file': {'relative': 'memberships'}}
     table_name = 'folders'
     def __init__(self, **kwargs):
         db.DBTable.__init__(self, **kwargs)
@@ -306,12 +311,13 @@ class Message(db.DBTable):
         db.DBTable.__init__(self, **kwargs)
 
 class Membership(db.DBTable):
-    attrs = {'id':        {'type': 'INTEGER PRIMARY KEY'},
-             'person':      {'type': 'INTEGER NOT NULL',
-                           'fkey': ['person', 'id', 'Person', 'memberships']},
-             'last_seen': {'type': 'INTEGER DEFAULT 0'},
-             'room':      {'type': 'INTEGER NOT NULL',
-                           'fkey': ['room', 'id', 'Room', 'members']}}
+    attrs = {'id':             {'type': 'INTEGER PRIMARY KEY'},
+             'person':         {'type': 'INTEGER NOT NULL',
+                                'fkey': ['person', 'id', 'Person', 'memberships']},
+             'last_seen':      {'type': 'INTEGER DEFAULT 0'},
+             'last_seen_file': {'type': 'INTEGER DEFAULT 0'},
+             'room':           {'type': 'INTEGER NOT NULL',
+                                'fkey': ['room', 'id', 'Room', 'members']}}
     table_name = 'memberships'
     def __init__(self, **kwargs):
         db.DBTable.__init__(self, **kwargs)
