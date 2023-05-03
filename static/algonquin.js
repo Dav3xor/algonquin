@@ -663,7 +663,7 @@ class Search {
 
   row_name(result) {
       switch (result.ftable) {
-        case 'person':
+        case 'persons':
           switch (result.row) {
             case 'email':
               return "Person's Email Address";
@@ -722,8 +722,11 @@ class Search {
         case 'card_edits':
             return "Card Change";
             break;
+        default:
+            console.log(result.ftable);
+            return "?";
+
       }
-    return "?";
   }
 
 
@@ -769,11 +772,7 @@ class Search {
           if(folder == null) {
             var type = `<button class='btn btn-warning btn-sm'>loading...</button>`;
           } else {
-            var type   = `<button class='btn btn-success btn-sm' 
-                            onclick='files.goto(${result.row_id},"folder");'
-                            type='button'${file ? '':'disabled'}>
-                            ${ icons.folder }
-                          </button>`;
+            var type   = messages.render_inline_folder(folder, true);
           }
           break;
         case 'cards':
@@ -783,24 +782,13 @@ class Search {
           } else {
             var type   = messages.render_inline_card(card, true);
           }
-          /*
-          var type   = `<button class='btn btn-success btn-sm' 
-                                onclick='cards.goto(${result.row_id});'
-                                type='button'${card ? '':'disabled'}>
-                          ${icons.card}
-                        </button>`;
-                        */
           break;
         case 'persons':
           var person = people.get_person(result.row_id);
           if(person == null) {
             var type = `<button class='btn btn-warning btn-sm'>loading...</button>`;
           } else {
-            var type   = `<button onclick='people.goto(${result.row_id});'
-                                  class='btn btn-success btn-sm' 
-                                  type='button'${person ? '':'disabled'}>
-                            ${icons.person}
-                          </button>`;
+            var type = messages.render_inline_person(person, true);
           }
           break;
         case 'rooms':
@@ -808,14 +796,11 @@ class Search {
           if(room == null) {
             var type = `<button class='btn btn-warning btn-sm'>loading...</button>`;
           } else {
-            var type   = `<button onclick='room.goto(${result.row_id});'
-                                  class='btn btn-success btn-sm' 
-                                  type='button'${room ? '':'disabled'}>
-                            ${icons.flower}
-                          </button>`;
+            var type = messages.render_inline_room(room, true);
           }
           break;
         default :
+          console.log(result);
           var type    = `<button class='btn btn-success btn-sm' type='button' disabled>
                            ${result.ftable}?
                          </button>`;
@@ -1616,6 +1601,22 @@ class Messages {
                       onclick="rooms.change_room('${room.id}');">
                 ${icons.flower}
                 #${room.name}
+              </button>`;
+    }
+  }
+
+  render_inline_folder(folder, block=false) {
+    var btnblock="";
+    if(block==true){
+      btnblock="btn-block text-left";
+    }
+    if (!folder) {
+      return `<span class='btn btn-danger'> <b> loading... </b> </span>`;
+    } else {
+      return `<button class="btn btn-dark btn-sm mx-2 ${btnblock}"
+                      onclick="files.change_folder('${folder.id}');">
+                ${icons.folder}
+                #${folder.name}
               </button>`;
     }
   }
