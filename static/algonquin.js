@@ -2312,7 +2312,7 @@ class Lissajous {
 
 const url_parameters = new URLSearchParams(window.location.search);
 
-var socket = io({rememberTransport: false});
+var socket = null;
 
 var canvas = document.getElementById('lissajous');
 var ctx = canvas.getContext('2d');
@@ -2358,10 +2358,9 @@ $( window ).resize(function () {
 });
 
 $( window ).ready(function () { 
-  resize_div('#messages', 95, 15);
-  resize_div('#files', 95, 0);
-  window.setTimeout(function () {
-    $(window).trigger('resize');}, 2000);
+  socket = io({rememberTransport: false});
+  setup_handlers(socket);
+
 });
 
 $(window).keyup(function(event) {
@@ -2381,18 +2380,6 @@ $(window).mousemove(function(event) {
 $("#password").keyup(function(event) {
   if (event.keyCode === 13) {
     $("#do-login").click();
-  }
-});
-
-socket.on('connect', function() {
-  clear_status()
-  var sessionid = cookie.read('sessionid');
-  if (sessionid != '') {
-    socket.emit('login-session', {sessionid: sessionid});
-  } else if(url_parameters.has('token')) {
-    socket.emit('login-session', {sessionid: url_parameters.get('token')})
-  } else {
-    $('#login').modal('show');
   }
 });
 
@@ -2579,133 +2566,151 @@ window.addEventListener('DOMContentLoaded', () => {
   element.addEventListener("dragstart", dragstart_handler);
 });
 
-socket.on('bell', data => {
-  const audio = new Audio("bell.wav");
-  audio.play();
-});
-
-socket.on('login-result', data => {
-  if(data.authenticated) {
-    people.set_this_person(data.personid);
-    getter.handle_stuff(data);
-    if(url_parameters.has('token')) {
-      // if it's a new person logging in, remove the arguments from the url
-      window.history.pushState({}, '', '/');
-    }
-    $('#login').modal('hide');
-
-    if ('sessionid' in data) {
-      cookie.write('sessionid', data.sessionid, 365);
-    }
-    if ('new-person' in data) {
-
-      var person = people.get_this_person();
-      $('#welcome-message').html(`Welcome ${person.handle}!`);
-      $('#new-person').modal('show');
-      $('#new-person-password').keyup(function () {
-        regulate_password('#new-person-password', '#new-person-password2', '#new-person-ok')
-      });
-      $('#new-person-password2').keyup(function () {
-        regulate_password('#new-person-password', '#new-person-password2', '#new-person-ok')
-      });
-
+function setup_handlers(s) {
+  socket.on('connect', function() {
+    clear_status()
+    var sessionid = cookie.read('sessionid');
+    if (sessionid != '') {
+      socket.emit('login-session', {sessionid: sessionid});
+    } else if(url_parameters.has('token')) {
+      socket.emit('login-session', {sessionid: url_parameters.get('token')})
     } else {
-      $('#navbar').removeClass('d-none');
-      $('#footer').removeClass('d-none');
-      $('#contents').removeClass('d-none');
+      $('#login').modal('show');
     }
-    if(cookie.read('file_number') == '') {
-      cookie.write('file_number', '0', 365);
+    //resize_div('#messages', 95, 15);
+    //resize_div('#files', 95, 0);
+    
+    window.setTimeout(function () {
+      $(window).trigger('resize');}, 100);
+    });
+
+  s.on('bell', data => {
+    const audio = new Audio("bell.wav");
+    audio.play();
+  });
+
+  s.on('login-result', data => {
+    if(data.authenticated) {
+      people.set_this_person(data.personid);
+      getter.handle_stuff(data);
+      if(url_parameters.has('token')) {
+        // if it's a new person logging in, remove the arguments from the url
+        window.history.pushState({}, '', '/');
+      }
+      $('#login').modal('hide');
+
+      if ('sessionid' in data) {
+        cookie.write('sessionid', data.sessionid, 365);
+      }
+      if ('new-person' in data) {
+
+        var person = people.get_this_person();
+        $('#welcome-message').html(`Welcome ${person.handle}!`);
+        $('#new-person').modal('show');
+        $('#new-person-password').keyup(function () {
+          regulate_password('#new-person-password', '#new-person-password2', '#new-person-ok')
+        });
+        $('#new-person-password2').keyup(function () {
+          regulate_password('#new-person-password', '#new-person-password2', '#new-person-ok')
+        });
+
+      } else {
+        $('#navbar').removeClass('d-none');
+        $('#footer').removeClass('d-none');
+        $('#contents').removeClass('d-none');
+      }
+      if(cookie.read('file_number') == '') {
+        cookie.write('file_number', '0', 365);
+      }
+      lissajous.setb(4);
+      settings.set_defaults();
+    } else {
+      $('#login').modal('show');
+      $('#login-result-status').html(data.result);
+      $('#login-result-status').removeClass('d-none');
+      cookie.delete('sessionid');
+      cookie.delete('cur_room');
+      lissajous.setb(1);
+      lissajous.seta(1);
     }
-    lissajous.setb(4);
-    settings.set_defaults();
-  } else {
-    $('#login').modal('show');
-    $('#login-result-status').html(data.result);
-    $('#login-result-status').removeClass('d-none');
-    cookie.delete('sessionid');
-    cookie.delete('cur_room');
-    lissajous.setb(1);
-    lissajous.seta(1);
-  }
-});
+  });
 
-socket.on('invite-result', data => {
-  $('#invite-result').removeClass('d-none');
-  $('#invite-result-status').html(data.status_msg);
-  getter.handle_stuff(data);
-  if(data.status == 1) {
-    $('#invite-result-message').removeClass('d-none');
-    $('#invite-result-url').removeClass('d-none');
-    $('#invite-result-message-text').html(markdown.makeHtml(data.message));
-    $('#invite-result-url-text').html(data.url);
-  } else {
-    $('#invite-result-message').addClass('d-none');
-    $('#invite-result-url').addClass('d-none');
-  }
-});
-
-socket.on('delete-file-result', data => {
-  //console.log(`deleting file -- ${data.file_id}`);
-  if(data.status == 'ok') {
-    for (file in data['stuff-list'].files) {
-      file = data['stuff-list'].files[file];
-      var filename = file ? file.name:"unknown file?";
-      files.delete_file(data.file_id);
-      files.update_table_row_file(file);
+  s.on('invite-result', data => {
+    $('#invite-result').removeClass('d-none');
+    $('#invite-result-status').html(data.status_msg);
+    getter.handle_stuff(data);
+    if(data.status == 1) {
+      $('#invite-result-message').removeClass('d-none');
+      $('#invite-result-url').removeClass('d-none');
+      $('#invite-result-message-text').html(markdown.makeHtml(data.message));
+      $('#invite-result-url-text').html(data.url);
+    } else {
+      $('#invite-result-message').addClass('d-none');
+      $('#invite-result-url').addClass('d-none');
     }
-    //files.render();
-    messages.render();
-    set_status(`${filename} deleted`, 3000);
-  } else {
-    set_status(`${filename} delete failed: ${data.error}`, 3000);
-  }
+  });
 
-
-});
-
-socket.on('search-result', data => {
-  search.render(data);
-});
-
-socket.on('password-set', data => {
-  cookie.write('sessionid', data.sessionid, 365);
-});
-
-socket.on('disconnect', data => {
-  var status = `<div class="badge badge-danger">${icons.outlet} ${icons.plug}</div> Network Disconnect`;
-  set_status(status);
-  $('#status-indicator').html(status);
-  $('#status-indicator').removeClass('d-none');
-});
-
-socket.on('settings-result', data => {
-  set_status(data.status_msg,5000);
-});
-
-socket.on('goto_chat', data => {
-  rooms.add_room(data.room); 
-  rooms.change_room(data.room.id);
-  tabs.show('messages');
-});
-
-socket.on('file-uploaded', data => {
-  getter.handle_stuff(data);
-  for(file in data.files) {
-    file = data.files[file];
-    if('portrait' in data) {
-      $('#portrait-image').attr('src', '/portraits/' + data.person.portrait);
-      $('#you-image').attr('src', '/portraits/' + data.person.portrait);
-      people.set_person(data.person);
-    } else if(cards.editor_open() == true) {
-      cards.add_file(file.id);
-    } else { 
-      messages.add_file(file.id);
+  s.on('delete-file-result', data => {
+    //console.log(`deleting file -- ${data.file_id}`);
+    if(data.status == 'ok') {
+      for (file in data['stuff-list'].files) {
+        file = data['stuff-list'].files[file];
+        var filename = file ? file.name:"unknown file?";
+        files.delete_file(data.file_id);
+        files.update_table_row_file(file);
+      }
+      //files.render();
+      messages.render();
+      set_status(`${filename} deleted`, 3000);
+    } else {
+      set_status(`${filename} delete failed: ${data.error}`, 3000);
     }
-  }
-});
 
-socket.on('stuff-list', data => {
-  getter.handle_stuff(data);
-});
 
+  });
+
+  s.on('search-result', data => {
+    search.render(data);
+  });
+
+  s.on('password-set', data => {
+    cookie.write('sessionid', data.sessionid, 365);
+  });
+
+  s.on('disconnect', data => {
+    var status = `<div class="badge badge-danger">${icons.outlet} ${icons.plug}</div> Network Disconnect`;
+    set_status(status);
+    $('#status-indicator').html(status);
+    $('#status-indicator').removeClass('d-none');
+  });
+
+  s.on('settings-result', data => {
+    set_status(data.status_msg,5000);
+  });
+
+  s.on('goto_chat', data => {
+    rooms.add_room(data.room); 
+    rooms.change_room(data.room.id);
+    tabs.show('messages');
+  });
+
+  s.on('file-uploaded', data => {
+    getter.handle_stuff(data);
+    for(file in data.files) {
+      file = data.files[file];
+      if('portrait' in data) {
+        $('#portrait-image').attr('src', '/portraits/' + data.person.portrait);
+        $('#you-image').attr('src', '/portraits/' + data.person.portrait);
+        people.set_person(data.person);
+      } else if(cards.editor_open() == true) {
+        cards.add_file(file.id);
+      } else { 
+        messages.add_file(file.id);
+      }
+    }
+  });
+
+  s.on('stuff-list', data => {
+    getter.handle_stuff(data);
+  });
+}
