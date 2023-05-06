@@ -1170,6 +1170,7 @@ class Rooms {
     messages.render();
     this.render_room_list(room);
     this.update_table_row(this.get_room(room));
+    getter.request();
   }
 
   get_room(room) {
