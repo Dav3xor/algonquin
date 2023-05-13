@@ -334,7 +334,7 @@
             <div id="files-new-folder" class="alert alert-info p-2 m-0">
               <form class="form-inline" autocomplete="off" onsubmit="return false;">
                 <div class="input-group">
-                  <div class="input-group-prepend mr-2">
+                  <div class="input-group-prepend mr-2 mb-3">
                     <button onclick="files.add_folder($('#folder-name').val());" 
                             type="button" id="folder-add" 
                             class="btn btn-success btn-sm">
@@ -343,6 +343,13 @@
                   </div>
                   <input type="text" class="form-control" 
                          name="folder-name" id="folder-name" required />
+                </div>
+                <div class="input-group-mr-2">
+                  <button type="button" id="files-upload" 
+                          class="btn btn-warning btn-sm">
+                    Upload File...
+                  </button>
+                  <input type="file" style="display: none" id="files-upload-file" multiple />
                 </div>
               </form>
             </div>

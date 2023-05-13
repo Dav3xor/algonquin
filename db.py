@@ -238,7 +238,7 @@ class DBTable:
 
     @classmethod
     def get(cls, id):
-        columns = [i for i in cls.attrs]
+        columns = [i for i in cls.attrs if 'relative' not in cls.attrs[i]]
         values  = DBTable.select_one(cls.table_name, columns, id=id)
         if values:
             return cls(**dict(zip(columns, values)))

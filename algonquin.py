@@ -139,6 +139,9 @@ def index():
 def file_upload_common(req):
     fields = ['sessionid', 'room', 'folder', 'chunk', 'file_number']
 
+    to_folder = None
+    to_room   = None
+
     for field in fields:
         if field not in req.form:
             logging.info(f'request missing field: {field}')
@@ -159,7 +162,7 @@ def file_upload_common(req):
     person = Person.get(session.person)
     
     if 'folder' not in req.form or req.form['folder'] in ('null', None, 0, '0'):
-        folder = 0
+        folder = 1
     else:
         folder = int(req.form['folder'])
 
@@ -210,28 +213,26 @@ def file_upload_common(req):
             os.rename(outfile, os.path.join(config['file_root'], 'files', newfilename))
        
         if 'to_user' in req.form:
-            to_folder = person.send_file_to(int(req.form['to_user']))
-            if to_folder:
-                folder = to_folder
-            
+            to_folder, to_room = person.send_file_to(int(req.form['to_user']))
 
         db_file = File(owner     = person.id,
                        public    = True,
                        name      = filename,
-                       folder    = folder if folder > 0 else None,
+                       folder    = folder if folder > 1 else 1,
                        hash      = hash,
                        size      = size,
                        type      = type,
                        localname = newfilename)
 
         logging.info(f"Upload -- finished: {filename}")
-        return db_file, person, None
+        return (db_file, to_folder, to_room), person, None
 
 
 
 @app.route('/upload-file', methods=['POST'])
 def upload_file():
-    db_file, person, errors = file_upload_common(request)
+    objs, person, errors = file_upload_common(request)
+    db_file, db_folder, db_room  = objs
 
     if (not errors) and (not db_file):
         # got a chunk, but not the last one
@@ -253,11 +254,18 @@ def upload_file():
                  { 'files':[ db_file.public_fields() ] },
                  room = 'room-'+str(db_file.room),
                  namespace = None)
+        result = {'status': 'ok', 
+                  'files': [db_file.public_fields()]}, 
+
+        if db_folder:
+            result['folders'] = [db_folder.public_fields()]
+        if db_room:
+            result['rooms']   = [db_room.public_fields()]
 
         #return json.dumps({'status': 'ok', 'files': [db_file.public_fields()]})
         for sid in scoreboard.get_sids_from_person(person.id):
             emit('file-uploaded', 
-                 {'status': 'ok', 'files': [db_file.public_fields()]}, 
+                 result,
                  room = sid,
                  namespace = None)
         return json.dumps({'status': 'ok'})
@@ -266,7 +274,9 @@ def upload_file():
 
 @app.route('/upload-portrait', methods=['POST'])
 def upload_portrait():
-    db_file, person, errors = file_upload_common(request)
+    objs, person, errors = file_upload_common(request)
+    db_file, db_folder, dbroom  = objs
+
     if (not errors) and (not db_file):
         # got a chunk, but not the last one
         return json.dumps({'status': 'ok'})
@@ -513,21 +523,25 @@ def handle_get_messages(json):
 @socketio.on('add-folder')
 @json_has_keys('parent_folder','name')
 def handle_add_folder(json):
-    person_id = scoreboard.get_person_from_sid(request.sid)
-    parent  = Folder.get(json['parent_folder'])
 
-    folder  = Folder(name    = json['name'],
-                     owner   = person_id,
-                     public  = parent.public if parent else True,
-                     parent  = parent.id if parent else None)
-    folder.save()
-    folder.commit()
-    folder.last_seen_file = 0
+    if json['name'] == '':
+        logging.info(f'New Folder -- error: folder name empty')
+    else:
+        person_id = scoreboard.get_person_from_sid(request.sid)
+        parent  = Folder.get(json['parent_folder'])
 
-    logging.info(f'New Folder -- name: "{folder.name[:20]}" parent: "{parent.name[:20] if parent else "root"}"') 
-    # TODO: send to all people in room
-    send_stuff(request.sid,
-               folders      = [folder.public_fields()])
+        folder  = Folder(name    = json['name'],
+                         owner   = person_id,
+                         public  = parent.public if parent else True,
+                         parent  = parent.id if parent else None)
+        folder.save()
+        folder.commit()
+        folder.last_seen_file = 0
+
+        logging.info(f'New Folder -- name: "{folder.name[:20]}" parent: "{parent.name[:20] if parent else "root"}"') 
+        # TODO: send to all people in room
+        send_stuff(request.sid,
+                   folders      = [folder.public_fields()])
 
 
 
@@ -611,7 +625,7 @@ def handle_have_read(json):
 @json_has_keys('persons')
 def handle_start_chat(json):
     person         = scoreboard.get_person_from_sid(request.sid)
-    room           = Room.get_or_set_chat(person, json['persons'])
+    folder, room   = Room.get_or_set_chat(person, json['persons'])
     online_persons = scoreboard.online_persons();
     for member in json['persons']:
         sids = scoreboard.get_sids_from_person(member)

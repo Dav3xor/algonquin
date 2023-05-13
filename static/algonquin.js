@@ -254,6 +254,7 @@ class Files {
     this.render();
   }
 
+
   add_update_file(file) {
     this.files[file.id] = file;
     console.log(this.folders);
@@ -339,7 +340,12 @@ class Files {
 
   update_table_row_folder(folder) {
     var rowid    = this.table_row_name(folder.id, 'folder');
-    var owner = people.get_person(folder.owner);
+    var owner    = people.get_person(folder.owner);
+    if(folder.unread) {
+      var unread = `<button class="btn btn-light style="font-size:1.5em;">${folder.unread}</button>`;
+    } else {
+      var unread = '';
+    }
     if(owner) {
       var filename = `<button onmouseover="$('#${rowid}-button').removeClass('disabled');" 
                               onmouseout="$('#${rowid}-button').addClass('disabled');" 
@@ -353,7 +359,7 @@ class Files {
       var rowdata = {'rowid':    rowid,
                      'play':     '',
                      'filename': filename, 
-                     'buttons':  ''}
+                     'buttons':  unread}
       add_table_row(this.table, rowid, rowdata);
     }
   }
@@ -1468,7 +1474,9 @@ class Messages {
     $('#send-message').append(icons.chat_bubble);
     $('#footer-new-file').append(icons.paperclip);
     $('#goto-bottom').html(icons.goto_bottom);
-
+    $('#files-upload').append(icons.paperclip);
+    $('#folder-add').append(icons.folder);
+    
   }
 
   set_picker(state, start) {
@@ -1776,19 +1784,6 @@ class Messages {
     return text;
   }
 
-  min_id(messages, room) {
-    var min = 100000000;
-    messages.forEach(message => { if((message.room == room) &&
-                                     (message.id < min)) min=message.id });
-    return min;
-  }
-  
-  max_id(messages, room) {
-    var max = 0;
-    messages.forEach(message => { if((message.room == room) && 
-                                     (message.id > max)) max=message.id });
-    return max;
-  }
 
 
   render(messages = null) {
@@ -1802,7 +1797,7 @@ class Messages {
       this.reset();
       messages = cur_room.message_index;
     } else if((cur_room.message_index.length > 0) && 
-              (this.max_id(messages, cur_room) < cur_room.message_index[0])) {
+              (max_id(messages, 'rooms', cur_room) < cur_room.message_index[0])) {
       // backfill mode...
     } else {
       // new messages...
@@ -2102,7 +2097,7 @@ class Getter {
   }
 
   handle_stuff(stuff) {
-    //console.log(stuff);
+    console.log(stuff);
     var update_messages = false;
     var update_files = false;
     var update_persons = false;
@@ -2142,14 +2137,6 @@ class Getter {
       update_files    = true;
     }
 
-    if ('files' in stuff) {
-      for(var file in stuff['files']) {
-        files.add_update_file(stuff['files'][file])
-      }
-      update_messages = true;
-      update_files    = true;
-    }
-    
     if ('rooms' in stuff) {
       for (var room in stuff['rooms']) {
         rooms.add_room(stuff['rooms'][room]);
@@ -2161,6 +2148,15 @@ class Getter {
     if ('messages' in stuff) {
       update_messages = true;
     }
+
+    if ('files' in stuff) {
+      for(var file in stuff['files']) {
+        files.add_update_file(stuff['files'][file])
+      }
+      update_messages = true;
+      update_files    = true;
+    }
+    
     
     if ('cards' in stuff) {
       for(var card in stuff['cards']) {
@@ -2435,6 +2431,19 @@ function send_logout() {
 }
 
 
+function min_id(objects, field, val) {
+  var min = 100000000;
+  objects.forEach(object => { if((object[field] == val) &&
+                                   (object.id < min)) min=object.id });
+  return min;
+}
+
+function max_id(objects, field, val) {
+  var max = 0;
+  objects.forEach(object => { if((object[field] == val) && 
+                                   (object.id > max)) max=object.id });
+  return max;
+}
 
 
 // The following functions are for handling file drag/drop
@@ -2546,10 +2555,18 @@ $('#footer-new-file').on('click touchstart', function() {
   $('#footer-upload-file').trigger('click');
 });
 
+$('#files-upload').on('click touchstart', function() {
+  $(this).val('');
+  $('#files-upload-file').trigger('click');
+});
+
 $('#footer-upload-file').on('change', function(evt) {
   ([...evt.target.files]).forEach(handle_file_upload);
 });
 
+$('#files-upload-file').on('change', function(evt) {
+  ([...evt.target.files]).forEach(handle_file_upload);
+});
 
 $('#portrait-new-file').on('click touchstart', function() {
   $(this).val('');

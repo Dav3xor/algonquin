@@ -88,6 +88,13 @@ def handle_channels(channels):
     rooms   = {}
     folders = {}
     slack_id_rooms = {}
+
+    root_folder = Folder(name=name, 
+                         owner=persons[owner].id,
+                         parent=None,
+                         public=True) # no parent = directory off of root
+    root_folder.save()
+
     for channel in channels:
         name    = channel['name']
         owner   = channel['creator']
@@ -95,7 +102,7 @@ def handle_channels(channels):
 
         folder = Folder(name=name, 
                         owner=persons[owner].id,
-                        parent=None,
+                        parent=root_folder.id,
                         public=True) # no parent = directory off of root
         folder.save()
 

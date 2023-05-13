@@ -6,6 +6,8 @@ import hashlib
 import os
 from formats import formats
 
+from config import config, __version__, __protocol__
+
 class Person(db.DBTable):
     attrs = {'id':       {'type': 'INTEGER PRIMARY KEY'},
              'email':    {'type': 'TEXT NOT NULL UNIQUE', 
@@ -165,24 +167,31 @@ class Room(db.DBTable):
     @classmethod
     def get_or_set_chat(cls, owner, person_ids):
         name = cls.chat_name(person_ids)
-        chat = Room.get_where(name=name)
+        room = Room.get_where(name=name)
         person_ids = set(person_ids)
-        if not chat:
+        if not room:
             folder = Folder(name = name,
                             public = False,
                             owner  = owner,
-                            parent = None)
+                            parent = config['root_folder'])
             folder.save()
 
-            chat = Room(owner       = owner, 
+            room = Room(owner       = owner, 
                         public      = False, 
                         root_folder = folder.id,
                         name        = name)
-            chat.save()
+            room.save()
+
+            folder.room = room.id
+            folder.save()
+
             for person in person_ids:
-                Membership.join(person, chat.id)
-            chat.commit()
-        return chat
+                Membership.join(person, room.id)
+            room.commit()
+        else:
+            folder = Folder.get(room.root_folder)
+
+        return folder, room
 
     def __init__(self, **kwargs):
         db.DBTable.__init__(self, **kwargs)
