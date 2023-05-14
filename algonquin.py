@@ -633,15 +633,17 @@ def handle_start_chat(json):
             for sid in sids:
                 join_room('room-'+str(room.id),
                           sid=sid)
-            emit('goto_chat', 
-                 {'room': room.public_fields()},
+            emit('goto-chat', 
+                 {'room': room.public_fields(),
+                  'folder': folder.public_fields()},
                  broadcast=False)
         elif member in online_persons:
             for sid in sids:
                 join_room('room-'+str(room.id), 
                           sid=sid)
-                emit('add_room', 
-                     {'room': room.public_fields()}, 
+                emit('add-room', 
+                     {'room': room.public_fields(),
+                      'folder': [folder]}, 
                      room=sid)
     logging.info(f"Start Chat -- people {json['persons']}") 
 

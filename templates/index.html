@@ -327,14 +327,18 @@
            ondrop="drop_handler(event)" 
            ondragover="dragover_handler(event)">
         <div class="row">
-          <div class="col-sm-8">
+          <div class="col-sm-8 mb-2">
             <div id="files-path" class="alert alert-secondary"></div>
+            <div class="badge badge-light m-1" id="folder-num-folders">Folders: <span id="num_folders_val"></span></div>
+            <div class="badge badge-light m-1" id="folder-num-files">Files:  <span id="num_files_val"></span></div>
+            <div class="badge badge-light m-1" id="folder-num-bytes">Size:  <span id="num_bytes_val"></span></div>
+            <div class="badge badge-light m-1" id="folder-is-public">Public:  <span id="folder_is_public_val"></span></div>
           </div>
           <div class="col-sm-4">
             <div id="files-new-folder" class="alert alert-info p-2 m-0">
               <form class="form-inline" autocomplete="off" onsubmit="return false;">
                 <div class="input-group">
-                  <div class="input-group-prepend mr-2 mb-3">
+                  <div class="input-group-prepend mr-2 mb-2">
                     <button onclick="files.add_folder($('#folder-name').val());" 
                             type="button" id="folder-add" 
                             class="btn btn-success btn-sm">
@@ -344,10 +348,10 @@
                   <input type="text" class="form-control" 
                          name="folder-name" id="folder-name" required />
                 </div>
-                <div class="input-group-mr-2">
+                <div class="input-group mr-2 mb-1 justify-content-end">
                   <button type="button" id="files-upload" 
                           class="btn btn-warning btn-sm">
-                    Upload File...
+                    Upload File Here...
                   </button>
                   <input type="file" style="display: none" id="files-upload-file" multiple />
                 </div>

@@ -312,7 +312,7 @@ class Files {
   }
   change_folder(folder_id) {
     if(! this.folders.hasOwnProperty(folder_id)) {
-      //console.log(`invalid change_folder -- ${folder_id}`);
+      console.log(`invalid change_folder -- ${folder_id}`);
     } else {
       this.path.push(folder_id);
       socket.emit('get-folder', {'folder_id': folder_id});
@@ -423,7 +423,7 @@ class Files {
     }
   }
 
-  render_path() {
+  render_folder_info() {
     var contents = 'Path:';
     for (var i in this.path) {
       var folder = this.get_path_index(i);
@@ -433,6 +433,12 @@ class Files {
                              onclick="files.change_folder_by_level(${i});">
                        ${folder.name} 
                      </button>`;
+        var num_bytes   = format_size_string(sum_id(this.files, folder.id, 'folder', 'size'));
+        var num_files   = count_id(this.files, folder.id, 'folder');
+        var num_folders = count_id(this.folders, folder.id, 'parent');
+        $('#num_folders_val').html(num_folders);
+        $('#num_files_val').html(num_files);
+        $('#num_bytes_val').html(num_bytes);
       } else {
         contents += `<button class="btn btn-dark btn-sm" >
                        Loading... 
@@ -444,7 +450,7 @@ class Files {
   }
 
   render() {
-    this.render_path();
+    this.render_folder_info();
     if(this.table != null) {
       this.table.clear();
       for (var folder in this.folders) {
@@ -464,6 +470,22 @@ class Files {
   }
 }
 
+function format_size_string(size) {
+  var units = [' bytes', ' kilobytes', ' megabytes', ' gigabytes', ' terabytes', ' petabytes'];
+  if(size < 2**10) {
+    return size + units[0];
+  } else if (size < 2**20) {
+    return (size/(2**10)).toFixed(1) + units[1];
+  } else if (size < 2**30) {
+    return (size/(2**20)).toFixed(1) + units[2];
+  } else if (size < 2**40) {
+    return (size/(2**30)).toFixed(1) + units[3];
+  } else if (size < 2**50) {
+    return (size/(2**40)).toFixed(1) + units[4];
+  } else if (size < 2**50) {
+    return (size/(2**50)).toFixed(1) + units[5];
+  }
+}
 
 function build_table(obj) {
   if (obj.table == null) {
@@ -1474,8 +1496,8 @@ class Messages {
     $('#send-message').append(icons.chat_bubble);
     $('#footer-new-file').append(icons.paperclip);
     $('#goto-bottom').html(icons.goto_bottom);
-    $('#files-upload').append(icons.paperclip);
-    $('#folder-add').append(icons.folder);
+    $('#files-upload').prepend(icons.paperclip);
+    $('#folder-add').prepend(icons.folder);
     
   }
 
@@ -2445,6 +2467,30 @@ function max_id(objects, field, val) {
   return max;
 }
 
+//           this.files, folder.id, 'folder', 'size');
+function sum_id(objects, selector, field, val) {
+  var sum = 0;
+  console.log(objects);
+  for (var i in objects) {
+    console.log(objects[i][val]);
+    console.log(objects[i][field]);
+    console.log(selector);
+    if(objects[i][field] == selector) {
+      sum += objects[i][val];
+    }
+  } 
+  return sum;
+}
+
+function count_id(objects, selector, field) {
+  var count = 0;
+  for (var i in objects) {
+    if(objects[i][field] == selector) {
+      count += 1;
+    }
+  }
+  return count;
+}
 
 // The following functions are for handling file drag/drop
 
@@ -2706,8 +2752,14 @@ function setup_handlers(s) {
     set_status(data.status_msg,5000);
   });
 
-  s.on('goto_chat', data => {
+  s.on('add-room', data => {
     rooms.add_room(data.room); 
+    files.add_update_folder(data.folder);
+  });
+
+  s.on('goto-chat', data => {
+    rooms.add_room(data.room); 
+    files.add_update_folder(data.folder);
     rooms.change_room(data.room.id);
     tabs.show('messages');
   });

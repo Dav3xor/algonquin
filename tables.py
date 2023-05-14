@@ -74,7 +74,7 @@ class Person(db.DBTable):
         return [ message.public_fields() for message in messages ]
 
     # TODO: modify this after adding folder support?
-    def file_list(self, folder=None):
+    def file_list(self, folder=config['root_folder']):
         cur_folder = int(folder) if folder else 1
         files = File.raw_select( (((File.room_, 'in', ('select', Membership.room_, 'from', (Membership,), 
                                                    'where', Membership.person_, '=', ':self_id')) ,'or',
