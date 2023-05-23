@@ -137,6 +137,7 @@ def index():
 
 
 def file_upload_common(req):
+    # TODO: Jesus, this is fucking spaghetti...
     fields = ['sessionid', 'room', 'folder', 'chunk', 'file_number']
 
     to_folder = None
@@ -145,7 +146,7 @@ def file_upload_common(req):
     for field in fields:
         if field not in req.form:
             logging.info(f'request missing field: {field}')
-            return None, None, json.dumps({'error': error})
+            return (None, None, None), None, json.dumps({'error': error})
 
     file        = req.files['file']
     room        = req.form['room']
@@ -157,7 +158,7 @@ def file_upload_common(req):
         logging.info(f"Upload -- starting -- session: {str(session.id)[:20]} room: {str(room)[:20]}")
     if not session:
         logging.info(f"Upload -- attempted with bad sessionid: {req.form['sessionid']}")
-        return None, None, json.dumps({'error': 'bad sessionid'})
+        return (None,None,None), None, json.dumps({'error': 'bad sessionid'})
 
     person = Person.get(session.person)
     
@@ -165,6 +166,11 @@ def file_upload_common(req):
         folder = 1
     else:
         folder = int(req.form['folder'])
+    
+    if 'room' not in req.form or req.form['room'] in ('null', None, 0, '0'):
+        room = 1
+    else:
+        room = int(req.form['room'])
 
     tmp_dir = f'{ person.id }-{ session.id }-{ folder }-{ file_number }'
     path = os.path.join(config['file_root'], 'files', 'tmp', tmp_dir)
@@ -172,7 +178,7 @@ def file_upload_common(req):
     Path(path).mkdir(parents=True, exist_ok=True)
     file.save(os.path.join(path, str(chunk)))
     if 'end' not in req.form:
-        return None, None, None
+        return (None,None,None), None, None
     else:
 
         if 'filename' not in req.form:
@@ -223,7 +229,8 @@ def file_upload_common(req):
                        size      = size,
                        type      = type,
                        localname = newfilename)
-
+        if room:
+            db_file.room = room
         logging.info(f"Upload -- finished: {filename}")
         return (db_file, to_folder, to_room), person, None
 
@@ -260,13 +267,22 @@ def upload_file():
         if db_folder:
             result['folders'] = [db_folder.public_fields()]
         if db_room:
+            # if this is a file being sent to a user as part of a new chat...
             result['rooms']   = [db_room.public_fields()]
 
+        # notify people in the room about new file
+        print(f' db_file.room: {db_file.room}')
+        emit('new-file',
+             result,
+             room      = f'room-{db_file.room}',
+             namespace = None)
         #return json.dumps({'status': 'ok', 'files': [db_file.public_fields()]})
+        #TODO: only send this to the session that uploaded it (currently sends it to all logged
+        #      in user sessions)
         for sid in scoreboard.get_sids_from_person(person.id):
-            emit('file-uploaded', 
-                 result,
-                 room = sid,
+            emit('your-new-file', 
+                 {'file_id': db_file.id},
+                 room      = sid,
                  namespace = None)
         return json.dumps({'status': 'ok'})
     else:
@@ -275,7 +291,8 @@ def upload_file():
 @app.route('/upload-portrait', methods=['POST'])
 def upload_portrait():
     objs, person, errors = file_upload_common(request)
-    db_file, db_folder, dbroom  = objs
+    print(objs)
+    db_file, db_folder, db_room  = objs
 
     if (not errors) and (not db_file):
         # got a chunk, but not the last one
@@ -295,9 +312,8 @@ def upload_portrait():
 
         
         for sid in scoreboard.get_sids_from_person(person.id):
-            emit('file-uploaded', 
+            emit('your-new-portrait', 
                  {'status': 'ok',
-                  'portrait': True,
                   'person': person.public_fields(),
                   'files': [db_file.public_fields()]}, 
                  room = sid,
@@ -536,7 +552,6 @@ def handle_add_folder(json):
                          parent  = parent.id if parent else None)
         folder.save()
         folder.commit()
-        folder.last_seen_file = 0
 
         logging.info(f'New Folder -- name: "{folder.name[:20]}" parent: "{parent.name[:20] if parent else "root"}"') 
         # TODO: send to all people in room

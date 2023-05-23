@@ -102,8 +102,7 @@ class Person(db.DBTable):
                                     order_by = "folders.id desc limit 100",
                                     distinct = True,
                                     tables = [left_join(Folder, Room, 'id', 'root_folder'),
-                                              Membership],
-                                    extra_columns = ['last_seen_file'])
+                                              Membership])
         #print(f"folders = {folders}")
         return [ folder.public_fields() for folder in folders ]
 
@@ -132,8 +131,7 @@ class Folder(db.DBTable):
                                 'fkey': ['person', 'id', 'Person', 'folders']},
              'public':         {'type': 'BOOLEAN'},
              'parent':         {'type': 'INTEGER',
-                                'fkey': ['folder', 'id', 'Folder', 'child_folders']},
-             'last_seen_file': {'relative': 'memberships'}}
+                                'fkey': ['folder', 'id', 'Folder', 'child_folders']}}
     table_name = 'folders'
     def __init__(self, **kwargs):
         db.DBTable.__init__(self, **kwargs)
@@ -326,7 +324,6 @@ class Membership(db.DBTable):
              'person':         {'type': 'INTEGER NOT NULL',
                                 'fkey': ['person', 'id', 'Person', 'memberships']},
              'last_seen':      {'type': 'INTEGER DEFAULT 0'},
-             'last_seen_file': {'type': 'INTEGER DEFAULT 0'},
              'room':           {'type': 'INTEGER NOT NULL',
                                 'fkey': ['room', 'id', 'Room', 'members']}}
     table_name = 'memberships'

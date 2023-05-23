@@ -257,25 +257,12 @@ class Files {
 
   add_update_file(file) {
     this.files[file.id] = file;
-    console.log(this.folders);
-    console.log(file);
-    if(file.id > this.folders[file.folder].last_seen_file) {
-      this.folders[file.folder].unread += 1;
-      if((document.visibilityState == 'visible') && 
-         (file.folder == this.get_cur_folder())){
-        this.folders[file.folder].last_seen_file = file.id;
-      } 
-    }
   }
 
   add_update_folder(folder) {
     this.folders[folder.id] = folder;
-    //if(!(folder.hasOwnProperty('last_seen_file'))) {
-    //  this.folders[folder.id].last_seen_file = 0;
-    // }
-    //if((folder.hasOwnProperty('last_seen_file')) && (folder.last_seen_file > this.folders[folder.id].last_seen)) {
-    //  this.folders[folder.id].last_seen_file = room.last_seen;
-    //}
+    this.folders[folder.id].unread = 0
+    console.log(folder.id);
   }
 
   get_latest() {
@@ -341,10 +328,11 @@ class Files {
   update_table_row_folder(folder) {
     var rowid    = this.table_row_name(folder.id, 'folder');
     var owner    = people.get_person(folder.owner);
+    console.log(folder.unread);
     if(folder.unread) {
-      var unread = `<button class="btn btn-light style="font-size:1.5em;">${folder.unread}</button>`;
+      var unread = `<button class="btn btn-light">${folder.unread}</button>`;
     } else {
-      var unread = '';
+      var unread = `<button class="btn btn-light disabled">0</button>`;
     }
     if(owner) {
       var filename = `<button onmouseover="$('#${rowid}-button').removeClass('disabled');" 
@@ -455,6 +443,7 @@ class Files {
       this.table.clear();
       for (var folder in this.folders) {
         folder = this.folders[folder];
+        //folder.unread = 0;
         if(folder && folder.parent == this.get_cur_folder()) {
           this.update_table_row_folder(folder);
         }
@@ -2472,9 +2461,6 @@ function sum_id(objects, selector, field, val) {
   var sum = 0;
   console.log(objects);
   for (var i in objects) {
-    console.log(objects[i][val]);
-    console.log(objects[i][field]);
-    console.log(selector);
     if(objects[i][field] == selector) {
       sum += objects[i][val];
     }
@@ -2502,18 +2488,20 @@ function dragover_handler(ev) {
 
 
 function handle_file_upload(file) {
-  var folder_id = 0;
-  var room_id   = 0;
+  var folder_id = 1;
+  var room_id   = null;
   switch(tabs.current_tab()) {
     case 'messages':
       var room  = rooms.get_cur_room();
-      room_id   = room ? room.id: 0;
-      folder_id = room ? room.root_folder: 0;
+      room_id   = room ? room.id: 1;
+      folder_id = room ? room.root_folder: 1;
       break;
     case 'files':
       folder_id = files.get_cur_folder();
-      if(folder_id == null) {
-        folder_id = 0;
+      var folder = files.get_folder(folder_id);
+      if(folder) {
+        folder_id = folder.id;
+        room_id   = folder.room;
       }
       break;
     default:
@@ -2764,20 +2752,26 @@ function setup_handlers(s) {
     tabs.show('messages');
   });
 
-  s.on('file-uploaded', data => {
-    getter.handle_stuff(data);
-    for(file in data.files) {
-      file = data.files[file];
-      if('portrait' in data) {
-        $('#portrait-image').attr('src', '/portraits/' + data.person.portrait);
-        $('#you-image').attr('src', '/portraits/' + data.person.portrait);
-        people.set_person(data.person);
-      } else if(cards.editor_open() == true) {
-        cards.add_file(file.id);
-      } else { 
-        messages.add_file(file.id);
-      }
+  
+  s.on('your-new-file', data => {
+    console.log('your-new-file');
+    if(cards.editor_open() == true) {
+      cards.add_file(data.file_id);
+    } else { 
+      messages.add_file(data.file_id);
     }
+  });
+  
+  s.on('your-new-portrait', data => {
+    getter.handle_stuff(data);
+    $('#portrait-image').attr('src', '/portraits/' + data.person.portrait);
+    $('#you-image').attr('src', '/portraits/' + data.person.portrait);
+    people.set_person(data.person);
+  });
+
+  s.on('new-file', data => {
+    console.log('new-file');
+    getter.handle_stuff(data);
   });
 
   s.on('stuff-list', data => {
