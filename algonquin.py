@@ -136,92 +136,118 @@ def index():
     return render_template('index.html', config=config)
 
 
+
+def make_tmpdir(session, folder, file_number):
+    tmp_dir = f'{ session.person }-{ session.id }-{ folder }-{ file_number }'
+    path = os.path.join(config['file_root'], 'files', 'tmp', tmp_dir)
+    return path 
+
+def handle_file_chunk(req, session, path):
+    file        = req.files['file']
+    file_number = req.form['file_number']
+    chunk       = int(req.form['chunk'])
+    room        = req.form['room']
+   
+    chunk = int(chunk)
+
+    if chunk == 0:
+        logging.info(f"Upload -- starting -- session: {str(session.id)[:20]} room: {str(room)[:20]}")
+
+    if 'room' not in req.form or req.form['room'] in ('null', None, 0, '0'):
+        room = 1
+    else:
+        room = int(req.form['room'])
+
+
+    Path(path).mkdir(parents=True, exist_ok=True)
+    file.save(os.path.join(path, str(chunk)))
+    
+    return chunk, room
+
+def reconstitute_file(req, path, filename, chunk):
+
+    logging.info(f"Upload -- finishing: {filename}")
+   
+    # do it this way to give the interpreter a chance to switch threads
+    # TODO: break this out into some sort of task queue deal
+    
+    outfile = os.path.join(path, 'output')
+
+    for i in range(0,int(chunk)+1):
+        infile  = os.path.join(path, str(i))
+        os.system(f'cat { infile } >> { outfile }')
+        #os.remove(infile)
+
+    with open(outfile, 'rb') as f:
+        hash, size   = File.hash_file(f)
+        type, extension = File.file_type(filename)
+
+    logging.info("Upload -- hash = " + hash)
+    logging.info("Upload -- size = " + str(size))
+
+    # check for duplicates
+    
+    original_file = File.hash_exists(hash=hash, size=size)
+    if original_file:
+        logging.info("Upload -- duplicate file - " + 
+                     original_file.name + " - " + 
+                     filename + " - " + 
+                     original_file.localname)
+        newfilename = original_file.localname
+    else:
+        newfilename     = str(time.time()) + '.' + extension
+        os.rename(outfile, os.path.join(config['file_root'], 'files', newfilename))
+    return size, newfilename, hash, type
+
 def file_upload_common(req):
     # TODO: Jesus, this is fucking spaghetti...
-    fields = ['sessionid', 'room', 'folder', 'chunk', 'file_number']
+    fields = ['sessionid', 'room', 'folder', 'person', 'chunk', 'file_number']
 
     to_folder = None
     to_room   = None
+    to_person = None
 
     for field in fields:
         if field not in req.form:
             logging.info(f'request missing field: {field}')
             return (None, None, None), None, json.dumps({'error': error})
 
-    file        = req.files['file']
-    room        = req.form['room']
     session     = Session.get_where(sessionid=req.form['sessionid'])
-    chunk       = req.form['chunk']
-    file_number = req.form['file_number']
-    
-    if int(chunk) == 0:
-        logging.info(f"Upload -- starting -- session: {str(session.id)[:20]} room: {str(room)[:20]}")
+
+
     if not session:
         logging.info(f"Upload -- attempted with bad sessionid: {req.form['sessionid']}")
         return (None,None,None), None, json.dumps({'error': 'bad sessionid'})
-
-    person = Person.get(session.person)
     
     if 'folder' not in req.form or req.form['folder'] in ('null', None, 0, '0'):
         folder = 1
     else:
         folder = int(req.form['folder'])
     
-    if 'room' not in req.form or req.form['room'] in ('null', None, 0, '0'):
-        room = 1
-    else:
-        room = int(req.form['room'])
+    
+    path        = make_tmpdir(session, folder, int(req.form['file_number']))
+    chunk, room = handle_file_chunk(req,session,path)
 
-    tmp_dir = f'{ person.id }-{ session.id }-{ folder }-{ file_number }'
-    path = os.path.join(config['file_root'], 'files', 'tmp', tmp_dir)
-
-    Path(path).mkdir(parents=True, exist_ok=True)
-    file.save(os.path.join(path, str(chunk)))
     if 'end' not in req.form:
         return (None,None,None), None, None
     else:
-
         if 'filename' not in req.form:
             filename = 'unknown'
         else:
             filename = req.form['filename']
-
-        logging.info(f"Upload -- finishing: {filename}")
-       
-        # do it this way to give the interpreter a chance to switch threads
-        # TODO: break this out into some sort of task queue deal
         
-        outfile = os.path.join(path, 'output')
+        from_person                   = Person.get(session.person)
+        size, newfilename, hash, type = reconstitute_file(req, path, filename, chunk)
 
-        for i in range(0,int(chunk)+1):
-            infile  = os.path.join(path, str(i))
-            os.system(f'cat { infile } >> { outfile }')
-            #os.remove(infile)
+        if req.form['person'] not in [None, 'null']:
+            print(req.form['person'])
+            to_person = Person.get(int(req.form['person']))
+            to_folder, to_room = Room.get_or_set_chat(from_person.id, 
+                                                      [from_person.id, to_person.id])
+            folder = to_folder.id
+            room   = to_room.id
 
-        with open(outfile, 'rb') as f:
-            hash, size   = File.hash_file(f)
-            type, extension = File.file_type(filename)
-
-        logging.info("Upload -- hash = " + hash)
-        logging.info("Upload -- size = " + str(size))
-
-        # check for duplicates
-        
-        original_file = File.hash_exists(hash=hash, size=size)
-        if original_file:
-            logging.info("Upload -- duplicate file - " + 
-                         original_file.name + " - " + 
-                         filename + " - " + 
-                         original_file.localname)
-            newfilename = original_file.localname
-        else:
-            newfilename     = str(time.time()) + '.' + extension
-            os.rename(outfile, os.path.join(config['file_root'], 'files', newfilename))
-       
-        if 'to_user' in req.form:
-            to_folder, to_room = person.send_file_to(int(req.form['to_user']))
-
-        db_file = File(owner     = person.id,
+        db_file = File(owner     = from_person.id,
                        public    = True,
                        name      = filename,
                        folder    = folder if folder > 1 else 1,
@@ -232,7 +258,7 @@ def file_upload_common(req):
         if room:
             db_file.room = room
         logging.info(f"Upload -- finished: {filename}")
-        return (db_file, to_folder, to_room), person, None
+        return (db_file, to_folder, to_room), from_person, None
 
 
 
@@ -245,14 +271,9 @@ def upload_file():
         # got a chunk, but not the last one
         return json.dumps({'status': 'ok'})
     elif not errors:
-        # got the last chunk, so reconstitute
-        if 'room' in request.form:
-            room = Room.get_where(id=request.form['room'])
-            if room:
-                db_file.room = room.id
-                db_file.folder = room.root_folder
+        # got the last chunk, so add file to the database, etc.
 
-
+        print(db_file.data)
         db_file.save()
         db_file.commit()
 
@@ -261,8 +282,9 @@ def upload_file():
                  { 'files':[ db_file.public_fields() ] },
                  room = 'room-'+str(db_file.room),
                  namespace = None)
+
         result = {'status': 'ok', 
-                  'files': [db_file.public_fields()]}, 
+                  'files': [db_file.public_fields()]}
 
         if db_folder:
             result['folders'] = [db_folder.public_fields()]

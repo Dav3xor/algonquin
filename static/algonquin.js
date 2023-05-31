@@ -175,10 +175,11 @@ class Invite {
 
 
 
-async function upload_file(file, url, room_id=null, folder_id=null) {
+async function upload_file(file, url, room_id=null, folder_id=null, person_id=null) {
   var sessionid = cookie.read('sessionid');
   var file_number = parseInt(cookie.read('file_number'));
   cookie.write('file_number', file_number + 1, 365);
+  console.log("upload");
   for(let start = 0; start < file.size; start += files.chunk_size) {
     const chunk     = file.slice(start, start+files.chunk_size);
     var form        = new FormData();
@@ -189,6 +190,7 @@ async function upload_file(file, url, room_id=null, folder_id=null) {
     form.append('file', chunk);
     form.append('folder', folder_id);
     form.append('room', room_id);
+    form.append('person', person_id);
     if (start + files.chunk_size >= file.size) {
       form.append('end', true);
       form.append('filename',file.name);
@@ -260,7 +262,7 @@ class Files {
   }
 
   add_update_folder(folder) {
-    this.folders[folder.id] = folder;
+    this.folders[folder.id]        = folder;
     this.folders[folder.id].unread = 0
     console.log(folder.id);
   }
@@ -342,7 +344,7 @@ class Files {
                               style="word-break: break-all;"
                               id="${rowid}-button">
                         ${icons.folder}
-                        ${folder.name}
+                        ${folder.expanded_name}
                       </button>`;
       var rowdata = {'rowid':    rowid,
                      'play':     '',
@@ -417,9 +419,9 @@ class Files {
       var folder = this.get_path_index(i);
       console.log(folder);
       if (folder) {
-        contents += `<button class="btn btn-dark btn-sm"
+        contents += `<button class="btn btn-dark btn-sm ml-2"
                              onclick="files.change_folder_by_level(${i});">
-                       ${folder.name} 
+                       ${folder.expanded_name} 
                      </button>`;
         var num_bytes   = format_size_string(sum_id(this.files, folder.id, 'folder', 'size'));
         var num_files   = count_id(this.files, folder.id, 'folder');
@@ -494,16 +496,16 @@ function add_table_row(table, rowid, rowdata) {
 
 class People {
   constructor() {
-    this.people = {};
-    this.this_person = -1;
-
-    this.table_name = "#people-list";
-    this.table = null;
-    this.table_def = { "rowId": "rowid",
-                       "dom": "tip",
-                       "columns": [ { "data": 'online', 'orderData': [2,1], 'width': '80px'}, 
-                                    { "data": 'name'}, 
-                                    { "data": 'buttons', "orderable": false, 'width': '123px'} ]};
+    this.people        = {};
+    this.this_person   = -1;
+    this.upload_person = null;
+    this.table_name    = "#people-list";
+    this.table         = null;
+    this.table_def     = { "rowId": "rowid",
+                         "dom": "tip",
+                         "columns": [ { "data": 'online', 'orderData': [2,1], 'width': '80px'}, 
+                                      { "data": 'name'}, 
+                                      { "data": 'buttons', "orderable": false, 'width': '123px'} ]};
     $('#ring-bell').append(icons.bell);
   }
 
@@ -592,10 +594,14 @@ class People {
                 </a>`;
     }
 
+
+
     var buttons = `<button class="btn btn-warning btn-sm" 
-                           type="button" id="new-file-${person.id}">
+                           onclick="console.log('user upload'); people.upload_person = ${person.id}; $('#person-upload-file-${person.id}').trigger('click');"
+                           type="button" id="person-file-button-${person.id}">
                      ${icons.paperclip}
                    </button>
+                   <input type="file" style="display: none" id="person-upload-file-${person.id}" multiple />
                    <button class="btn btn-success btn-sm" 
                            onclick="start_chat([${person.id},people.get_this_person().id]);" 
                            id="start-chat-${person.id}" type="button">
@@ -619,14 +625,22 @@ class People {
   }
 
   render() {
+    var pids = [];
     if(this.table != null) {
       for (var person in this.people) {
         person = this.get_person(person);
         if(person) {
           this.update_table_row(person);
+          pids.push(person.id);
         }
       }
       this.table.columns.adjust().draw(false);
+      for(var pid in pids) {
+        pid = pids[pid];
+        $(`#person-upload-file-${pid}`).on('change', function(evt) {
+          ([...evt.target.files]).forEach(handle_file_upload);
+        });
+      }
     }
   }
 }
@@ -1252,36 +1266,44 @@ class Rooms {
     this.rooms[message.room].message_index.sort(function(a, b){return -1*(b-a)});
   }
 
+  render_chat_name(room) {
+    if (!(room.name.startsWith('$%^&-')) ) {
+      return(room.name);
+    } else {
+      var ids = room.name.split('-').slice(1);
+      var expanded_name = "Chat With:";
+      var change_name = true;
+      for (var id in ids) {
+
+        var id = ids[id].toString();
+        var person = people.get_person(id);
+        
+        if (person) {
+          expanded_name += " " + people.people[id].handle;
+        } else {
+          change_name = false;
+          if(people.people[id]){
+          } else {
+            expanded_name += " (unknown person?)";
+          }
+        }
+
+      }
+      return expanded_name;
+    }
+  }
+
+
   render_room_list() {
     var unread = 0;
     $('#room_list').empty();
     for (var room in this.rooms) {
+
       var room = this.rooms[room];
-      if ( room.name.startsWith('$%^&-') ) {
-        var ids = room.name.split('-').slice(1);
-        var expanded_name = "Chat With:";
-        var change_name = true;
-        for (var id in ids) {
-          var id = ids[id].toString();
-          var person = people.get_person(id);
-          
-          if (person) {
-            expanded_name += " " + people.people[id].handle;
-          } else {
-            change_name = false;
-            if(people.people[id]){
-            } else {
-              expanded_name += " (unknown person?)";
-            }
 
-          }
-        }
-        if(change_name == true) {
-          room.name = expanded_name;
-        }       
-      }
+      //room.expanded_name = this.render_chat_name(room);
+      var contents = room.expanded_name;
 
-      var contents = room.name;
       if(room.unread > 0) {
         unread   += room.unread;
         contents += `<span class="ml-2 badge badge-info">${room.unread}</span>`;
@@ -1338,7 +1360,7 @@ class Rooms {
   update_table_row(room) {
     var rowid    = this.table_row_name(room.id);
     var name     = `<button class="btn btn-secondary btn-block" id="goto-room-${room.id}"
-                            onclick="rooms.change_room('${room.id}'); tabs.show('messages');">${room.name}</button>`;
+                            onclick="rooms.change_room('${room.id}'); tabs.show('messages');">${room.expanded_name}</button>`;
     var disabled = room.unread ? '' : ' disabled';
     var new_msgs = room.unread ? room.unread : '';
     var about    = "";
@@ -2096,12 +2118,7 @@ class Getter {
   }
 
   request() {
-    //console.log("request");
-    //console.log(this.newrequest);
-    //console.log(this.requested);
-
     if(this.newrequest == true) {
-      //console.log(this.unknown);
       socket.emit('get-stuff', this.unknown);
       this.reset();
     }
@@ -2142,7 +2159,9 @@ class Getter {
 
     if ('folders' in stuff) {
       for(var folder in stuff['folders']) {
-        files.add_update_folder(stuff['folders'][folder])
+        folder = stuff['folders'][folder];
+        folder.expanded_name = rooms.render_chat_name(folder);
+        files.add_update_folder(folder)
       }
       update_messages = true;
       update_files    = true;
@@ -2150,7 +2169,9 @@ class Getter {
 
     if ('rooms' in stuff) {
       for (var room in stuff['rooms']) {
-        rooms.add_room(stuff['rooms'][room]);
+        room = stuff['rooms'][room];
+        room.expanded_name = rooms.render_chat_name(room);
+        rooms.add_room(room);
       }
       update_messages = true;
       update_rooms    = true;
@@ -2490,6 +2511,8 @@ function dragover_handler(ev) {
 function handle_file_upload(file) {
   var folder_id = 1;
   var room_id   = null;
+  var person_id = null;
+
   switch(tabs.current_tab()) {
     case 'messages':
       var room  = rooms.get_cur_room();
@@ -2504,12 +2527,17 @@ function handle_file_upload(file) {
         room_id   = folder.room;
       }
       break;
+    case 'people':
+      person_id = people.upload_person;
+      folder_id = null;
+      break;
     default:
       break;
   }
   upload_file(file, 'upload-file', 
               room_id   = room_id, 
-              folder_id = folder_id);
+              folder_id = folder_id,
+              person_id = person_id);
 }
 
 function drop_handler(ev) {
@@ -2757,7 +2785,7 @@ function setup_handlers(s) {
     console.log('your-new-file');
     if(cards.editor_open() == true) {
       cards.add_file(data.file_id);
-    } else { 
+    } else if (tabs.current_type == 'messages') { 
       messages.add_file(data.file_id);
     }
   });
