@@ -2780,6 +2780,16 @@ function setup_handlers(s) {
     tabs.show('messages');
   });
 
+  s.on('new-file', data => {
+    console.log('new-file');
+    getter.handle_stuff(data);
+    for (var file in data['files']) {
+      file = data['files'][file];
+      var folder = files.get_folder(file.folder);
+      folder.unread += 1;
+      console.log(file.folder);
+    }
+  });
   
   s.on('your-new-file', data => {
     console.log('your-new-file');
@@ -2797,15 +2807,6 @@ function setup_handlers(s) {
     $('#portrait-image').attr('src', '/portraits/' + data.person.portrait);
     $('#you-image').attr('src', '/portraits/' + data.person.portrait);
     people.set_person(data.person);
-  });
-
-  s.on('new-file', data => {
-    console.log('new-file');
-    getter.handle_stuff(data);
-    for (var file in data['files']) {
-      file = data['files'][file];
-      console.log(file.folder);
-    }
   });
 
   s.on('stuff-list', data => {
