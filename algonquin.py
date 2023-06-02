@@ -277,11 +277,11 @@ def upload_file():
         db_file.save()
         db_file.commit()
 
-        if db_file.room: 
-            emit('stuff-list', 
-                 { 'files':[ db_file.public_fields() ] },
-                 room = 'room-'+str(db_file.room),
-                 namespace = None)
+        #if db_file.room: 
+        #    emit('stuff-list', 
+        #         { 'files':[ db_file.public_fields() ] },
+        #         room = 'room-'+str(db_file.room),
+        #         namespace = None)
 
         result = {'status': 'ok', 
                   'files': [db_file.public_fields()]}
@@ -298,6 +298,7 @@ def upload_file():
              result,
              room      = f'room-{db_file.room}',
              namespace = None)
+
         #return json.dumps({'status': 'ok', 'files': [db_file.public_fields()]})
         #TODO: only send this to the session that uploaded it (currently sends it to all logged
         #      in user sessions)

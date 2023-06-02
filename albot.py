@@ -6,7 +6,7 @@ from os.path import exists
 
 settings_file = 'albot_sekrit'
 
-settings = { 'sessionid': '3-token-17494259491743097507',
+settings = { 'sessionid': '3-token-5782322795120947802',
              'password': 'ASFG#$TYsdfasg@#$BR#$!!&^1461',
              'domain': 'Orgone Institute',
              'url': 'http://localhost:8080'}
@@ -26,7 +26,7 @@ rooms = {}
 def handle_persons(p):
     print("----")
     print(p)
-    for person in p.values():
+    for person in p:
         print(person)
         persons[person['id']] = person
 
@@ -55,7 +55,7 @@ def handle_messages(m):
                 
 def handle_rooms(r):
     for room in r:
-        rooms[int(room)] = r[room]
+        rooms[room['id']] = room
 
 @sio.event
 def connect():

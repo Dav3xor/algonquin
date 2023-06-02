@@ -2784,8 +2784,10 @@ function setup_handlers(s) {
   s.on('your-new-file', data => {
     console.log('your-new-file');
     if(cards.editor_open() == true) {
+      console.log("y");
       cards.add_file(data.file_id);
-    } else if (tabs.current_type == 'messages') { 
+    } else if (tabs.current_tab() == 'messages') { 
+      console.log("x");
       messages.add_file(data.file_id);
     }
   });
@@ -2800,6 +2802,10 @@ function setup_handlers(s) {
   s.on('new-file', data => {
     console.log('new-file');
     getter.handle_stuff(data);
+    for (var file in data['files']) {
+      file = data['files'][file];
+      console.log(file.folder);
+    }
   });
 
   s.on('stuff-list', data => {
