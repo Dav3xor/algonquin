@@ -226,12 +226,16 @@ class Files {
       return null;
     }
 
-    if (! this.folders.hasOwnProperty(id)) {
+    if (!this.has_folder(id)) {
       getter.add('folders', id);
       return null;
     } else {
       return this.folders[id];
     }
+  }
+
+  has_folder(id) {
+    return(this.folders.hasOwnProperty(id))
   }
 
   get_cur_folder() {
@@ -262,9 +266,16 @@ class Files {
   }
 
   add_update_folder(folder) {
+    if (this.has_folder(folder.id)) {
+      console.log("!!!!!");
+      folder.unread = this.get_folder(folder.id).unread;
+    } else {
+      folder.unread = 0;
+    }
+
+    folder.expanded_name = rooms.render_chat_name(folder);
+
     this.folders[folder.id]        = folder;
-    this.folders[folder.id].unread = 0
-    console.log(folder.id);
   }
 
   get_latest() {
@@ -303,6 +314,7 @@ class Files {
     if(! this.folders.hasOwnProperty(folder_id)) {
       console.log(`invalid change_folder -- ${folder_id}`);
     } else {
+      this.get_folder(folder_id).unread = 0;
       this.path.push(folder_id);
       socket.emit('get-folder', {'folder_id': folder_id});
     }
@@ -327,89 +339,93 @@ class Files {
     this.table.row(row).draw().show().draw(false);
   }
 
-  update_table_row_folder(folder) {
-    var rowid    = this.table_row_name(folder.id, 'folder');
-    var owner    = people.get_person(folder.owner);
-    console.log(folder.unread);
-    if(folder.unread) {
-      var unread = `<button class="btn btn-light">${folder.unread}</button>`;
-    } else {
-      var unread = `<button class="btn btn-light disabled">0</button>`;
-    }
-    if(owner) {
-      var filename = `<button onmouseover="$('#${rowid}-button').removeClass('disabled');" 
-                              onmouseout="$('#${rowid}-button').addClass('disabled');" 
-                              ondblclick="files.change_folder(${folder.id});" 
-                              class="btn btn-info btn-sm btn-block text-left disabled"
-                              style="word-break: break-all;"
-                              id="${rowid}-button">
-                        ${icons.folder}
-                        ${folder.expanded_name}
-                      </button>`;
-      var rowdata = {'rowid':    rowid,
-                     'play':     '',
-                     'filename': filename, 
-                     'buttons':  unread}
-      add_table_row(this.table, rowid, rowdata);
+  update_table_row_folder(folder) {  
+    if(folder && folder.parent == this.get_cur_folder()) {
+      var rowid    = this.table_row_name(folder.id, 'folder');
+      var owner    = people.get_person(folder.owner);
+      console.log(folder.unread);
+      if(folder.unread) {
+        var unread = `<button class="btn btn-light">${folder.unread}</button>`;
+      } else {
+        var unread = `<button class="btn btn-light disabled">0</button>`;
+      }
+      if(owner) {
+        var filename = `<button onmouseover="$('#${rowid}-button').removeClass('disabled');" 
+                                onmouseout="$('#${rowid}-button').addClass('disabled');" 
+                                ondblclick="files.change_folder(${folder.id});" 
+                                class="btn btn-info btn-sm btn-block text-left disabled"
+                                style="word-break: break-all;"
+                                id="${rowid}-button">
+                          ${icons.folder}
+                          ${folder.expanded_name}
+                        </button>`;
+        var rowdata = {'rowid':    rowid,
+                       'play':     '',
+                       'filename': filename, 
+                       'buttons':  unread}
+        add_table_row(this.table, rowid, rowdata);
+      }
     }
   }
 
 
   update_table_row_file(file) {
-    var rowid    = this.table_row_name(file.id, 'file');
-    //alert(JSON.stringify(file));
-    var owner = people.get_person(file.owner);
-    if(owner) {
+    if(file && file.folder == this.get_cur_folder()) {
+      var rowid    = this.table_row_name(file.id, 'file');
+      //alert(JSON.stringify(file));
+      var owner = people.get_person(file.owner);
+      if(owner) {
 
-      var file_icon = icons.unknown;
-      if (icons.hasOwnProperty(file.type)) {
-        file_icon = icons[file.type];
-      }
-      var button_id = `files-play-sound-${file.id}`;
-      var play_button = "";
-      var deleted = file.deleted ? 'disabled' : '';
+        var file_icon = icons.unknown;
+        if (icons.hasOwnProperty(file.type)) {
+          file_icon = icons[file.type];
+        }
+        var button_id = `files-play-sound-${file.id}`;
+        var play_button = "";
+        var deleted = file.deleted ? 'disabled' : '';
 
-      if ((!file.deleted)&&(file.type in {'video':true, 'audio':true})){
-        play_button = `
-          <button class="btn btn-info btn-sm" id="${button_id}" 
-                  onclick="jukebox.play_pause('${button_id}', '/files/${file.localname}'); ${deleted}">
-            ${icons.play}
-          </button>`;
-      } else {
-        play_button = `<button class="btn btn-dark btn-sm" disabled>
-                         ${icons.blank}
-                       </button>`;
-      }
-      var play = `${play_button}
-                    <a download class="btn btn-light btn-sm ${deleted}" href="/files/${file.localname}" ${deleted}>
-                      ${icons.download}
-                    </a>
-                    <button class="btn btn-light btn-sm" 
-                            onclick="window.open('/files/${file.localname}','_blank');" ${deleted}>
-                      ${icons.new_tab}
-                    </button>`;
-      var filename = `<button class="btn btn-secondary btn-sm btn-block text-left disabled"
-                              style="word-break: break-all;"
-                              onmouseover="$('#${rowid}-button').removeClass('disabled');" 
-                              onmouseout="$('#${rowid}-button').addClass('disabled');" 
-                              ondblclick="console.log('double click');"
-                              id="${rowid}-button" disabled>
-                        ${file_icon}
-                        ${file.name}
+        if ((!file.deleted)&&(file.type in {'video':true, 'audio':true})){
+          play_button = `
+            <button class="btn btn-info btn-sm" id="${button_id}" 
+                    onclick="jukebox.play_pause('${button_id}', '/files/${file.localname}'); ${deleted}">
+              ${icons.play}
+            </button>`;
+        } else {
+          play_button = `<button class="btn btn-dark btn-sm" disabled>
+                           ${icons.blank}
+                         </button>`;
+        }
+        var play = `${play_button}
+                      <a download class="btn btn-light btn-sm ${deleted}" href="/files/${file.localname}" ${deleted}>
+                        ${icons.download}
+                      </a>
+                      <button class="btn btn-light btn-sm" 
+                              onclick="window.open('/files/${file.localname}','_blank');" ${deleted}>
+                        ${icons.new_tab}
                       </button>`;
-      var buttons = `<button class="btn btn-success btn-sm" 
-                               onclick="start_chat([${owner.id},people.get_this_person().id]);" 
-                               id="start-chat-${owner.id}" type="button" ${deleted}>
-                         ${icons.chat_bubble}
-                     </button>
-                     <button class="btn btn-warning btn-sm mr-0" onclick="send_delete_file(${file.id});" ${deleted}>
-                       ${icons.trash}
-                     </button>`;
-      var rowdata = {'rowid':    rowid,
-                     'play':     play,
-                     'filename': filename, 
-                     'buttons':  buttons}
-      add_table_row(this.table, rowid, rowdata);
+        var filename = `<button class="btn btn-secondary btn-sm btn-block text-left disabled"
+                                style="word-break: break-all;"
+                                onmouseover="$('#${rowid}-button').removeClass('disabled');" 
+                                onmouseout="$('#${rowid}-button').addClass('disabled');" 
+                                ondblclick="console.log('double click');"
+                                id="${rowid}-button" disabled>
+                          ${file_icon}
+                          ${file.name}
+                        </button>`;
+        var buttons = `<button class="btn btn-success btn-sm" 
+                                 onclick="start_chat([${owner.id},people.get_this_person().id]);" 
+                                 id="start-chat-${owner.id}" type="button" ${deleted}>
+                           ${icons.chat_bubble}
+                       </button>
+                       <button class="btn btn-warning btn-sm mr-0" onclick="send_delete_file(${file.id});" ${deleted}>
+                         ${icons.trash}
+                       </button>`;
+        var rowdata = {'rowid':    rowid,
+                       'play':     play,
+                       'filename': filename, 
+                       'buttons':  buttons}
+        add_table_row(this.table, rowid, rowdata);
+      }
     }
   }
 
@@ -445,16 +461,11 @@ class Files {
       this.table.clear();
       for (var folder in this.folders) {
         folder = this.folders[folder];
-        //folder.unread = 0;
-        if(folder && folder.parent == this.get_cur_folder()) {
-          this.update_table_row_folder(folder);
-        }
+        this.update_table_row_folder(folder);
       }
       for (var file in this.files) {
         file = this.files[file];
-        if(file && file.folder == this.get_cur_folder()) {
-          this.update_table_row_file(file);
-        }
+        this.update_table_row_file(file);
       }
       this.table.columns.adjust().draw();
     }
@@ -2160,8 +2171,7 @@ class Getter {
     if ('folders' in stuff) {
       for(var folder in stuff['folders']) {
         folder = stuff['folders'][folder];
-        folder.expanded_name = rooms.render_chat_name(folder);
-        files.add_update_folder(folder)
+        files.add_update_folder(folder);
       }
       update_messages = true;
       update_files    = true;
@@ -2782,11 +2792,16 @@ function setup_handlers(s) {
 
   s.on('new-file', data => {
     console.log('new-file');
+    console.log(data);
     getter.handle_stuff(data);
     for (var file in data['files']) {
       file = data['files'][file];
       var folder = files.get_folder(file.folder);
       folder.unread += 1;
+      console.log(folder);
+      console.log(files.get_folder(folder.id));
+      files.update_table_row_folder(folder);
+
       console.log(file.folder);
     }
   });
