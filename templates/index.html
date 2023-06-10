@@ -554,12 +554,14 @@
                 <input autocomplete="new-password" type="password" 
                        oninput="invite.allow_submission();"
                        class="form-control" name="invite-password" id="invite-password">
-                <div><b>Note:</b> You can leave the password blank, and you can enter it in later.</div>
+                <div><b>Note:</b> You can leave the password blank, and your friend can add it in later when they log in for the first time.</div>
               </div>
+              {% if config.enable_email == True %}
               <div class="form-check">
                 <input type="checkbox" class="form-check-input" id="invite-send-email">
-                <label class="form-check-label" for="send-email">Send Email Invite</label>
+                <label class="form-check-label mb-3" for="send-email">Send Email Invite</label>
               </div>
+              {% endif %}
               <div class="pb-2">
                 <button onclick="invite.create_person();" 
                         type="button" id="add-person" 

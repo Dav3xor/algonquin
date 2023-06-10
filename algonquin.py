@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 from config import config, __version__, __protocol__
 from pathlib import Path
 
+import flask_mail
 import os
 import eventlet
 import json
@@ -35,9 +36,20 @@ build_tables([Person, Session, Message, Room, File, Folder, Membership, Card, Ca
 logging.info("Starting -- Flask App")
 app = Flask(__name__, static_url_path='')
 app.config['SECRET_KEY'] = 'a very very sekrit sekrit key'
+if config['enable_email']:
+    app.config['MAIL_SERVER']=config['mail_server']
+    app.config['MAIL_PORT'] = config['mail_port']
+    app.config['MAIL_USERNAME'] = config['mail_username']
+    app.config['MAIL_PASSWORD'] = config['mail_password']
+    app.config['MAIL_USE_TLS'] = config['mail_use_tls']
+    app.config['MAIL_USE_SSL'] = config['mail_use_ssl']
+
 
 logging.info("Starting -- SocketIO App")
 socketio = SocketIO(app)
+
+if config['enable_email']:
+    mail = flask_mail.Mail(app)
 
 differ = difflib.Differ()
 
@@ -779,8 +791,9 @@ def handle_edit_card(json):
 
 @person_logged_in
 @socketio.on('invite-new-person')
-@json_has_keys('password', 'email', 'handle', 'message')
+@json_has_keys('password', 'email', 'handle', 'message', 'send_email')
 def handle_new_person(json):
+    message = json['message'][:10000] # stop silliness
     status     = 1
     status_msg = 'Person Successfully Created'
 
@@ -803,10 +816,20 @@ def handle_new_person(json):
         session.save()
         session.commit()
     except Exception as e:
-        status = 0
+        url        = ""
+        status     = 0
         status_msg = str(e)
-        
-    response = {'message': json['message'] + '\n\n' + url,
+   
+    if config['enable_email'] and json['send_email'] == 'on': 
+        print("sending email")
+        print(json['send_email'])
+        msg = flask_mail.Message(f"Algonquin - Invite for {config['site_name']}", 
+                      sender = config['sysop_email'], 
+                      recipients = [json['email']])
+        msg.body = "This is the email body"
+        mail.send(msg)
+
+    response = {'message': message + '\n\n' + url,
                 'url': url,
                 'status': status,
                 'status_msg': status_msg,

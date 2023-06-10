@@ -158,6 +158,14 @@ class Invite {
     var message    = $('#invite-message').val();
     var handle     = $('#invite-handle').val();
     var send_email = $('#invite-send-email').val();
+
+    // sigh
+    if (send_email == null) {
+      send_email = 'off';
+    } else {
+      send_email = $('#invite-send-email').is(":checked") ? "on":"off";
+    }
+
     var message = {email: email,
                    password: password,
                    message: message,

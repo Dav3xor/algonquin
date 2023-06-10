@@ -45,6 +45,7 @@
       name:
         - flask
         - flask-socketio
+        - flask-mail
         - passlib
         - eventlet
 
