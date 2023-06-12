@@ -275,7 +275,6 @@ class Files {
 
   add_update_folder(folder) {
     if (this.has_folder(folder.id)) {
-      console.log("!!!!!");
       folder.unread = this.get_folder(folder.id).unread;
     } else {
       folder.unread = 0;
@@ -322,9 +321,27 @@ class Files {
     if(! this.folders.hasOwnProperty(folder_id)) {
       console.log(`invalid change_folder -- ${folder_id}`);
     } else {
-      this.get_folder(folder_id).unread = 0;
+      var num_unread = this.get_folder(folder_id).unread;
       this.path.push(folder_id);
       socket.emit('get-folder', {'folder_id': folder_id});
+
+      var folder = this.get_folder(folder_id);
+      while(folder) {
+        console.log(folder);
+        folder.unread -= num_unread;
+        folder.unread = (folder.unread >= 0) ? folder.unread : 0;
+        files.update_table_row_folder(folder);
+        if(folder.id == 1) {
+          var files_label = "files";
+          if(folder.unread > 0) {
+            files_label += `<span class="ml-2 badge badge-info">${folder.unread}</span>`;
+          }
+          $('#files_off_label').html(files_label);
+        }
+        folder = files.get_folder(folder.parent);
+      }
+
+
     }
   }
 
@@ -505,12 +522,14 @@ function build_table(obj) {
 }
 
 function add_table_row(table, rowid, rowdata) {
+  if (table) {
     var row = table.row('#'+rowid);
     if (row.any()) {
       row.data(rowdata);//.draw();
     } else {
       table.row.add(rowdata).draw( false );
     }
+  }
 }
 
 class People {
@@ -2799,16 +2818,21 @@ function setup_handlers(s) {
   });
 
   s.on('new-file', data => {
-    console.log('new-file');
-    console.log(data);
     getter.handle_stuff(data);
     for (var file in data['files']) {
       file = data['files'][file];
       var folder = files.get_folder(file.folder);
-      folder.unread += 1;
-      console.log(folder);
-      console.log(files.get_folder(folder.id));
-      files.update_table_row_folder(folder);
+      while(folder) {
+        console.log(folder);
+        folder.unread += 1;
+        files.update_table_row_folder(folder);
+        if(folder.id == 1) {
+          var files_label = "files";
+          files_label += `<span class="ml-2 badge badge-info">${folder.unread}</span>`;
+          $('#files_off_label').html(files_label);
+        }
+        folder = files.get_folder(folder.parent);
+      }
 
       console.log(file.folder);
     }
@@ -2817,10 +2841,8 @@ function setup_handlers(s) {
   s.on('your-new-file', data => {
     console.log('your-new-file');
     if(cards.editor_open() == true) {
-      console.log("y");
       cards.add_file(data.file_id);
     } else if (tabs.current_tab() == 'messages') { 
-      console.log("x");
       messages.add_file(data.file_id);
     }
   });
