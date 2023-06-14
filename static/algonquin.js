@@ -1547,6 +1547,7 @@ class Messages {
     $('#goto-bottom').html(icons.goto_bottom);
     $('#files-upload').prepend(icons.paperclip);
     $('#folder-add').prepend(icons.folder);
+    $('#room-add').prepend(icons.flower);
     
   }
 
