@@ -308,36 +308,41 @@
 
 
         <div class="row alert alert-info mr-2 ml-2">
-          <div class="col-sm-3 mb-2">
-            <h3>Add New Room:</h3>
+          <div class="col-sm-3">
+            <button class="btn btn-primary" type="button" data-toggle="collapse"
+                                                          data-target="#new-room-form, #add-room-button" aria-expanded="false">
+              <h3>Add New Room...</h3>
+            </button>
           </div>
           <div class="col-sm-7">
-            <form autocomplete="off" onsubmit="return false;">
-              <div class="input-group mb-1">
-                <div class="input-group-prepend mr-2">Room Name:</div>
-                <input type="text" class="form-control" 
-                       name="room-name" id="room-name" required />
-              </div>
+            <div class="collapse" id="new-room-form">
+              <form autocomplete="off" onsubmit="return false;">
+                <div class="input-group mb-1">
+                  <div class="input-group-prepend mr-2">Room Name:</div>
+                  <input type="text" class="form-control" 
+                         name="room-name" id="room-name" required />
+                </div>
 
-              <div class="alert alert-light">
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="room-public-private" id="new-room-public" checked>
-                  <label class="form-check-label" for="new-room-public">
-                    Public Room
-                  </label>
+                <div class="alert alert-light">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="room-public-private" id="new-room-public" checked>
+                    <label class="form-check-label" for="new-room-public">
+                      Public Room
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="room-public-private" id="new-room-private" >
+                    <label class="form-check-label" for="new-room-private">
+                      Private Room For:
+                    </label>
+                  </div>
+                  <div id="new-folder-people" class="justify-content-end"><button class="btn btn-dark btn-sm justify-content-end">+</button></div>
                 </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="room-public-private" id="new-room-private" >
-                  <label class="form-check-label" for="new-room-private">
-                    Private Room For:
-                  </label>
-                </div>
-                <div id="new-folder-people" class="justify-content-end"><button class="btn btn-dark btn-sm justify-content-end">+</button></div>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
           <div class="col-sm-2 mt-auto">
-            <div class="input-group justify-content-end">
+            <div id="add-room-button" class="collapse input-group justify-content-end">
               <button onclick="files.add_folder($('#folder-name').val());" 
                       type="button" id="room-add" 
                       class="btn btn-success btn-sm">
