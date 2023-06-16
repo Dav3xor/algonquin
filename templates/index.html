@@ -325,18 +325,20 @@
 
                 <div class="alert alert-light">
                   <div class="form-check">
-                    <input class="form-check-input" type="radio" name="room-public-private" id="new-room-public" checked>
+                    <input class="form-check-input" type="radio" name="room-public-private" id="new-room-public"
+                           onclick="$('#new-folder-people').children().attr('disabled', true);" checked>
                     <label class="form-check-label" for="new-room-public">
                       Public Room
                     </label>
                   </div>
                   <div class="form-check">
-                    <input class="form-check-input" type="radio" name="room-public-private" id="new-room-private" >
+                    <input class="form-check-input" type="radio" name="room-public-private" 
+                           id="new-room-private" onclick="$('#new-folder-people').children().attr('disabled', false);">
                     <label class="form-check-label" for="new-room-private">
                       Private Room For:
                     </label>
                   </div>
-                  <div id="new-folder-people" class="justify-content-end"><button class="btn btn-dark btn-sm justify-content-end">+</button></div>
+                  <div id="new-folder-people" class="justify-content-end"></div>
                 </div>
               </form>
             </div>

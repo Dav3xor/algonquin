@@ -1427,6 +1427,13 @@ class Rooms {
   }
   render() {
     if(this.table != null) {
+
+      var person_button = messages.render_inline_person(people.get_this_person(), false);
+      $('#new-folder-people').html(`${person_button}
+                                    <button class="btn btn-dark btn-sm justify-content-end"/>
+                                      ${icons.person_add}
+                                    </button>`);
+      $('#new-folder-people').children().attr('disabled',true);
       for (var room in this.rooms) {
         room = this.get_room(room);
         if(room) {
