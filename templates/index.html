@@ -298,62 +298,84 @@
       </span> 
       </button>
 
+
+
       <div class="container-fluid d-none status-margin" id="rooms">
 
-
-
-
-
-
-
-
-        <div class="row alert alert-info mr-2 ml-2">
-          <div class="col-sm-3">
-            <button class="btn btn-primary" type="button" data-toggle="collapse"
-                                                          data-target="#new-room-form, #add-room-button" aria-expanded="false">
-              <h3>Add New Room...</h3>
-            </button>
-          </div>
-          <div class="col-sm-7">
-            <div class="collapse" id="new-room-form">
-              <form autocomplete="off" onsubmit="return false;">
-                <div class="input-group mb-1">
-                  <div class="input-group-prepend mr-2">Room Name:</div>
-                  <input type="text" class="form-control" 
-                         name="room-name" id="room-name" required />
-                </div>
-
-                <div class="alert alert-light">
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="room-public-private" id="new-room-public"
-                           onclick="$('#new-folder-people').children().attr('disabled', true);" checked>
-                    <label class="form-check-label" for="new-room-public">
-                      Public Room
-                    </label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="room-public-private" 
-                           id="new-room-private" onclick="$('#new-folder-people').children().attr('disabled', false);">
-                    <label class="form-check-label" for="new-room-private">
-                      Private Room For:
-                    </label>
-                  </div>
-                  <div id="new-folder-people" class="justify-content-end"></div>
-                </div>
-              </form>
+        <div class="accordion" id="new-room-accordion">
+          <div class="card bg-secondary text-white">
+            <div class="card-header" id="new-room-heading">
+              <h4 class="mb-0 card-title">
+                <button class="btn btn-link btn-block btn-warning text-left text-white" type="button" 
+                        data-toggle="collapse"
+                        onclick="flip_chevron('new-room-chevron');"
+                        data-target="#new-room-form"
+                        al-chevron="up"
+                        aria-controls="#new-room-form" aria-expanded="false">
+                  Add New Room... 
+                  <div id="new-room-chevron" class="float-right"></div>
+                        
+                </button>
+                 
+              </h4>
             </div>
-          </div>
-          <div class="col-sm-2 mt-auto">
-            <div id="add-room-button" class="collapse input-group justify-content-end">
-              <button onclick="files.add_folder($('#folder-name').val());" 
-                      type="button" id="room-add" 
-                      class="btn btn-success btn-sm">
-                Add Room...
-              </button>
+            <div id="new-room-form" class="accordion-collapse collapse m-3" 
+                                    aria-labelledby="new-room-heading"
+                                    data-bs-parent="#new-room-accordion">
+              <div class="accordion-body">
+                <form autocomplete="off" onsubmit="return false;">
+                  <div class="input-group mb-1">
+                    <div class="input-group-prepend mr-2">Room Name:</div>
+                    <input type="text" class="form-control" 
+                           name="new-room-name" id="room-name" required />
+                  </div>
+                  <div class="input-group mb-1">
+                    <div class="input-group-prepend mr-2">Topic:</div>
+                    <input type="text" class="form-control" 
+                           name="new-room-topic" id="room-topic" />
+                  </div>
+                  <div class="input-group mb-1">
+                    <div class="input-group-prepend mr-2">About:</div>
+                    <textarea class="form-control" 
+                           name="new-room-about" id="room-about">
+                    </textarea>
+                  </div>
+
+                  <div class="alert alert-light">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" 
+                             name="room-public-private" id="new-room-public"
+                             checked>
+                      <label class="form-check-label" for="new-room-public">
+                        Public 
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" 
+                             name="room-public-private" id="new-room-public" >
+                      <label class="form-check-label" for="new-room-public">
+                        Private (add people later...)
+                      </label>
+                    </div>
+
+                  </div>
+
+                  <div id="add-room-button" class="input-group justify-content-end">
+                    <button onclick="rooms.send_new_room();" 
+                            type="button" id="room-add" 
+                            class="btn btn-info btn-sm">
+                      Add Room...
+                    </button>
+                  </div>
+
+
+
+                </form>
+              </div>
             </div>
           </div>
         </div>
-
+      </div>
 
 
 

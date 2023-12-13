@@ -6,11 +6,17 @@ function qsv(selector) {
 class Picker {
   constructor() {
     this.items = [];
-    this.selection = "";
-    this.list_id  = `#select-list`;
+    this.selection = '';
+    this.target_id  = '#select-list';
+    this.container_id = '#select-box'
     this.done_fn = null;
   }
-  
+ 
+  set_target_id(target_id, container_id) {
+    this.target_id = target_id;
+    this.container_id = container_id;
+  }
+
   set_items(new_items, done_fn) {
     this.done_fn = done_fn;
     this.items = new_items;
@@ -19,8 +25,8 @@ class Picker {
 
   close() {
     this.items = [];
-    $(this.list_id).empty();
-    $('#select-box').hide();
+    $(this.target_id).empty();
+    $('#container_id').hide();
   }
 
   finish(id) {
@@ -58,7 +64,7 @@ class Picker {
   }
 
   show() {
-    $('#select-box').show()
+    $(this.container_id).show();
   }
 
   update_list() {
@@ -76,11 +82,11 @@ class Picker {
           active = '';
         }
 
-        $(this.list_id).append(`<button class="btn btn-light btn-sm${active}" id="${item_id}" 
+        $(this.target_id).append(`<button class="btn btn-secondary btn-sm mb-1 ${active}" id="${item_id}" 
             onclick="picker.finish(${item.id});"
             onmouseover="$('#${item_id}').removeClass('disabled');"
             onmouseout="$('#${item_id}').addClass('disabled');">
-          ${item.string} - ${item.score}
+          ${item.string}
         </button>`);
       }
     }
@@ -1217,6 +1223,8 @@ class Rooms {
     } else {
       this.cur_room = "1";
     }
+    $('#new-room-chevron').html(icons.chevron_up);
+    this.settings = ['name','topic','about'];
     this.table_name = "#rooms-list";
     this.table = null;
     this.table_def = { "rowId": "rowid",
@@ -1241,7 +1249,18 @@ class Rooms {
     this.update_table_row(this.get_room(room));
     getter.request();
   }
-
+  
+  send_new_room() {
+    var settings = {};
+    for (var setting in this.settings) {
+      setting = this.settings[setting];
+      var value = $('#settings-'+setting).val();
+      if (value) {
+        settings[setting] = value;
+      }
+    }
+    socket.emit('settings', settings);
+  }
   get_room(room) {
     // sigh, javascript...
     if(room==undefined) {
@@ -1429,11 +1448,7 @@ class Rooms {
     if(this.table != null) {
 
       var person_button = messages.render_inline_person(people.get_this_person(), false);
-      $('#new-folder-people').html(`${person_button}
-                                    <button class="btn btn-dark btn-sm justify-content-end"/>
-                                      ${icons.person_add}
-                                    </button>`);
-      $('#new-folder-people').children().attr('disabled',true);
+      //$('#new-folder-people').children().attr('disabled',true);
       for (var room in this.rooms) {
         room = this.get_room(room);
         if(room) {
@@ -1473,6 +1488,7 @@ class Messages {
         if(messages.picker_state == null) {
           switch(event.key) {
             case '@':
+              picker.set_target_id('#select-list', '#select-box');
               picker.set_items(people.get_handles(), function(id) {
                 var last_pos    = $('#new-message').prop("selectionStart"); 
                 var text        = $('#new-message').val();
@@ -2421,6 +2437,17 @@ $('.dropdown-toggle').dropdown();
 function resize_div(div, header, footer) {
   var new_height = window.innerHeight - header - footer - 5;
   $(div).css('height',new_height.toString()+'px');
+}
+
+function flip_chevron(id) {
+  id = '#' + id;
+  if ($(id).attr('al-chevron') == 'up') {
+    $(id).attr('al-chevron', 'down');
+    $(id).html(icons.chevron_down);
+  } else {
+    $(id).attr('al-chevron', 'up');
+    $(id).html(icons.chevron_up);
+  }
 }
 
 $( window ).resize(function () { 
