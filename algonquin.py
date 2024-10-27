@@ -254,7 +254,7 @@ def file_upload_common(req):
         if req.form['person'] not in [None, 'null']:
             print(req.form['person'])
             to_person = Person.get(int(req.form['person']))
-            to_folder, to_room = Room.get_or_set_chat(from_person.id, 
+            to_folder, to_room = Room.get_or_set_room(from_person.id, 
                                                       [from_person.id, to_person.id])
             folder = to_folder.id
             room   = to_room.id
@@ -668,6 +668,54 @@ def handle_have_read(json):
 
 
 
+@person_logged_in
+@socketio.on('new-room')
+@json_has_keys('name')
+def handle_new_room(json):
+
+    person         = scoreboard.get_person_from_sid(request.sid)
+    online_persons = scoreboard.online_persons()
+
+    about  = None
+    topic  = None
+    name   = None
+    public = False
+    if 'name' in json:
+        name = json['name'][:100]
+    if 'about' in json:
+        about = json['about'][:100]
+    if 'topic' in json:
+        topic = json['topic'][:100]
+    if 'public' in json:
+        public = True if str(json['public']) == '1' else False
+
+    folder, room   = Room.get_or_set_room(person,
+                                          name  = name,
+                                          about = about, 
+                                          topic = topic)
+
+    sids = scoreboard.get_sids_from_person(person)
+
+    for sid in sids:
+        join_room('room-'+str(room.id),
+                  sid=sid)
+        emit('add-room',
+             {'room': room.public_fields(),
+              'folder': folder.public_fields()},
+              broadcast=False)
+
+    if public == True:
+        #inform everyone
+        for member in online_persons:
+            sids = scoreboard.get_sids_from_person(member)
+            join_room('room-'+str(room.id), 
+                      sid=sid)
+            emit('add-room', 
+                 {'room': room.public_fields(),
+                  'folder': [folder]}, 
+                 room=sid)
+
+    logging.info(f"New Room -- room: {room.name} owner: {person}") 
 
 
 @person_logged_in
@@ -675,8 +723,8 @@ def handle_have_read(json):
 @json_has_keys('persons')
 def handle_start_chat(json):
     person         = scoreboard.get_person_from_sid(request.sid)
-    folder, room   = Room.get_or_set_chat(person, json['persons'])
-    online_persons = scoreboard.online_persons();
+    folder, room   = Room.get_or_set_room(person, json['persons'])
+    online_persons = scoreboard.online_persons()
     for member in json['persons']:
         sids = scoreboard.get_sids_from_person(member)
         if person == member:

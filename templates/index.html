@@ -101,14 +101,13 @@
 
     <div id="footer" class="navbar navbar-dark bg-dark fixed-bottom d-none">
       <form class="form-inline my-1" id="write_message">
-        <textarea style="resize:none;" class="form-control mb-1" 
+        <textarea style="resize:none; font-size:1.18em;" class="form-control mb-1" 
                   name="new-message" id="new-message" 
                   oninput="lissajous.dec();"
                   cols="60" rows="1"></textarea>
         <button class="btn btn-success btn-sm ml-2" 
                 onclick="send_message();" 
                 id="send-message" type="button">
-          <span>Send</span>
         </button>
         <input type="file" style="display: none" id="footer-upload-file" multiple />
         <button class="btn btn-light btn-sm ml-2" id="message-expand-button" 
@@ -327,18 +326,16 @@
                   <div class="input-group mb-1">
                     <div class="input-group-prepend mr-2">Room Name:</div>
                     <input type="text" class="form-control" 
-                           name="new-room-name" id="room-name" required />
+                           name="new-room-name" id="new-room-name" required />
                   </div>
                   <div class="input-group mb-1">
                     <div class="input-group-prepend mr-2">Topic:</div>
                     <input type="text" class="form-control" 
-                           name="new-room-topic" id="room-topic" />
+                           name="new-room-topic" id="new-room-topic" />
                   </div>
                   <div class="input-group mb-1">
                     <div class="input-group-prepend mr-2">About:</div>
-                    <textarea class="form-control" 
-                           name="new-room-about" id="room-about">
-                    </textarea>
+                    <textarea class="form-control" name="new-room-about" id="new-room-about"></textarea>
                   </div>
 
                   <div class="alert alert-light">
@@ -352,8 +349,8 @@
                     </div>
                     <div class="form-check">
                       <input class="form-check-input" type="radio" 
-                             name="room-public-private" id="new-room-public" >
-                      <label class="form-check-label" for="new-room-public">
+                             name="room-public-private" id="new-room-private" >
+                      <label class="form-check-label" for="new-room-private">
                         Private (add people later...)
                       </label>
                     </div>
@@ -375,18 +372,6 @@
             </div>
           </div>
         </div>
-      </div>
-
-
-
-
-
-
-
-
-
-
-
         <div class="table-responsive">
           <table id="rooms-list" 
                  class="table table-striped table-bordered compact" 
@@ -519,8 +504,8 @@
             <div>
               <address>
                 <strong>Algonquin / David Case</strong><br>
-                901 SW 6th Street #312A<br>
-                Washington, DC 20024<br>
+                1820 Clydesdale Place NW #102
+                Washington, DC 20009<br>
                 <abbr title="Phone">Phone:</abbr> (971) 400-3715
               </address>
 

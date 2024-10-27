@@ -258,13 +258,10 @@ class Files {
   
   get_path_index(index) {
     if (index > this.path.length) {
-      console.log("a");
       return null;
     } else if (index < 0) {
-      console.log("b");
       return null;
     } else {
-      console.log("c");
       return this.get_folder(this.path[index]);
     }
   }
@@ -1224,7 +1221,7 @@ class Rooms {
       this.cur_room = "1";
     }
     $('#new-room-chevron').html(icons.chevron_up);
-    this.settings = ['name','topic','about'];
+    this.new_room_fields = ['name','topic','about', 'public', 'private'];
     this.table_name = "#rooms-list";
     this.table = null;
     this.table_def = { "rowId": "rowid",
@@ -1252,14 +1249,15 @@ class Rooms {
   
   send_new_room() {
     var settings = {};
-    for (var setting in this.settings) {
-      setting = this.settings[setting];
-      var value = $('#settings-'+setting).val();
+    for (var setting in this.new_room_fields) {
+      setting = this.new_room_fields[setting];
+      var value = $('#new-room-'+setting).val();
       if (value) {
         settings[setting] = value;
       }
     }
-    socket.emit('settings', settings);
+    console.log(settings);
+    socket.emit('new-room', settings);
   }
   get_room(room) {
     // sigh, javascript...
@@ -1284,7 +1282,9 @@ class Rooms {
   }
 
   add_room(room) {
+    console.log('add_room');
     if(!this.rooms.hasOwnProperty(room.id)) {
+      console.log('aa');
       this.rooms[room.id] = room;
       this.rooms[room.id].message_index = [];
       this.rooms[room.id].unread = 0;
@@ -1294,6 +1294,7 @@ class Rooms {
         this.rooms[room.id].last_seen = 0;
       }
     } else {
+      console.log('bb');
       if(!(room.hasOwnProperty('placeholder'))) {
         for (var key in room) {
           this.rooms[room.id][key] = room[key];
@@ -1352,6 +1353,7 @@ class Rooms {
 
 
   render_room_list() {
+    console.log('render room list');
     var unread = 0;
     $('#room_list').empty();
     for (var room in this.rooms) {
@@ -1415,6 +1417,7 @@ class Rooms {
     return `room-id-${id}`;
   }
   update_table_row(room) {
+    console.log('update table row');
     var rowid    = this.table_row_name(room.id);
     var name     = `<button class="btn btn-secondary btn-block" id="goto-room-${room.id}"
                             onclick="rooms.change_room('${room.id}'); tabs.show('messages');">${room.expanded_name}</button>`;
@@ -1565,7 +1568,7 @@ class Messages {
       });
 
     this.input_small();
-    $('#send-message').append(icons.chat_bubble);
+    $('#send-message').append(icons.send_message);
     $('#footer-new-file').append(icons.paperclip);
     $('#goto-bottom').html(icons.goto_bottom);
     $('#files-upload').prepend(icons.paperclip);
@@ -2229,6 +2232,7 @@ class Getter {
     }
 
     if ('rooms' in stuff) {
+      console.log('rooms in stuff');
       for (var room in stuff['rooms']) {
         room = stuff['rooms'][room];
         room.expanded_name = rooms.render_chat_name(room);
@@ -2432,7 +2436,7 @@ function regulate_password(field1, field2, button) {
   }
 }
 
-$('.dropdown-toggle').dropdown();
+//$('.dropdown-toggle').dropdown();
 
 function resize_div(div, header, footer) {
   var new_height = window.innerHeight - header - footer - 5;
@@ -2841,8 +2845,13 @@ function setup_handlers(s) {
   });
 
   s.on('add-room', data => {
-    rooms.add_room(data.room); 
-    files.add_update_folder(data.folder);
+    room = data.room
+    room.expanded_name = rooms.render_chat_name(room);
+    rooms.add_room(room); 
+    //files.add_update_folder(data.folder);
+    rooms.render_room_list();
+    //rooms.update_table_row(data.room);
+    rooms.render();
   });
 
   s.on('goto-chat', data => {

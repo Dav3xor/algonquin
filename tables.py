@@ -117,7 +117,7 @@ class Person(db.DBTable):
         return [ card.public_fields() for card in cards ]
     
     def send_file_to(self, recipient_id):
-        return Room.get_or_set_chat(self.id, [self.id, recipient_id]).root_folder
+        return Room.get_or_set_room(self.id, [self.id, recipient_id]).root_folder
 
 
 class Folder(db.DBTable):
@@ -163,29 +163,40 @@ class Room(db.DBTable):
         return '$%^&-' + '-'.join(str(i) for i in person_ids)
     
     @classmethod
-    def get_or_set_chat(cls, owner, person_ids):
-        name = cls.chat_name(person_ids)
-        room = Room.get_where(name=name)
-        person_ids = set(person_ids)
+    def get_or_set_room(cls, owner, person_ids=None, name=None, topic=None, about=None, public=False):
+        name       = name if name else cls.chat_name(person_ids)
+        room       = Room.get_where(name=name)
+
         if not room:
-            folder = Folder(name = name,
-                            public = False,
+            if person_ids:
+                person_ids = set(person_ids)
+
+            folder = Folder(name   = name,
+                            public = public,
                             owner  = owner,
                             parent = config['root_folder'])
             folder.save()
 
             room = Room(owner       = owner, 
-                        public      = False, 
+                        public      = public, 
                         root_folder = folder.id,
                         name        = name)
+            if topic:
+                room.topic = topic
+            if about:
+                room.about = about
             room.save()
 
             folder.room = room.id
             folder.save()
 
-            for person in person_ids:
-                Membership.join(person, room.id)
-            room.commit()
+            if person_ids:
+                for person in person_ids:
+                    Membership.join(person, room.id)
+                room.commit()
+            else:
+                Membership.join(owner, room.id)
+                
         else:
             folder = Folder.get(room.root_folder)
 
